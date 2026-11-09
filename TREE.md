@@ -4,7 +4,7 @@
 - `index.html` — sign-in page (one screen, no scroll). Posts to /api/login.
 - `office.html` — office app: top bar (task, settings), left sidebar (filters, search, agent list, activity), office stage. Needs session.
 - `assets/office.css` — office styles (layout, drawers, mobile).
-- `assets/scene.js` — static isometric SVG, floor 1500x1000: 6 big department rooms (3x2, 6 desks each, room i = department i), CEO office, café (16 spots), 4 open desks (no department). VScene: desks, deskRoom, rooms[{lead, desks}], hot, cafe, ceo, vb.
+- `assets/scene.js` — static isometric SVG, floor 1500x1000: 6 big department rooms (3x2, 6 desks each, room i = department i), CEO office, café (16 spots), 4 open desks (no department). VScene: desks, deskRoom, rooms[{lead, desks}], hot, cafe, ceo, vb. Characters (style B, big head): #bot employee (dark skin, navy suit, tie = currentColor), #lead (light skin, black tuxedo, pocket square = dept color), #ceo (gold tuxedo, sunglasses).
 - `assets/nozoom.js` — blocks browser zoom everywhere (both pages); only the office scene zooms (handled in office.js).
 - `assets/office.js` — app logic: polling /api/office, placing agents, GSAP walking, zoom/pan of the scene (viewBox), drawers (agent, department, settings, tasks), 3-step "Connect your n8n" wizard (openConnect), owner filter, "/" search, failure toasts.
 - `functions/_lib.js` — sql() over Neon HTTPS, password check, signed session cookie, AES-GCM encrypt/decrypt, json().

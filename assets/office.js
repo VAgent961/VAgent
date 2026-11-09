@@ -99,7 +99,7 @@
   function leave(g) { if (window.gsap) gsap.to(g, { opacity: 0, duration: 0.5, onComplete: () => g.remove() }); else g.remove(); }
 
   function renderRooms() {
-    const cs = svg.querySelector("#ceo-slot"); if (cs && !cs.firstChild) cs.innerHTML = '<g class="ceo-g" tabindex="0" role="button" aria-label="Talk to the CEO"><g transform="scale(1.45)"><use href="#lead" style="color:#D9C27A"/><use href="#crown" y="-46"/></g><g class="tag" transform="translate(0 -100)"><rect x="-64" y="-13" width="128" height="24" rx="12" fill="#2B2416"/><text y="3" text-anchor="middle" fill="#E9C46A" font-size="12" font-weight="600">CEO · Talk to me</text></g></g>';
+    const cs = svg.querySelector("#ceo-slot"); if (cs && !cs.firstChild) cs.innerHTML = '<g class="ceo-g" tabindex="0" role="button" aria-label="Talk to the CEO"><g transform="scale(1.25)"><use href="#ceo"/></g><g class="tag" transform="translate(0 -104)"><rect x="-64" y="-13" width="128" height="24" rx="12" fill="#2B2416"/><text y="3" text-anchor="middle" fill="#E9C46A" font-size="12" font-weight="600">CEO · Talk to me</text></g></g>';
     VScene.rooms.forEach((r, i) => {
       const d = D.departments[i], slot = svg.querySelector(`.lead-slot[data-room="${i}"]`), screen = svg.querySelector(`.room-screen[data-room="${i}"]`);
       screen.style.color = d ? d.color : '#3A3935';
@@ -108,7 +108,7 @@
       if (nm) nm.textContent = d ? d.name : "";
       if (d) {
         const label = d.name + ' Lead', w = Math.min(label.length, 24) * 6.5 + 26;
-        slot.innerHTML = `<g class="lead" tabindex="0" role="button" data-dept="${d.id}" aria-label="${esc(label)}"><g transform="scale(1.15)"><use href="#lead" style="color:${d.color}"/></g><g class="tag" transform="translate(0 -72)"><rect x="${-w / 2}" y="-12" width="${w}" height="22" rx="11" fill="#FAF9F5" stroke="#D8D5CB"/><text y="3" text-anchor="middle" fill="#141413">${esc(label.slice(0, 24))}</text></g></g>`;
+        slot.innerHTML = `<g class="lead" tabindex="0" role="button" data-dept="${d.id}" aria-label="${esc(label)}"><g transform="scale(1.15)"><use href="#lead" style="color:${d.color}"/></g><g class="tag" transform="translate(0 -84)"><rect x="${-w / 2}" y="-12" width="${w}" height="22" rx="11" fill="#FAF9F5" stroke="#D8D5CB"/><text y="3" text-anchor="middle" fill="#141413">${esc(label.slice(0, 24))}</text></g></g>`;
       } else {
         slot.innerHTML = `<g class="add-room" tabindex="0" role="button" aria-label="Add a department"><g class="tag" transform="translate(0 -24)"><rect x="-56" y="-12" width="112" height="22" rx="11" fill="#FAF9F5" stroke="#B0AEA5" stroke-dasharray="4 3"/><text y="3" text-anchor="middle" fill="#5E5D59">+ Department</text></g></g>`;
       }
@@ -188,7 +188,7 @@
   function open(html, name) { current = name; inner.innerHTML = html; drawer.classList.add('open'); drawer.setAttribute('aria-hidden', 'false'); scrim.hidden = false; inner.scrollTop = 0; setTimeout(() => (inner.querySelector('[autofocus]') || $('#drawer-close')).focus(), 50); }
   function close() { current = null; drawer.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true'); scrim.hidden = true; }
   const botSvg = (c, s = 40) => `<svg aria-hidden="true" width="${s}" height="${s}" viewBox="-22 -72 44 76"><use href="#bot" style="color:${c}"/></svg>`;
-  const leadSvg = (c, s = 40) => `<svg aria-hidden="true" width="${s}" height="${s}" viewBox="-26 -54 52 60"><use href="#lead" style="color:${c}"/></svg>`;
+  const leadSvg = (c, s = 40) => `<svg aria-hidden="true" width="${s}" height="${s}" viewBox="-30 -66 60 70"><use href="#lead" style="color:${c}"/></svg>`;
   const deptName = (id) => (D.departments.find((d) => d.id === id) || {}).name;
 
   async function openAgent(key) {
@@ -358,7 +358,7 @@
     paint();
   }
   function openCEO() {
-    open(`<div class="d-head"><span class="avatar" style="background:#2B2416">${leadSvg('#D9C27A')}</span><div><h2 class="d-title">The CEO</h2><div class="d-sub">Sees the whole company live. Ask anything, or ask for a change.</div></div></div>
+    open(`<div class="d-head"><span class="avatar" style="background:#2B2416"><svg aria-hidden="true" width="44" height="44" viewBox="-26 -78 52 82"><use href="#ceo"/></svg></span><div><h2 class="d-title">The CEO</h2><div class="d-sub">Sees the whole company live. Ask anything, or ask for a change.</div></div></div>
       <div class="row">${['How is the company doing today?', 'Organize everyone into the right departments and teams', 'Which agents failed recently and why?', 'Create a new department for ', 'Write a Claude prompt to add a feature: '].map((s) => `<button class="pick" type="button" ${s.endsWith(' ') ? `data-fill="${esc(s)}"` : `data-say="${esc(s)}"`}>${esc(s.trim())}</button>`).join('')}</div>
       ${chatUI('ceo', 'Ask the CEO anything…')}
       <p class="help">Changes only happen after you press Approve. For new website features he writes a prompt you paste into Claude.</p>
