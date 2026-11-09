@@ -585,6 +585,16 @@
   ping(); setInterval(ping, 60000);
   api('me').then((me) => { if (me.owners) renderOwners(me.owners); }).catch(() => {});
 
-  load(); setInterval(() => { if (!document.hidden) load(); }, 5000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+  // Poll every 8s, but deduplicate: if a request is already in-flight, skip.
+  // Also back off to 30s when the tab is hidden, so background tabs don't hammer the DB.
+  let loading = false;
+  const scheduledLoad = async () => {
+    if (loading) return;
+    loading = true;
+    try { await load(); } finally { loading = false; }
+  };
+  scheduledLoad();
+  setInterval(() => { if (!document.hidden) scheduledLoad(); }, 8000);
+  setInterval(() => { if (document.hidden) scheduledLoad(); }, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduledLoad(); });
 })();
