@@ -180,8 +180,13 @@
       if (fl) { fl.setAttribute("fill", d ? d.color : "#2A2A2E"); fl.setAttribute("opacity", d ? "0.16" : "0.6"); }
       if (nm) nm.textContent = d ? d.name : "";
       if (d) {
-        const label = d.name + ' Lead', w = Math.min(label.length, 24) * 6.5 + 26;
-        slot.innerHTML = `<g class="lead" tabindex="0" role="button" data-dept="${d.id}" aria-label="${esc(label)}"><g transform="scale(1.15)"><use href="#lead" style="color:${d.color}"/></g><g class="tag" transform="translate(0 -84)"><rect x="${-w / 2}" y="-12" width="${w}" height="22" rx="11" fill="#FAF9F5" stroke="#D8D5CB"/><text y="3" text-anchor="middle" fill="#141413">${esc(label.slice(0, 24))}</text></g></g>`;
+        const leadA = d.lead_key ? D.agents.find((a) => a.key === d.lead_key) : null;
+        const label = leadA ? (leadA.name.length > 22 ? leadA.name.slice(0, 21) + '…' : leadA.name) : d.name + ' Lead';
+        const w = Math.min(label.length, 24) * 6.5 + 26;
+        const body = leadA
+          ? `<g transform="scale(1.15)"><use href="#bot" style="color:${colorOf(leadA.key)}"/></g><g class="tag" transform="translate(0 -100)"><rect x="${-w / 2}" y="-12" width="${w}" height="22" rx="11" fill="${d.color}" stroke="${d.color}"/><text y="3" text-anchor="middle" fill="#141413" font-weight="600">${esc(label)}</text></g>`
+          : `<g transform="scale(1.15)"><use href="#lead" style="color:${d.color}"/></g><g class="tag" transform="translate(0 -84)"><rect x="${-w / 2}" y="-12" width="${w}" height="22" rx="11" fill="#FAF9F5" stroke="#D8D5CB"/><text y="3" text-anchor="middle" fill="#141413">${esc(label)}</text></g>`;
+        slot.innerHTML = `<g class="lead" tabindex="0" role="button" data-dept="${d.id}" aria-label="${esc(label)}">${body}</g>`;
       } else {
         slot.innerHTML = `<g class="add-room" tabindex="0" role="button" aria-label="Add a department"><g class="tag" transform="translate(0 -24)"><rect x="-56" y="-12" width="112" height="22" rx="11" fill="#FAF9F5" stroke="#B0AEA5" stroke-dasharray="4 3"/><text y="3" text-anchor="middle" fill="#5E5D59">+ Department</text></g></g>`;
       }
@@ -343,8 +348,16 @@
     const opts = '<option value="">No department</option>' + D.departments.map((x) => `<option value="${x.id}" ${x.id === d.dept ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
     const teamOpts = (deptId) => { const x = D.departments.find((y) => y.id === Number(deptId)); return '<option value="">No team</option>' + (x ? x.teams.map((t) => `<option value="${t.id}" ${t.id === d.team ? 'selected' : ''}>${esc(t.name)}</option>`).join('') : ''); };
     const how = d.runnable ? 'It has its own webhook, so your messages go straight to it.' : d.canRun ? 'Ask it anything. Press Run now to start it.' : d.hasHook ? 'Ask it anything. Turn it on to be able to start it from here.' : 'Ask it anything. It starts from its own trigger (' + esc(TRIG[d.trigger] || d.trigger) + ').';
+    const aInD = D.departments.find((x) => x.id === d.dept);
+    const isLeadOf = aInD && aInD.lead_key === key;
+    const leadRow = aInD
+      ? isLeadOf
+        ? `<div class="row"><span class="pick" aria-pressed="true" style="display:inline-flex;align-items:center;gap:6px">⭐ Lead of ${esc(aInD.name)}</span><button class="btn" type="button" id="clear-lead">Remove as lead</button></div>`
+        : `<button class="btn primary" type="button" id="set-lead">⭐ Make lead of ${esc(aInD.name)}</button>`
+      : '';
     inner.innerHTML = head
       + (d.canRun ? `<button class="btn primary" type="button" id="run-now">▶ Run now</button>` : '')
+      + leadRow
       + `<p class="label">Talk to ${esc(d.name)}</p>` + chatUI('agent:' + key, 'Ask it something…') + `<p class="help">${how}</p>`
       + `<div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1"><label for="dept">Department</label><select class="input" id="dept">${opts}</select></div><div class="field" style="flex:1"><label for="team">Team</label><select class="input" id="team">${teamOpts(d.dept)}</select></div></div>`
       + `<details class="more"><summary>What it does (${d.steps.length} steps)</summary><ol class="steps">${steps}</ol></details>`
@@ -356,6 +369,14 @@
     const saveAssign = async () => { try { await api('agent', { body: { key, action: 'assign', deptId: $('#dept').value || null, teamId: $('#team').value || null } }); toast('Moved'); load(); } catch (x) { toast(x.message); } };
     $('#dept').onchange = () => { d.team = null; $('#team').innerHTML = teamOpts($('#dept').value); saveAssign(); };
     $('#team').onchange = saveAssign;
+    if ($('#set-lead')) $('#set-lead').onclick = async () => {
+      const deptId = $('#dept').value; if (!deptId) { toast('Assign a department first'); return; }
+      try { await api('departments', { body: { deptId: Number(deptId), leadKey: key } }); toast('Set as lead'); await load(); openAgent(key); } catch (x) { toast(x.message); }
+    };
+    if ($('#clear-lead')) $('#clear-lead').onclick = async () => {
+      const deptId = d.dept; if (!deptId) return;
+      try { await api('departments', { body: { deptId, leadKey: '' } }); toast('Lead cleared'); await load(); openAgent(key); } catch (x) { toast(x.message); }
+    };
     if ($('#run-now')) $('#run-now').onclick = async (e) => { e.target.disabled = true; try { const r = await api('agent', { body: { key, action: 'run', message: 'Run now from the office' } }); toast(r.output); load(); } catch (x) { toast(x.message); } e.target.disabled = false; };
     $('#toggle').onclick = async () => {
       if (!confirm(d.active ? 'Turn off "' + d.name + '"? Its trigger stops until you turn it on again.' : 'Turn on "' + d.name + '"?')) return;
@@ -366,7 +387,12 @@
   async function openDept(id, focusTask) {
     const d = D.departments.find((x) => x.id === Number(id)); if (!d) return;
     const team = D.agents.filter((a) => a.dept === d.id), can = team.filter((a) => a.runnable).length;
-    open(`<div class="d-head"><span class="avatar">${leadSvg(d.color)}</span><div><h2 class="d-title">${esc(d.name)} Lead</h2><div class="d-sub">${team.length} employees · ${can} can take tasks${d.mission ? '<br>' + esc(d.mission) : ''}</div></div></div>
+    const leadAgent = d.lead_key ? D.agents.find((a) => a.key === d.lead_key) : null;
+    const leadAvatarSvg = leadAgent ? botSvg(colorOf(leadAgent.key)) : leadSvg(d.color);
+    const leadTitle = leadAgent ? esc(leadAgent.name) + ' <small class="muted">(lead)</small>' : esc(d.name) + ' Lead';
+    const leadPickOpts = '<option value="">— no lead —</option>' + team.map((a) => `<option value="${esc(a.key)}" ${a.key === d.lead_key ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
+    open(`<div class="d-head"><span class="avatar">${leadAvatarSvg}</span><div><h2 class="d-title">${leadTitle}</h2><div class="d-sub">${team.length} employees · ${can} can take tasks${d.mission ? '<br>' + esc(d.mission) : ''}</div></div></div>
+      <div class="field"><label for="lead-pick">Lead</label><select class="input" id="lead-pick">${leadPickOpts}</select></div>
       <p class="label">Talk to the lead</p>${chatUI('lead:' + d.id, 'Ask the ' + d.name + ' lead…')}
       <form id="f-task" class="field"><label for="task">Give the lead a task</label><textarea class="input" id="task" name="t" required placeholder="Example: check vagent.online and report anything broken" ${focusTask ? 'autofocus' : ''}></textarea>
       <button class="btn primary" type="submit">Send to the team</button><p class="help">The lead sends it to every agent here that has a webhook, waits for them, and gives you one final result.</p></form>
@@ -379,6 +405,9 @@
       <div class="row"><button class="btn" type="submit">Save</button><button class="btn danger" type="button" id="del-dept">Delete department</button></div></form>`, 'dept:' + d.id);
     let color = d.color;
     bindChat('lead:' + d.id, d.name + ' lead');
+    $('#lead-pick').onchange = async (e) => {
+      try { await api('departments', { body: { deptId: d.id, leadKey: e.target.value || '' } }); toast(e.target.value ? 'Lead set' : 'Lead cleared'); await load(); openDept(d.id, focusTask); } catch (x) { toast(x.message); }
+    };
     $("#f-team").onsubmit = async (e) => { e.preventDefault(); try { await api("departments", { body: { deptId: d.id, team: e.target.t.value } }); await load(); openDept(d.id); } catch (x) { toast(x.message); } };
     inner.querySelectorAll("[data-del-team]").forEach((b) => (b.onclick = async () => { if (!confirm("Remove this team? Its employees stay in the department.")) return; await api("departments?teamId=" + b.dataset.delTeam, { method: "DELETE" }); await load(); openDept(d.id); }));
     inner.querySelectorAll('.sw button').forEach((b) => (b.onclick = () => { color = b.dataset.c; inner.querySelectorAll('.sw button').forEach((x) => x.setAttribute('aria-pressed', x === b)); }));
@@ -461,7 +490,8 @@
   const store = { get: (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v.slice(-30))); } catch {} } };
   const ACT = { create_department: (a) => 'Create department "' + a.name + '"', rename_department: (a) => 'Rename ' + a.department + ' to "' + a.name + '"', set_mission: (a) => 'New mission for ' + a.department + ': ' + a.mission, delete_department: (a) => 'Delete department ' + a.department,
     create_team: (a) => 'New team "' + a.name + '" in ' + a.department, delete_team: (a) => 'Remove team ' + a.team + ' from ' + a.department, move_agent: (a) => 'Move ' + a.agent + ' → ' + a.department + (a.team ? ' / ' + a.team : ''),
-    assign_task: (a) => 'Give ' + a.department + ' Lead the task: ' + a.task, rename_agent: (a) => 'Rename ' + a.agent + ' to "' + a.name + '"', run_agent: (a) => 'Start ' + a.agent + ' now', turn_on: (a) => 'Turn on ' + a.agent, turn_off: (a) => 'Turn off ' + a.agent };
+    assign_task: (a) => 'Give ' + a.department + ' Lead the task: ' + a.task, rename_agent: (a) => 'Rename ' + a.agent + ' to "' + a.name + '"', run_agent: (a) => 'Start ' + a.agent + ' now', turn_on: (a) => 'Turn on ' + a.agent, turn_off: (a) => 'Turn off ' + a.agent,
+    set_lead: (a) => (a.agent ? a.agent + ' becomes lead of ' + a.department : 'Clear lead of ' + a.department) };
   const bubble = (m) => {
     if (m.me) return `<div class="msg me">${esc(m.t)}</div>`;
     let h = `<div class="msg it${m.bad ? ' bad' : ''}">${esc(m.t)}</div>`;

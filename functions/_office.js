@@ -5,7 +5,7 @@ import { instances, call, summaries, statusOf } from './_n8n.js';
 export async function officeData(env) {
   const [insts, depts, teams, meta] = await Promise.all([
     instances(env),
-    sql(env, 'SELECT id, name, color, mission FROM vagent_departments ORDER BY id'),
+    sql(env, 'SELECT id, name, color, mission, lead_key FROM vagent_departments ORDER BY id'),
     sql(env, 'SELECT id, dept_id, name FROM vagent_teams ORDER BY id'),
     sql(env, 'SELECT key, dept_id, team_id, nickname FROM vagent_agent_meta'),
   ]);
@@ -35,6 +35,7 @@ export async function officeData(env) {
   }));
   activity.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
   agents.sort((a, b) => a.key.localeCompare(b.key, undefined, { numeric: true }));
+  for (const a of agents) a.isLead = departments.some((d) => d.lead_key === a.key);
   return { agents, departments, activity: activity.slice(0, 25), errors, instances: insts.map((i) => ({ id: i.id, label: i.label, url: i.base_url, owner: i.owner_email })) };
 }
 

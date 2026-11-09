@@ -34,6 +34,12 @@ async function handle({ request, env, data }) {
         const x = dept(a.department); if (!x) { out.push('✗ No department called ' + a.department); continue; }
         if (t === 'create_team') { const [tm] = await sql(env, 'INSERT INTO vagent_teams (dept_id, name) VALUES ($1, $2) RETURNING id', [x.id, String(a.name).slice(0, 40)]); x.teams.push({ id: tm.id, name: a.name }); out.push('✓ New team ' + a.name + ' in ' + x.name); }
         else { const tm = find(x.teams, a.team); if (!tm) { out.push('✗ No team ' + a.team); continue; } await sql(env, 'DELETE FROM vagent_teams WHERE id = $1', [tm.id]); out.push('✓ Removed team ' + tm.name); }
+      } else if (t === 'set_lead') {
+        const x = dept(a.department); if (!x) { out.push('✗ No department called ' + a.department); continue; }
+        const ag = a.agent ? agent(a.agent) : null;
+        if (a.agent && !ag) { out.push('✗ No employee called ' + a.agent); continue; }
+        await sql(env, 'UPDATE vagent_departments SET lead_key = $1 WHERE id = $2', [ag ? ag.key : null, x.id]);
+        out.push('✓ ' + (ag ? ag.name + ' is now the lead of ' + x.name : 'Cleared the lead of ' + x.name));
       } else {
         const ag = agent(a.agent); if (!ag) { out.push('✗ No employee called ' + a.agent); continue; }
         if (t === 'move_agent') {

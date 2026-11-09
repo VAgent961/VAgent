@@ -9,6 +9,10 @@ export async function onRequestGet({ env }) {
 // POST {name, color} creates · {id, name, color} renames/recolors
 export async function onRequestPost({ request, env, data }) {
   const b = await body(request);
+  if (b.leadKey !== undefined) { // POST {deptId, leadKey} sets the lead
+    await sql(env, 'UPDATE vagent_departments SET lead_key = $1 WHERE id = $2', [b.leadKey || null, Number(b.deptId)]);
+    return json({ ok: true });
+  }
   if (b.team) { // POST {deptId, team} adds a team
     const [t] = await sql(env, 'INSERT INTO vagent_teams (dept_id, name) VALUES ($1, $2) RETURNING id, name', [Number(b.deptId), String(b.team).trim().slice(0, 40)]);
     return json(t);

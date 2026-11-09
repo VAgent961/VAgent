@@ -14,6 +14,7 @@ const ACTIONS = `{"type":"create_department","name":"","mission":""}
 {"type":"run_agent","agent":""}
 {"type":"turn_on","agent":""}
 {"type":"turn_off","agent":""}
+{"type":"set_lead","department":"","agent":""}   (make an employee the lead of a department; omit agent to clear)
 {"type":"assign_task","department":"","task":""}   (give a project to a department lead; its team does it after approval)`;
 
 const convo = (history, msg, who) => (history || []).slice(-8).map((h) => (h.me ? 'Owner: ' : who + ': ') + String(h.t || '').slice(0, 600)).concat('Owner: ' + msg).join('\n');
