@@ -561,7 +561,7 @@
       <p class="help">Each client can log in and see only their department — everything else is dimmed and unclickable.</p>
       <form id="f-client" class="fields" autocomplete="off">
         <div class="field"><label>Email</label><input class="input" id="cl-email" type="email" placeholder="client@example.com" required/></div>
-        <div class="field"><label>Password</label><input class="input" id="cl-pass" type="password" placeholder="Set a password" required/></div>
+        <div class="field"><label>Password</label><div class="row" style="gap:6px"><input class="input" id="cl-pass" type="password" placeholder="Set a password" required style="flex:1"/><button class="btn" type="button" id="cl-show" style="flex:none">Show</button></div></div>
         <div class="field"><label>Access — department</label><select class="input" id="cl-dept">${deptOpts}</select></div>
         <button class="btn primary" type="submit">Create account</button>
       </form>
@@ -575,6 +575,7 @@
       } catch (x) { $('#cl-list').innerHTML = `<p class="empty">${esc(x.message)}</p>`; }
     };
     refresh();
+    $('#cl-show').onclick = () => { const i = $('#cl-pass'); i.type = i.type === 'password' ? 'text' : 'password'; $('#cl-show').textContent = i.type === 'password' ? 'Show' : 'Hide'; };
     $('#f-client').onsubmit = async (e) => {
       e.preventDefault();
       try {

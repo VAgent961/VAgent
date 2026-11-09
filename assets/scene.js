@@ -69,21 +69,20 @@
   </symbol>
   </defs>`;
 
-  const ROOM_W = 1040, ROOM_D = 1160, GAP = 40, FAC_W = 440, WORK_D = 740;
+  const ROOM_W = 1040, ROOM_D = 5000, GAP = 40, FAC_W = 440, WORK_D = 740;
   const SOFA = ['#6A5880', '#55466A', '#483B5A'], WOOD = ['#8A6446', '#6E4F37', '#5A402C'], DARK = ['#2B2B2F', '#202024', '#18181B'];
 
   function build(depts) {
     const n = depts.length <= 1 ? 1 : depts.length + (depts.length % 2), cols = n === 1 ? 1 : 2, rows = Math.ceil(n / cols);
-    const fx = cols * (ROOM_W + GAP), W = fx + FAC_W, D = Math.max(rows * (ROOM_D + GAP) - GAP, 2000);
+    const fx = cols * (ROOM_W + GAP), W = fx + FAC_W, D = Math.max(rows * (ROOM_D + GAP) - GAP, 6000);
     const desksF = [], deskRoom = [], spotsF = [], spotProp = [], rooms = [];
     let floor = '', back = '', furn = '';
-    // café spots first (indexes 0..49) so they never move — 5 cols × 10 rows = 50 spots
-    const CAFE_COLS = [fx + 54, fx + 148, fx + 222, fx + 306, fx + 390];
-    const CAFE_ROWS = [660, 760, 860, 960, 1060, 1160, 1260, 1360, 1460, 1560];
-    const CAFE_PROPS = ['mug','mug','music','mug','rest','mug','mug','rest','mug','music'];
-    for (let ri = 0; ri < CAFE_ROWS.length; ri++) {
-      const y = CAFE_ROWS[ri], stagger = (ri % 2) * 18;
-      for (const x of CAFE_COLS) { spotsF.push([x + stagger, y]); spotProp.push(CAFE_PROPS[ri]); }
+    // café spots first (indexes 0..499) so they never move — 10 cols × 50 rows = 500 spots
+    const CAFE_COLS = [fx+38,fx+82,fx+126,fx+170,fx+214,fx+258,fx+302,fx+346,fx+390,fx+420];
+    const CAFE_PROP_CYCLE = ['mug','mug','music','mug','rest','mug','mug','rest','mug','music','mug','mug','music','mug','rest','mug','mug','rest','mug','music','mug','mug','music','mug','rest','mug','mug','rest','mug','music','mug','mug','music','mug','rest','mug','mug','rest','mug','music','mug','mug','music','mug','rest','mug','mug','rest','mug','music'];
+    for (let ri = 0; ri < 50; ri++) {
+      const y = 660 + ri * 100, stagger = (ri % 2) * 20;
+      for (const x of CAFE_COLS) { spotsF.push([x + stagger, y]); spotProp.push(CAFE_PROP_CYCLE[ri]); }
     }
     const cafeIdx = spotsF.map((s, i) => i);
 
@@ -108,30 +107,19 @@
       furn += `<g transform="${onPlaneY(x0 + 430, y0 + WORK_D + 10, 78)}"><rect x="0" y="-16" width="150" height="26" rx="6" fill="#141413" stroke="#E7B38F" stroke-width="1.5"/><text x="75" y="2" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="2" fill="#E7B38F">REST AREA</text></g>`;
       furn += glass(x1, y0, x1, y1, 66, [0.3, 0.42]);
       if (y1 < D - 5) furn += glass(x0, y1, x1, y1, 66, [0.45, 0.58]);
-      const lx = x0 + 30, ly = y0 + WORK_D + 40, pods = [[], [], [], [], []];
-      const add = (p, x, y, prop) => pods[p].push([x, y, prop]);
-      let px = lx;
-      furn += box(px + 30, ly + 4, px + 170, ly + 18, 44, DARK) + poly('#3A6EA5', P(px + 38, ly + 18, 10), P(px + 162, ly + 18, 10), P(px + 162, ly + 18, 38), P(px + 38, ly + 18, 38)) + poly('#7FB0E0', P(px + 44, ly + 18, 14), P(px + 100, ly + 18, 14), P(px + 100, ly + 18, 34), P(px + 44, ly + 18, 34)) + box(px + 85, ly + 22, px + 115, ly + 34, 6, ['#F5F5F7', '#D9D9DE', '#C9C9CF']);
-      [[35, 120], [80, 128], [125, 128], [170, 120], [55, 210], [100, 218], [145, 210]].forEach(([dx, dy], k) => { furn += use('beanbag', px + dx, ly + dy, `style="color:${['#B5532F', '#3F7D4E', '#A8B8E8', '#D9C27A', '#E59A7A', '#9FD0D6', '#C8A8E0'][k]}"`); add(0, px + dx, ly + dy - 4, 'pad'); });
-      px += 196;
-      furn += box(px + 15, ly + 60, px + 185, ly + 92, 14, SOFA) + box(px + 15, ly + 60, px + 185, ly + 72, 32, SOFA) + box(px + 60, ly + 150, px + 140, ly + 190, 12, WOOD) + box(px + 15, ly + 248, px + 185, ly + 280, 14, SOFA);
-      furn += use('cup', px + 90, ly + 170, '', 12);
-      [[40, 82], [85, 82], [130, 82], [172, 82]].forEach(([dx, dy], k) => add(1, px + dx, ly + dy, ['phone', 'mug', '', 'phone'][k]));
-      [[55, 262], [100, 262], [145, 262]].forEach(([dx, dy], k) => add(1, px + dx, ly + dy, ['mug', 'phone', ''][k]));
-      px += 196;
-      furn += box(px + 10, ly + 4, px + 190, ly + 24, 64, ['#5A402C', '#4A3424', '#3A281C']);
-      for (let b = 0; b < 12; b++) furn += poly(['#B5532F', '#8FC79D', '#A8B8E8', '#D9C27A', '#E59A7A', '#FAF9F5'][b % 6], P(px + 16 + b * 14, ly + 24, 34 + (b % 2) * 22), P(px + 26 + b * 14, ly + 24, 34 + (b % 2) * 22), P(px + 26 + b * 14, ly + 24, 52 + (b % 2) * 22 - (b % 3) * 3), P(px + 16 + b * 14, ly + 24, 52 + (b % 2) * 22));
-      [[40, 110], [105, 110], [170, 110], [40, 210], [105, 210], [170, 210], [105, 300]].forEach(([dx, dy]) => { furn += use('armchair', px + dx, ly + dy); add(2, px + dx, ly + dy - 2, 'book'); });
-      furn += use('floorlamp', px + 72, ly + 160) + use('floorlamp', px + 140, ly + 255);
-      px += 196;
-      furn += `<ellipse cx="${f(P(px + 100, ly + 180)[0])}" cy="${f(P(px + 100, ly + 180)[1])}" rx="105" ry="48" fill="#4A3C5A" opacity="0.7"/>` + box(px + 150, ly + 6, px + 190, ly + 30, 46, DARK) + `<circle cx="${f(P(px + 170, ly + 30, 30)[0])}" cy="${f(P(px + 170, ly + 30, 30)[1])}" r="7" fill="#55555C"/><circle cx="${f(P(px + 170, ly + 30, 14)[0])}" cy="${f(P(px + 170, ly + 30, 14)[1])}" r="5" fill="#55555C"/>`;
-      [[40, 90], [115, 80], [175, 140], [50, 180], [130, 190], [70, 280], [160, 280]].forEach(([dx, dy], k) => { furn += use('beanbag', px + dx, ly + dy, `style="color:${['#E59A7A', '#8FC79D', '#D9C27A', '#A8B8E8', '#C8A8E0', '#9FD0D6', '#B5532F'][k]}"`); add(3, px + dx, ly + dy - 4, 'music'); });
-      px += 196;
-      furn += box(px + 15, ly + 10, px + 185, ly + 50, 38, WOOD) + box(px + 15, ly + 10, px + 185, ly + 50, 3, ['#C9A984', '#A9744C', '#8A5E3C'], 38) + box(px + 30, ly + 16, px + 60, ly + 36, 26, ['#55534D', '#3A3935', '#232320'], 41) + use('cup', px + 120, ly + 30, '', 41) + use('cup', px + 150, ly + 34, '', 41);
-      [[40, 85], [85, 85], [130, 85], [175, 85]].forEach(([dx, dy]) => { furn += use('stool', px + dx, ly + dy); add(4, px + dx, ly + dy, 'mug'); });
-      furn += use('table', px + 95, ly + 250);
-      [[50, 225], [140, 225], [95, 300]].forEach(([dx, dy]) => add(4, px + dx, ly + dy, 'mug'));
-      if (d) for (let k = 0; k < 7; k++) for (let p = 0; p < 5; p++) { const s = pods[p][k]; if (s) { room.rest.push(spotsF.length); spotsF.push([s[0], s[1]]); spotProp.push(s[2]); } }
+      // Lounge: 200 spots on a 10-col × 20-row grid filling ROOM_D - WORK_D
+      const ly = y0 + WORK_D + 60;
+      const LCOLS = 10, LROWS = 20, LXSTEP = Math.floor((ROOM_W - 80) / LCOLS), LYSTEP = Math.floor((ROOM_D - WORK_D - 100) / LROWS);
+      const LPROPS = ['pad','mug','rest','book','music','phone','mug','pad','rest','music'];
+      if (d) for (let lr = 0; lr < LROWS; lr++) for (let lc = 0; lc < LCOLS; lc++) {
+        const sx = x0 + 50 + lc * LXSTEP + (lr % 2) * 18, sy = ly + lr * LYSTEP;
+        room.rest.push(spotsF.length); spotsF.push([sx, sy]); spotProp.push(LPROPS[(lr + lc) % LPROPS.length]);
+      }
+      // keep some lounge furniture for atmosphere
+      const lx = x0 + 30;
+      furn += box(lx + 30, ly + 4, lx + 170, ly + 18, 44, DARK);
+      furn += use('tallplant', x1 - 80, y0 + WORK_D + 60) + use('plant', x0 + 60, y0 + WORK_D + 60);
+      furn += use('floorlamp', x0 + 300, y0 + WORK_D + 200) + use('floorlamp', x0 + 700, y0 + WORK_D + 400);
       rooms.push(room);
     }
 
@@ -139,12 +127,12 @@
     // CEO office (y 0–425), Messenger corner (y 435–555), Café (y 565–1660), Open desks (y 1670+)
     floor += `<rect x="${fx}" width="${FAC_W}" height="425" fill="#2A2519"/><rect x="${fx + 24}" y="24" width="${FAC_W - 48}" height="377" rx="18" fill="#D9C27A" opacity="0.14"/>
       <rect x="${fx}" y="435" width="${FAC_W}" height="120" fill="#252520"/><rect x="${fx + 16}" y="445" width="${FAC_W - 32}" height="100" rx="12" fill="#3A3020" opacity="0.7"/>
-      <rect x="${fx}" y="565" width="${FAC_W}" height="1095" fill="#3A2B22"/><rect x="${fx}" y="565" width="${FAC_W}" height="1095" fill="url(#planks)"/>
+      <rect x="${fx}" y="565" width="${FAC_W}" height="5095" fill="#3A2B22"/><rect x="${fx}" y="565" width="${FAC_W}" height="5095" fill="url(#planks)"/>
       <ellipse cx="${fx + 220}" cy="900" rx="170" ry="260" fill="#C9714F" opacity="0.10"/>
       <ellipse cx="${fx + 220}" cy="1300" rx="150" ry="220" fill="#C9714F" opacity="0.08"/>
       <text x="${fx + 30}" y="640" font-family="Newsreader, Georgia, serif" font-size="56" fill="#E7B38F" opacity="0.28">Café</text>
       <text x="${fx + 30}" y="1180" font-family="Newsreader, Georgia, serif" font-size="40" fill="#E7B38F" opacity="0.18">Café</text>
-      <rect x="${fx}" y="1670" width="${FAC_W}" height="${D - 1670}" fill="#202024"/><text x="${fx + 30}" y="${D - 24}" font-size="26" font-weight="700" letter-spacing="6" fill="#FAF9F5" opacity="0.22">OPEN DESKS</text>`;
+      <rect x="${fx}" y="5660" width="${FAC_W}" height="${D - 5660}" fill="#202024"/><text x="${fx + 30}" y="${D - 24}" font-size="26" font-weight="700" letter-spacing="6" fill="#FAF9F5" opacity="0.22">OPEN DESKS</text>`;
 
     // CEO furniture + glass
     furn += glass(fx, 0, fx, 425, 74, [0.55, 0.8]) + glass(fx, 425, W, 425, 74) +
@@ -167,10 +155,10 @@
     for (const [x, y] of [[fx + 90, 710],[fx + 330, 710],[fx + 210, 830],[fx + 90, 1000],[fx + 330, 1000],[fx + 210, 1200],[fx + 90, 1420],[fx + 330, 1420]])
       furn += use('table', x, y) + use('cup', x - 6, y, '', 24);
     furn += use('lamp', fx + 90, 710) + use('lamp', fx + 330, 710) + use('lamp', fx + 210, 830) + use('lamp', fx + 210, 1200);
-    furn += use('tallplant', fx + 390, 1600) + use('plant', fx + 30, 1580);
-    furn += glass(fx, 1660, W, 1660, 40, [0.4, 0.6]);
+    furn += use('tallplant', fx + 390, 5600) + use('plant', fx + 30, 5580);
+    furn += glass(fx, 5650, W, 5650, 40, [0.4, 0.6]);
     const hot = [], hotXY = [];
-    for (let y = 1740; y < D - 60; y += 140) hotXY.push([fx + 130, y], [fx + 310, y]);
+    for (let y = 5720; y < D - 60; y += 140) hotXY.push([fx + 130, y], [fx + 310, y]);
     for (const [x, y] of hotXY) { hot.push(desksF.length); desksF.push([x, y]); deskRoom.push(-1); }
 
     // walls, windows, clock, task board
