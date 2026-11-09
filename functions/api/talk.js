@@ -13,7 +13,8 @@ const ACTIONS = `{"type":"create_department","name":"","mission":""}
 {"type":"rename_agent","agent":"","name":""}
 {"type":"run_agent","agent":""}
 {"type":"turn_on","agent":""}
-{"type":"turn_off","agent":""}`;
+{"type":"turn_off","agent":""}
+{"type":"assign_task","department":"","task":""}   (give a project to a department lead; its team does it after approval)`;
 
 const convo = (history, msg, who) => (history || []).slice(-8).map((h) => (h.me ? 'Owner: ' : who + ': ') + String(h.t || '').slice(0, 600)).concat('Owner: ' + msg).join('\n');
 
@@ -33,7 +34,7 @@ async function handle({ request, env, data }) {
 Every employee in the company is an n8n workflow. You see the whole company in COMPANY DATA (live). Answer short, clear and friendly, in the same language the owner writes in (English if unsure). Use only real facts from COMPANY DATA; if you don't know, say so.
 You can change the company by proposing actions the owner will approve. Allowed actions, one JSON object each:
 ${ACTIONS}
-Nothing changes until the owner presses Approve, so when you propose actions say they are ready for approval (never say they are done). Use exact names from COMPANY DATA. Only propose what the owner asked for or clearly wants (for "organize everyone", move each employee to the best department and team).
+Nothing changes until the owner presses Approve, so when you propose actions say they are ready for approval (never say they are done). Use exact names from COMPANY DATA. Only propose what the owner asked for or clearly wants (for "organize everyone", move each employee to the best department and team). When the owner wants work done (build, find, write, check...), propose assign_task to the best department with a complete brief in "task".
 If the owner wants something the office website cannot do yet (a new feature, design change, new page, integration), also write "claude_prompt": a complete prompt to paste into Claude Code. It must say: work in the folder Desktop/Projects/VAgent, read CLAUDE.md and TREE.md first and nothing else unless needed, exactly what to build and where, how to check it works, then run ./scripts/deploy.sh and push to GitHub.
 Return ONLY JSON: {"reply":"...","actions":[...],"claude_prompt":""}`;
     const t = await think(env, system, 'COMPANY DATA:\n' + companyText(d) + '\n\nCONVERSATION:\n' + convo(b.history, msg, 'CEO'));

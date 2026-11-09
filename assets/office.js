@@ -403,7 +403,7 @@
   const store = { get: (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v.slice(-30))); } catch {} } };
   const ACT = { create_department: (a) => 'Create department "' + a.name + '"', rename_department: (a) => 'Rename ' + a.department + ' to "' + a.name + '"', set_mission: (a) => 'New mission for ' + a.department + ': ' + a.mission, delete_department: (a) => 'Delete department ' + a.department,
     create_team: (a) => 'New team "' + a.name + '" in ' + a.department, delete_team: (a) => 'Remove team ' + a.team + ' from ' + a.department, move_agent: (a) => 'Move ' + a.agent + ' → ' + a.department + (a.team ? ' / ' + a.team : ''),
-    rename_agent: (a) => 'Rename ' + a.agent + ' to "' + a.name + '"', run_agent: (a) => 'Start ' + a.agent + ' now', turn_on: (a) => 'Turn on ' + a.agent, turn_off: (a) => 'Turn off ' + a.agent };
+    assign_task: (a) => 'Give ' + a.department + ' Lead the task: ' + a.task, rename_agent: (a) => 'Rename ' + a.agent + ' to "' + a.name + '"', run_agent: (a) => 'Start ' + a.agent + ' now', turn_on: (a) => 'Turn on ' + a.agent, turn_off: (a) => 'Turn off ' + a.agent };
   const bubble = (m) => {
     if (m.me) return `<div class="msg me">${esc(m.t)}</div>`;
     let h = `<div class="msg it${m.bad ? ' bad' : ''}">${esc(m.t)}</div>`;
@@ -431,29 +431,45 @@
     inner.onclick = async (e) => {
       const ap = e.target.closest('[data-approve],[data-skip],[data-copy],[data-start]'); if (!ap) return;
       const l = log(), m = l.find((x) => String(x.id) === (ap.dataset.approve || ap.dataset.skip || ap.dataset.copy || ap.dataset.start)); if (!m) return;
-      if (ap.dataset.start) { ap.disabled = true; ap.textContent = 'The team is working… (up to a minute)'; try { const r = await api('tasks', { body: { deptId: Number(to.split(':')[1]), text: m.project } }); m.done = 'Done: ' + r.used + ' of ' + r.team + ' team members worked on it.'; const l2 = log(); l2.push({ id: Date.now(), t: r.final }); save(l2 === l ? l : l2); if (l2 !== l) {} } catch (x) { m.done = 'Could not start: ' + x.message; } save(l); paint(); load(); return; }
+      if (ap.dataset.start) { ap.disabled = true; ap.textContent = 'The team is working… (up to a minute)'; const depId = Number(to.split(':')[1]); if (!depId) { m.done = 'Pick a department first (open its lead).'; save(l); return paint(); } try { const r = await api('tasks', { body: { deptId: depId, text: m.project } }); m.done = 'Done: ' + r.used + ' of ' + r.team + ' team members worked on it.'; const l2 = log(); l2.push({ id: Date.now(), t: r.final }); save(l2 === l ? l : l2); if (l2 !== l) {} } catch (x) { m.done = 'Could not start: ' + x.message; } save(l); paint(); load(); return; }
       if (ap.dataset.copy) { try { await navigator.clipboard.writeText(m.prompt); toast('Prompt copied'); } catch { toast('Select the prompt and copy it'); } return; }
       if (ap.dataset.skip) { m.done = 'Skipped.'; save(l); return paint(); }
       ap.disabled = true; ap.textContent = 'Working…';
-      try { const r = await api('act', { body: { actions: m.actions } }); m.done = r.done.join('\n'); toast('Done'); } catch (x) { m.done = 'Could not do it: ' + x.message; }
+      const jobs = m.actions.filter((a) => a.type === 'assign_task'), rest = m.actions.filter((a) => a.type !== 'assign_task'), out = [];
+      try { if (rest.length) { const r = await api('act', { body: { actions: rest } }); out.push(...r.done); } } catch (x) { out.push('Could not do it: ' + x.message); }
+      if (jobs.length) { ap.textContent = 'The teams are working… (up to a minute)'; await load(); }
+      for (const j of jobs) {
+        const dep = D.departments.find((d) => d.name.toLowerCase() === String(j.department || '').toLowerCase());
+        if (!dep) { out.push('No department called ' + j.department); continue; }
+        try { const r = await api('tasks', { body: { deptId: dep.id, text: j.task } }); out.push(dep.name + ': ' + r.status + ' (' + r.used + ' of ' + r.team + ' members)\n' + r.final); } catch (x) { out.push(dep.name + ': could not start · ' + x.message); }
+      }
+      m.done = out.join('\n\n') || 'Done.'; toast('Done');
       save(l); paint(); load();
     };
     paint();
   }
+  async function openBoard() {
+    open(`<h2 class="d-title">Task board</h2><p class="help">Every project the leads ran, newest first.</p><button class="btn primary" type="button" id="board-new" style="align-self:flex-start">+ Give a task</button><div class="items" id="board-list"><p class="empty">Loading…</p></div>`, 'board');
+    $('#board-new').onclick = openTask;
+    try { const h = await api('tasks'); $('#board-list').innerHTML = h.map((t) => `<details class="item" style="display:block"><summary style="cursor:pointer"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(t.color || '#888')}"></span> <b style="font-weight:500">${esc(t.text.slice(0, 80))}</b> <small class="muted">· ${esc(t.dept || 'Deleted department')} · ${esc(t.status)} · ${ago(t.created_at)}</small></summary><div class="result" style="margin-top:8px">${esc(t.final || 'Still working…')}</div></details>`).join('') || '<p class="empty">No tasks yet. Give the first one.</p>'; }
+    catch (x) { $('#board-list').innerHTML = `<p class="empty">${esc(x.message)}</p>`; }
+  }
   function openCEO() {
     open(`<div class="d-head"><span class="avatar" style="background:#2B2416"><svg aria-hidden="true" width="44" height="44" viewBox="-26 -78 52 82"><use href="#ceo"/></svg></span><div><h2 class="d-title">The CEO</h2><div class="d-sub">Sees the whole company live. Ask anything, or ask for a change.</div></div></div>
-      <div class="row">${['How is the company doing today?', 'Organize everyone into the right departments and teams', 'Which agents failed recently and why?', 'Create a new department for ', 'Write a Claude prompt to add a feature: '].map((s) => `<button class="pick" type="button" ${s.endsWith(' ') ? `data-fill="${esc(s)}"` : `data-say="${esc(s)}"`}>${esc(s.trim())}</button>`).join('')}</div>
+      <div class="row">${['How is the company doing today?', 'Organize everyone into the right departments and teams', 'Which agents failed recently and why?', 'Give a task to ', 'Create a new department for ', 'Write a Claude prompt to add a feature: '].map((s) => `<button class="pick" type="button" ${s.endsWith(' ') ? `data-fill="${esc(s)}"` : `data-say="${esc(s)}"`}>${esc(s.trim())}</button>`).join('')}</div>
       ${chatUI('ceo', 'Ask the CEO anything…')}
       <p class="help">Changes only happen after you press Approve. For new website features he writes a prompt you paste into Claude.</p>
-      <button class="btn" type="button" id="clear-ceo" style="align-self:flex-start">Clear chat</button>`, 'ceo');
+      <div class="row"><button class="btn" type="button" id="ceo-board">Task board</button><button class="btn" type="button" id="clear-ceo">Clear chat</button></div>`, 'ceo');
     bindChat('ceo', 'The CEO');
     inner.querySelectorAll('[data-fill]').forEach((b) => (b.onclick = () => { const i = $('#cm'); i.value = b.dataset.fill; i.focus(); }));
+    $('#ceo-board').onclick = openBoard;
     $('#clear-ceo').onclick = () => { store.set('vagent-ceo', []); openCEO(); };
   }
 
   document.addEventListener('click', async (e) => {
-    const t = e.target.closest('[data-agent],[data-dept],[data-dept-task],[data-open],[data-del-n8n],[data-reconnect],.agent,.lead,.add-room,.ceo-g');
+    const t = e.target.closest('[data-agent],[data-dept],[data-dept-task],[data-open],[data-del-n8n],[data-reconnect],.agent,.lead,.add-room,.ceo-g,.task-board');
     if (!t) return;
+    if (t.classList.contains('task-board')) return openBoard();
     if (t.classList.contains('agent')) return openAgent(t.dataset.key);
     if (t.classList.contains('lead')) return openDept(t.dataset.dept);
     if (t.classList.contains('ceo-g')) return openCEO();
@@ -466,7 +482,7 @@
     const o = t.dataset.open; if (o === 'connect') openConnect(); else if (o === 'settings') openSettings(); else if (o === 'new-dept') newDept(); else if (o === 'off' || o === 'over') openList(o);
   });
   document.addEventListener('click', (e) => { const b = e.target.closest('.dept-btn'); if (!b) return; if (b.id === 'dept-add') return newDept(); zoomRoom(+b.dataset.roomI); }, true);
-  svg.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.agent,.lead,.add-room,.ceo-g')) { e.preventDefault(); e.target.closest('.agent,.lead,.add-room,.ceo-g').dispatchEvent(new MouseEvent('click', { bubbles: true })); } });
+  svg.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.agent,.lead,.add-room,.ceo-g,.task-board')) { e.preventDefault(); e.target.closest('.agent,.lead,.add-room,.ceo-g,.task-board').dispatchEvent(new MouseEvent('click', { bubbles: true })); } });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && current) close(); });
   $('#drawer-close').onclick = close; scrim.onclick = close;
   $('#btn-settings').onclick = openSettings; $('#btn-task').onclick = openCEO;

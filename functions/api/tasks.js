@@ -5,6 +5,7 @@ import { think, parseJSON } from '../_brain.js';
 // GET /api/tasks?deptId= -> last 10 projects of a department
 export async function onRequestGet({ request, env }) {
   const id = Number(new URL(request.url).searchParams.get('deptId'));
+  if (!id) return json(await sql(env, 'SELECT t.id, t.dept_id, d.name AS dept, d.color, t.text, t.status, t.final, t.created_by, t.created_at, t.done_at FROM vagent_tasks t LEFT JOIN vagent_departments d ON d.id = t.dept_id ORDER BY t.id DESC LIMIT 20'));
   return json(await sql(env, 'SELECT id, text, status, results, final, created_by, created_at, done_at FROM vagent_tasks WHERE dept_id = $1 ORDER BY id DESC LIMIT 10', [id]));
 }
 
