@@ -20,14 +20,15 @@
 - `functions/api/talk.js` — POST {to: ceo | lead:<id> | agent:<key>, message, history}: AI personas. CEO returns {reply, actions[], prompt (Claude prompt)}. Agents with their own webhook get the message directly.
 - `functions/api/act.js` — POST {actions[]}: runs CEO actions after the owner approves (departments, teams, move/rename/run/turn on/off agents).
 - `functions/api/departments.js` — GET / POST {name,color} / DELETE ?id=.
-- `functions/api/tasks.js` — GET ?deptId= / POST {deptId,text}: runs the department's webhook agents, combines one result.
+- `functions/api/tasks.js` — GET ?deptId= / POST {deptId,text}: department = project team. Lead plans (1 AI call) to use as many startable members as possible, runs them in parallel (webhook gets {task, project}; run-now members just start), combines one final result (1 AI call).
+- Lead chat (talk.js) returns {reply, project}: a project brief the owner starts with the "Start with the team" button.
 - `scripts/migrate.mjs` — creates/updates all DB tables. `scripts/create-owners.mjs` — add/reset owners.
 - `_headers` — no-cache for html/assets so updates show at once.
 - `scripts/deploy.sh` — upload site + functions to Cloudflare Pages project `vagent`.
 
 ## Agent key + status
 - Agent key = `<instanceId>:<workflowId>`.
-- Status: `working` → a desk in its department room (no department / room full → open desks) · `idle` (active) → café · `off` (inactive) → café, asleep · `help` (last run failed <24h) → red mark.
+- Status: `working` → a desk in its department room (no department / room full → open desks); `idle` → its department lounge (no department / lounge full → café). Building is dark themed. · `idle` (active) → café · `off` (inactive) → café, asleep · `help` (last run failed <24h) → red mark.
 - Calls to agent webhooks carry header `X-VAgent-Secret` (secret WEBHOOK_SECRET); protect webhooks in n8n with Header Auth "VAgent office secret".
 - Office Helper (n8n workflow ESroHEmOT74IkcBr on hassan.vagent.online): POST /webhook/office-helper → AI Helper → {output}. Example agent for chat + tasks.
 - Auto run-now hooks: on import, workflows with schedule/manual triggers get a "VAgent: run now" webhook (path vagent-run-<id>, header auth) via ensureHooks() in _n8n.js. Other triggers are never modified.

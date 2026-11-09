@@ -104,7 +104,7 @@
       const d = D.departments[i], slot = svg.querySelector(`.lead-slot[data-room="${i}"]`), screen = svg.querySelector(`.room-screen[data-room="${i}"]`);
       screen.style.color = d ? d.color : '#3A3935';
       const fl = svg.querySelector(`.room-floor[data-room="${i}"]`), nm = svg.querySelector(`.room-name[data-room="${i}"]`);
-      if (fl) { fl.setAttribute("fill", d ? d.color : "#E8E2D4"); fl.setAttribute("opacity", d ? "0.22" : "0.6"); }
+      if (fl) { fl.setAttribute("fill", d ? d.color : "#2A2A2E"); fl.setAttribute("opacity", d ? "0.16" : "0.6"); }
       if (nm) nm.textContent = d ? d.name : "";
       if (d) {
         const label = d.name + ' Lead', w = Math.min(label.length, 24) * 6.5 + 26;
@@ -122,8 +122,8 @@
     const roomOf = (a) => { const i = D.departments.findIndex((x) => x.id === a.dept); return i >= 0 && i < VScene.rooms.length ? i : -1; };
     const pick = (a, t, choices) => { const p = places[a.key]; if (p && p.t === t && choices.includes(p.i) && !used[t].has(p.i)) return p.i; return choices.find((i) => !used[t].has(i)); };
     for (const a of working) { const r = roomOf(a); let i = pick(a, 'desk', r >= 0 ? VScene.rooms[r].desks : VScene.hot); if (i === undefined) i = pick(a, 'desk', VScene.hot); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'desk', i }; used.desk.add(i); }
-    const allCafe = VScene.cafe.map((c, i) => i);
-    for (const a of cafe) { const i = pick(a, 'cafe', allCafe); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'cafe', i }; used.cafe.add(i); }
+    // idle: rest in the department lounge; no department (or lounge full) -> café
+    for (const a of cafe) { const r = roomOf(a); let i = r >= 0 ? pick(a, 'cafe', VScene.rooms[r].rest) : undefined; if (i === undefined) i = pick(a, 'cafe', VScene.cafeIdx); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'cafe', i }; used.cafe.add(i); }
     svg.querySelectorAll('.desk-top').forEach((u) => (u.style.color = '#3A3935'));
     for (const a of A) {
       const p = next[a.key]; let g = els[a.key];
@@ -327,6 +327,7 @@
     if (m.me) return `<div class="msg me">${esc(m.t)}</div>`;
     let h = `<div class="msg it${m.bad ? ' bad' : ''}">${esc(m.t)}</div>`;
     if (m.actions && m.actions.length) h += `<div class="plan" data-plan="${m.id}"><p class="label">The CEO wants to</p><ul>${m.actions.map((a) => `<li>${esc((ACT[a.type] || ((x) => x.type))(a))}</li>`).join('')}</ul>${m.done ? `<div class="result">${esc(m.done)}</div>` : `<div class="row"><button class="btn primary" type="button" data-approve="${m.id}">Approve</button><button class="btn" type="button" data-skip="${m.id}">No thanks</button></div>`}</div>`;
+    if (m.project) h += `<div class="plan"><p class="label">Project brief</p><div class="result">${esc(m.project)}</div>${m.done ? `<div class="result" style="margin-top:6px">${esc(m.done)}</div>` : `<div class="row"><button class="btn primary" type="button" data-start="${m.id}">Start with the team</button><button class="btn" type="button" data-skip="${m.id}">Not now</button></div>`}</div>`;
     if (m.prompt) h += `<div class="plan"><p class="label">Prompt for Claude</p><pre class="prompt">${esc(m.prompt)}</pre><button class="btn" type="button" data-copy="${m.id}">Copy prompt</button></div>`;
     return h;
   };
@@ -340,15 +341,16 @@
       const l = log(); const history = l.slice(-8).map((x) => ({ me: !!x.me, t: x.t })); l.push({ me: 1, t: m }); save(l); paint();
       $('#chat').insertAdjacentHTML('beforeend', `<div class="msg it typing-msg" id="wait">${esc(who)} is typing…</div>`); $('#wait').scrollIntoView({ block: 'nearest' });
       const btn = f.querySelector('button'); btn.disabled = true;
-      try { const r = await api('talk', { body: { to, message: m, history } }); const l2 = log(); l2.push({ id: Date.now(), t: r.reply, actions: r.actions, prompt: r.prompt, bad: r.ok === false }); save(l2); }
+      try { const r = await api('talk', { body: { to, message: m, history } }); const l2 = log(); l2.push({ id: Date.now(), t: r.reply, actions: r.actions, prompt: r.prompt, project: r.project, bad: r.ok === false }); save(l2); }
       catch (x) { const l2 = log(); l2.push({ id: Date.now(), t: x.message, bad: 1 }); save(l2); }
       btn.disabled = false; paint(); if (to.startsWith('agent:')) load();
     };
     f.onsubmit = (e) => { e.preventDefault(); const m = f.m.value.trim(); if (m) { f.m.value = ''; send(m); } };
     inner.querySelectorAll('[data-say]').forEach((b) => (b.onclick = () => send(b.dataset.say)));
     inner.onclick = async (e) => {
-      const ap = e.target.closest('[data-approve],[data-skip],[data-copy]'); if (!ap) return;
-      const l = log(), m = l.find((x) => String(x.id) === (ap.dataset.approve || ap.dataset.skip || ap.dataset.copy)); if (!m) return;
+      const ap = e.target.closest('[data-approve],[data-skip],[data-copy],[data-start]'); if (!ap) return;
+      const l = log(), m = l.find((x) => String(x.id) === (ap.dataset.approve || ap.dataset.skip || ap.dataset.copy || ap.dataset.start)); if (!m) return;
+      if (ap.dataset.start) { ap.disabled = true; ap.textContent = 'The team is working… (up to a minute)'; try { const r = await api('tasks', { body: { deptId: Number(to.split(':')[1]), text: m.project } }); m.done = 'Done: ' + r.used + ' of ' + r.team + ' team members worked on it.'; const l2 = log(); l2.push({ id: Date.now(), t: r.final }); save(l2 === l ? l : l2); if (l2 !== l) {} } catch (x) { m.done = 'Could not start: ' + x.message; } save(l); paint(); load(); return; }
       if (ap.dataset.copy) { try { await navigator.clipboard.writeText(m.prompt); toast('Prompt copied'); } catch { toast('Select the prompt and copy it'); } return; }
       if (ap.dataset.skip) { m.done = 'Skipped.'; save(l); return paint(); }
       ap.disabled = true; ap.textContent = 'Working…';

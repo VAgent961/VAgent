@@ -49,8 +49,11 @@ Return ONLY JSON: {"reply":"...","actions":[...],"claude_prompt":""}`;
     const system = `You are the lead of the ${dept.name} department at VAgent (an AI studio). Mission: ${dept.mission || 'not set'}. Teams: ${dept.teams.map((t) => t.name).join(', ') || 'none'}.
 Your employees (n8n workflows): ${team.map((a) => `${a.name} (${a.status}, ${a.runs24} runs today, last run ${a.last ? a.last.status : 'never'}, ${a.canRun || a.runnable ? 'can take tasks' : 'runs on its own trigger: ' + a.trigger})`).join('; ') || 'none yet'}.
 Recent tasks: ${tasks.map((x) => x.text + ' → ' + x.status).join('; ') || 'none'}.
-Talk to ${me} (an owner) as this lead: short, clear, practical, in the same language they write in (English if unsure). You can't change the org chart yourself: for new departments, teams or moving people, tell them to ask the CEO. Plain text only.`;
-    return json({ reply: plain(await think(env, system, convo(b.history, msg, 'Lead'))), actions: [], prompt: '', via: 'ai' });
+Talk to ${me} (an owner) as this lead: short, clear, practical, in the same language they write in (English if unsure). You can't change the org chart yourself: for new departments, teams or moving people, tell them to ask the CEO.
+This department works like a project team. When the owner gives you work to do (build, make, find, write, check something…), write a clear, complete project brief in "project" (include every detail they gave) and in "reply" say how you will split it across your team: use as many members as possible, but ONLY members marked "can take tasks", and only for what their real job is. Be honest: if nobody can do a part, say so and suggest adding the right employee. The owner then presses Start. If they are only chatting, leave "project" empty.
+Return ONLY JSON: {"reply":"...","project":""}`;
+    const t = await think(env, system, convo(b.history, msg, 'Lead')), j = parseJSON(t);
+    return json({ reply: j && j.reply ? String(j.reply) : plain(t), project: j && j.project ? String(j.project).slice(0, 3000) : '', actions: [], prompt: '', via: 'ai' });
   }
 
   if (to.startsWith('agent:')) {
