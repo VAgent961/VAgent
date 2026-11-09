@@ -51,3 +51,21 @@ export async function readSession(env, request) {
 
 export const cookie = (value, maxAge) => 'va_session=' + value + '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=' + maxAge;
 export const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...headers } });
+
+// AES-GCM for n8n API keys (ENC_KEY secret). Stored as "<iv>.<ciphertext>" base64url.
+async function aesKey(env) {
+  const raw = await crypto.subtle.digest('SHA-256', enc.encode(env.ENC_KEY || ''));
+  return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
+}
+export async function encrypt(env, text) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await aesKey(env), enc.encode(text));
+  return b64u(iv) + '.' + b64u(ct);
+}
+export async function decrypt(env, s) {
+  const [iv, ct] = String(s).split('.');
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64u(iv) }, await aesKey(env), unb64u(ct));
+  return new TextDecoder().decode(pt);
+}
+export const bad = (msg, status = 400) => json({ error: msg }, status);
+export async function body(request) { try { return await request.json(); } catch { return {}; } }

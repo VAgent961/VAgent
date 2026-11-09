@@ -1,24 +1,23 @@
-# VAgent website
+# VAgent HQ — rules for Claude (read this + TREE.md first, nothing else)
 
-Company website for **VAgent**, live at https://vagent.online.
+Company site for VAgent (owners: Hassan, Fayez, Boudy). Sign-in page + a live isometric "office" where every n8n workflow is an agent.
 
-## How it works
-- Static pages (`index.html` sign-in, `office.html`) + Cloudflare Pages Functions in `functions/` (no npm, no build step).
-- Auth: `functions/api/login.js` checks owners in Neon table `vagent_owners` (PBKDF2 hashes), sets a signed HttpOnly cookie `va_session`. `functions/_middleware.js` protects `/office`. Wrong tries logged in `vagent_login_fails` (10 per 15 min).
-- Secrets live only in Cloudflare (Pages project `vagent`): `DATABASE_URL`, `SESSION_SECRET`. Never commit them.
-- Add/reset owners: `DATABASE_URL=... OWNER_PASSWORD=... node scripts/create-owners.mjs email1 email2`.
-- Deploy: `./scripts/deploy.sh` (uploads to Cloudflare Pages project `vagent`, live at https://vagent.pages.dev). Push to GitHub `VAgent961/VAgent` too.
+## Save tokens (always)
+- Read `TREE.md` first. It maps every file, endpoint, table and command. Do NOT list/explore folders or read files you don't need.
+- Read only the file you will change; edit with small targeted edits, never rewrite whole files.
+- Don't print secrets or big JSON. Pipe API output through `head -c 600` or a jq/node one-liner.
+- After adding/removing a file, endpoint or table: update `TREE.md` (one line each). Keep this file short.
+- Test with the commands in TREE.md, not by opening many screenshots. One desktop + one phone screenshot is enough.
 
-## Brand
-- Logo: `logo.png` (teal rounded square, dark "V" with a dot). Use it as the logo everywhere.
-- Brand teal: `#2EE6C5` (used as `theme-color`).
-- Favicons made from `logo.png`: `favicon.ico` (16/32/48), `favicon-32x32.png`, `apple-touch-icon.png` (180), `icon-192.png`, `icon-512.png`.
-  To regenerate after a logo change, use `sips -z <size> <size> logo.png --out <file>` (macOS built-in). Pack `favicon.ico` from the 16/32/48 PNGs with a short Python script.
-
-## Pages
-- `index.html`: owner sign-in page (warm cream #FAF9F5, near-black #141413, terracotta #B5532F; Newsreader headings, Inter text). Must fit one screen with no scrolling on desktop and phones (portrait and landscape).
-- Sign-in is not connected to a backend yet; the office page comes next.
+## Stack
+- Plain static HTML/CSS/JS (no framework, no build, no npm). GSAP from cdnjs for movement only.
+- Cloudflare Pages project `vagent` + Pages Functions in `functions/` (no npm packages; Neon over HTTPS fetch).
+- Neon Postgres. Secrets only in Cloudflare: `DATABASE_URL`, `SESSION_SECRET`, `ENC_KEY`, `WEBHOOK_SECRET` (+ optional `GROQ_API_KEY`). Never commit secrets.
+- n8n API keys are stored AES-GCM encrypted (ENC_KEY) and only used server-side.
 
 ## Rules
-- Keep changes small. No frameworks or new dependencies unless asked.
-- Test by opening `index.html` in a browser before pushing to `main`. Responsive check: `node ~/agent-tools/site-checker/resp-test.js index.html` (all sizes must say OK).
+- Every `/api/*` route except login/logout needs an owner session (middleware does it; use `data.owner`).
+- Never deactivate/activate an agent without the user confirming in the UI.
+- Sign-in page must fit one screen (no scroll) on desktop and phones.
+- Brand: cream #FAF9F5 / #F3F1EA, ink #141413, terracotta #B5532F (hover #9A4527), Newsreader headings, Inter text.
+- Deploy = `./scripts/deploy.sh`, then `git push`. A push to `main` is a release.
