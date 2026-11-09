@@ -64,7 +64,7 @@
   addEventListener('pointerup', up); addEventListener('pointercancel', up);
   svg.addEventListener('click', (e) => { if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; } }, true);
   const deskG = (i) => svg.querySelector(`.desk[data-desk="${i}"]`);
-  const posOf = (p) => (p.t === 'desk' ? [S.desks[p.i][0] + 22, S.desks[p.i][1] - 33] : p.t === 'helper' ? S.helper : S.cafe[p.i]);
+  const posOf = (p) => p.t === 'desk' ? [S.desks[p.i][0] + 22, S.desks[p.i][1] - 33] : p.t === 'helper' ? S.helper : p.t === 'leaddesk' ? p.xy : S.cafe[p.i];
   const tr = (x, y) => `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(1.1)`;
 
   // ── detect the Office Helper (messenger) by name ─────────────────────────
@@ -83,6 +83,10 @@
   function updateAgent(g, a) {
     g.setAttribute('class', 'agent ' + a.status);
     g.setAttribute('aria-label', a.name + ', ' + (STATUS[a.status] || a.status));
+    // swap skin + ring colour live when lead status changes
+    const wantRef = isHelper(a) ? '#msgbot' : a.isLead ? '#bot-lead' : '#bot';
+    const bodyUse = g.querySelector('.body use'); if (bodyUse && bodyUse.getAttribute('href') !== wantRef) bodyUse.setAttribute('href', wantRef);
+    const ring = g.querySelector('.ring'); if (ring) ring.setAttribute('stroke', isHelper(a) ? '#9FD0D6' : a.isLead ? '#E9C46A' : '#B5532F');
     const name = a.name.length > 22 ? a.name.slice(0, 21) + '…' : a.name, w = name.length * 6.5 + 38;
     const r = g.querySelector('.tag rect'); r.setAttribute('x', -w / 2); r.setAttribute('width', w);
     const t = g.querySelector('.tag text'); t.textContent = name; t.setAttribute('x', 6); const dt = g.querySelector('.tdot'); dt.setAttribute('cx', -w / 2 + 12); dt.setAttribute('fill', dotColor[a.status]);
@@ -223,8 +227,13 @@
     const next = {}, used = { desk: new Set(), cafe: new Set() }, over = [];
     const roomOf = (a) => { const i = D.departments.findIndex((x) => x.id === a.dept); return i >= 0 && i < S.rooms.length ? i : -1; };
     const pick = (a, t, choices) => { const p = places[a.key]; if (p && p.t === t && choices.includes(p.i) && !used[t].has(p.i)) return p.i; return choices.find((i) => !used[t].has(i)); };
+    // leads sit at their lead-desk when idle, not in the lounge
+    const leadKeys = new Set(D.departments.map((d) => d.lead_key).filter(Boolean));
     for (const a of working) { const r = roomOf(a); let i = pick(a, 'desk', r >= 0 ? S.rooms[r].desks : S.hot); if (i === undefined) i = pick(a, 'desk', S.hot); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'desk', i }; used.desk.add(i); }
-    for (const a of cafe) { const r = roomOf(a); let i = r >= 0 ? pick(a, 'cafe', S.rooms[r].rest) : undefined; if (i === undefined) i = pick(a, 'cafe', S.cafeIdx); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'cafe', i }; used.cafe.add(i); }
+    for (const a of cafe) {
+      if (leadKeys.has(a.key)) { const r = roomOf(a); if (r >= 0) { next[a.key] = { t: 'leaddesk', xy: S.rooms[r].lead }; continue; } }
+      const r = roomOf(a); let i = r >= 0 ? pick(a, 'cafe', S.rooms[r].rest) : undefined; if (i === undefined) i = pick(a, 'cafe', S.cafeIdx); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'cafe', i }; used.cafe.add(i);
+    }
 
     // ── Office Helper: messenger corner when idle/off; first dept lead room when working ──
     for (const a of helpers) {
@@ -245,7 +254,7 @@
       const p = next[a.key]; let g = els[a.key];
       if (!p) { if (g) { leave(g); delete els[a.key]; delete places[a.key]; } continue; }
       if (!g) { g = els[a.key] = makeAgent(a); updateAgent(g, a); attachAny(g, p); if (!first && window.gsap) gsap.from(g, { opacity: 0, duration: 0.6 }); }
-      else { updateAgent(g, a); const o = places[a.key]; if (!o || o.t !== p.t || o.i !== p.i || o.xy !== p.xy) walkAny(g, o, p); }
+      else { updateAgent(g, a); const o = places[a.key]; if (!o || o.t !== p.t || o.i !== p.i || o.xy !== p.xy || (p.xy && o.xy && (p.xy[0]!==o.xy[0]||p.xy[1]!==o.xy[1]))) walkAny(g, o, p); }
       places[a.key] = p;
       if (p.t === 'desk') deskG(p.i).querySelector('.desk-top').style.color = colorOf(a.key);
     }
@@ -288,6 +297,7 @@
   function attachAny(g, p) {
     stopWander(g);
     if (p.t === 'helper') return attach(g, p);
+    if (p.t === 'leaddesk') { free.appendChild(g); g.setAttribute('transform', tr(p.xy[0], p.xy[1])); g._pos = [...p.xy]; g._home = [...p.xy]; return; }
     if (p.t === 'helperworking') {
       const [x, y] = p.xy; free.appendChild(g); g.setAttribute('transform', tr(x, y)); g._pos = [x, y];
     } else {
@@ -295,6 +305,19 @@
     }
   }
   function walkAny(g, from, to) {
+    if (to.t === 'leaddesk') {
+      stopWander(g);
+      const [tx, ty] = to.xy;
+      if (!window.gsap || !from) { attachAny(g, to); return; }
+      const sx = g._pos ? g._pos[0] : tx, sy = g._pos ? g._pos[1] : ty;
+      walkL.appendChild(g); g.setAttribute('transform', tr(sx, sy));
+      const body = g.querySelector('.body'), s = { x: sx, y: sy };
+      const bob = gsap.fromTo(body, { y: 0 }, { y: -4, duration: 0.18, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+      gsap.to(s, { x: tx, y: ty, duration: Math.min(3.2, Math.max(1.2, Math.hypot(tx - sx, ty - sy) / 230)), ease: 'power1.inOut',
+        onUpdate: () => { g.setAttribute('transform', tr(s.x, s.y)); g._pos = [s.x, s.y]; },
+        onComplete: () => { bob.kill(); gsap.set(body, { y: 0 }); attachAny(g, to); } });
+      return;
+    }
     if (to.t === 'helperworking') {
       const [tx, ty] = to.xy;
       if (!window.gsap) { const [x, y] = to.xy; free.appendChild(g); g.setAttribute('transform', tr(x, y)); g._pos = [x, y]; return; }
