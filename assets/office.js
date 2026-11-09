@@ -263,15 +263,22 @@
     // ── client view: dim everything outside access_dept ───────────────────
     if (D.role === 'client') {
       const allowed = new Set((D.access_depts || []).map(Number));
-      svg.querySelectorAll('.lead-slot,.room-screen,.room-floor,.room-name,.add-room,.agent,.lead').forEach((el) => {
+      // CEO always dimmed + no interaction for clients
+      svg.querySelectorAll('.ceo-g').forEach((el) => { el.setAttribute('opacity','0.18'); el.setAttribute('pointer-events','none'); el.removeAttribute('tabindex'); });
+      // rooms + leads: only allowed depts are interactive
+      svg.querySelectorAll('.lead-slot,.room-screen,.room-floor,.room-name,.add-room,.lead').forEach((el) => {
         const roomIdx = el.dataset.room !== undefined ? Number(el.dataset.room) : null;
         const deptId = el.dataset.dept ? Number(el.dataset.dept) : (roomIdx !== null ? D.departments[roomIdx]?.id : null);
-        const agentKey = el.dataset.key;
-        const agentDept = agentKey ? D.agents.find((a) => a.key === agentKey)?.dept : null;
-        const mine = allowed.size > 0 && (allowed.has(deptId) || allowed.has(agentDept));
+        const mine = allowed.size > 0 && allowed.has(deptId);
         el.setAttribute('opacity', mine ? '1' : '0.18');
         el.setAttribute('pointer-events', mine ? 'auto' : 'none');
         if (!mine) el.removeAttribute('tabindex'); else el.setAttribute('tabindex','0');
+      });
+      // agents: always dim + no click, but keep visible so names show on hover
+      svg.querySelectorAll('.agent').forEach((el) => {
+        el.setAttribute('opacity', '0.4');
+        el.setAttribute('pointer-events', 'none');
+        el.removeAttribute('tabindex');
       });
     }
     const help = A.filter((a) => a.status === 'help').length;
@@ -358,7 +365,18 @@
     try {
       D = await api('office');
       $('#live-dot').className = 'dot ' + (D.errors.length ? 'err' : 'on'); $('#live-text').textContent = 'Live · ' + hhmm(new Date());
-      render(); if (first) { if (D.role==='client') { $('#btn-task').style.display='none'; $('#btn-settings').style.display='none'; } else { $('#btn-clients').style.display=''; } }
+      render(); if (first) {
+        if (D.role === 'client') {
+          $('#btn-task').style.display = 'none';
+          $('#btn-settings').style.display = 'none';
+          // hide entire sidebar, let stage fill width
+          const side = document.querySelector('.side'); if (side) side.style.display = 'none';
+          document.querySelector('.app').style.gridTemplateColumns = '0 1fr';
+
+        } else {
+          $('#btn-clients').style.display = '';
+        }
+      }
     } catch (e) { $('#live-dot').className = 'dot err'; $('#live-text').textContent = 'Offline, retrying'; }
     api('me').then((me) => { if (me.owners) renderOwners(me.owners); }).catch(() => {});
   }
