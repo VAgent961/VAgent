@@ -1,6 +1,6 @@
-// The office is GENERATED from the departments: one big room per department (35 desks + a 35-spot lounge),
-// plus the CEO office, the café and open desks. Floor coords -> screen: X = 600 + 0.8(x - y), Y = 110 + 0.462(x + y).
-// window.VScene.build(departments) -> { inner, vb, desks, deskRoom, rooms[{desks, rest, lead, box}], hot, cafe, cafeIdx, spotProp, ceo }
+// Generates the whole office SVG from an array of department objects {id, name, color}.
+// plus the CEO office, the café, the messenger corner and open desks. Floor coords -> screen: X = 600 + 0.8(x - y), Y = 110 + 0.462(x + y).
+// window.VScene.build(departments) -> { inner, vb, desks, deskRoom, rooms[{desks, rest, lead, box}], hot, cafe, cafeIdx, spotProp, ceo, helper }
 (function () {
   const P = (x, y, h = 0) => [600 + 0.8 * (x - y), 110 + 0.462 * (x + y) - h];
   const f = (n) => n.toFixed(1);
@@ -33,7 +33,13 @@
   <symbol id="bot" overflow="visible"><g transform="scale(0.44)"><ellipse rx="28" ry="6" fill="#141413" opacity="0.16"/><rect x="-12" y="-22" width="10" height="21" rx="2" fill="#26314A"/><rect x="2" y="-22" width="10" height="21" rx="2" fill="#26314A"/><rect x="-14" y="-4" width="12" height="5" rx="2.5" fill="#141413"/><rect x="2" y="-4" width="12" height="5" rx="2.5" fill="#141413"/><rect x="-24" y="-62" width="48" height="42" rx="12" fill="#3E4F7A"/><rect x="-30" y="-60" width="9" height="30" rx="4.5" fill="#3E4F7A"/><rect x="21" y="-60" width="9" height="30" rx="4.5" fill="#35446A"/><circle cx="-25.5" cy="-28" r="4.5" fill="#8D5B3E"/><circle cx="25.5" cy="-28" r="4.5" fill="#7E5036"/><polygon points="-8,-62 8,-62 0,-44" fill="#FFFFFF"/><rect x="-2.5" y="-60" width="5" height="18" rx="1.5" fill="currentColor"/><rect x="-40" y="-146" width="80" height="78" rx="28" fill="#8D5B3E"/><path d="M-40 -116 L-40 -124 Q-40 -150 -12 -150 L12 -150 Q40 -150 40 -124 L40 -118 Q30 -132 0 -132 Q-28 -132 -40 -116 Z" fill="#1E1A17"/><circle class="eye" cx="-13" cy="-106" r="4.8" fill="#141413"/><circle class="eye" cx="13" cy="-106" r="4.8" fill="#141413"/><circle cx="-11.5" cy="-107.5" r="1.4" fill="#FFFFFF"/><circle cx="14.5" cy="-107.5" r="1.4" fill="#FFFFFF"/><rect x="-7" y="-90" width="14" height="4" rx="2" fill="#141413"/></g></symbol>
   <symbol id="lead" overflow="visible"><g transform="scale(0.42)"><ellipse rx="28" ry="6" fill="#141413" opacity="0.16"/><rect x="-12" y="-22" width="10" height="21" rx="2" fill="#1A1A1D"/><rect x="2" y="-22" width="10" height="21" rx="2" fill="#1A1A1D"/><rect x="-14" y="-4" width="12" height="5" rx="2.5" fill="#000000"/><rect x="2" y="-4" width="12" height="5" rx="2.5" fill="#000000"/><rect x="-24" y="-62" width="48" height="42" rx="12" fill="#232327"/><rect x="-30" y="-60" width="9" height="30" rx="4.5" fill="#232327"/><rect x="21" y="-60" width="9" height="30" rx="4.5" fill="#1A1A1D"/><circle cx="-25.5" cy="-28" r="4.5" fill="#F5D6B8"/><circle cx="25.5" cy="-28" r="4.5" fill="#EBC9A8"/><polygon points="-9,-62 9,-62 5,-22 -5,-22" fill="#FFFFFF"/><polygon points="-10,-60 0,-56 -10,-52" fill="#141413"/><polygon points="10,-60 0,-56 10,-52" fill="#141413"/><rect x="12" y="-50" width="7" height="4" rx="1" fill="currentColor"/><rect x="-40" y="-146" width="80" height="78" rx="28" fill="#F5D6B8"/><path d="M-40 -118 Q-42 -150 -6 -150 L14 -150 Q40 -150 40 -122 Q24 -138 -4 -136 Q-30 -134 -40 -118 Z" fill="#141413"/><rect x="-24" y="-113" width="20" height="13" rx="5" fill="none" stroke="#141413" stroke-width="3"/><rect x="4" y="-113" width="20" height="13" rx="5" fill="none" stroke="#141413" stroke-width="3"/><rect x="-4" y="-108" width="8" height="3" fill="#141413"/><circle cx="-14" cy="-106" r="3.5" fill="#1E1E1C"/><circle cx="14" cy="-106" r="3.5" fill="#1E1E1C"/><path d="M-7 -89 q7 4 14 0" stroke="#1E1E1C" stroke-width="3" fill="none" stroke-linecap="round"/></g></symbol>
   <symbol id="ceo" overflow="visible"><g transform="scale(0.5)"><ellipse rx="30" ry="6" fill="#141413" opacity="0.16"/><rect x="-12" y="-22" width="10" height="21" rx="2" fill="#B8862B"/><rect x="2" y="-22" width="10" height="21" rx="2" fill="#B8862B"/><rect x="-14" y="-4" width="12" height="5" rx="2.5" fill="#141413"/><rect x="2" y="-4" width="12" height="5" rx="2.5" fill="#141413"/><rect x="-24" y="-62" width="48" height="42" rx="12" fill="#D9A92B"/><rect x="-30" y="-60" width="9" height="30" rx="4.5" fill="#D9A92B"/><rect x="21" y="-60" width="9" height="30" rx="4.5" fill="#C29523"/><circle cx="-25.5" cy="-28" r="4.5" fill="#F5C8A0"/><circle cx="25.5" cy="-28" r="4.5" fill="#F5C8A0"/><polygon points="-9,-62 9,-62 5,-22 -5,-22" fill="#FFFFFF"/><polygon points="-9,-62 -3,-42 -15,-50" fill="#141413"/><polygon points="9,-62 3,-42 15,-50" fill="#141413"/><polygon points="-10,-60 0,-56 -10,-52" fill="#141413"/><polygon points="10,-60 0,-56 10,-52" fill="#141413"/><rect x="-40" y="-146" width="80" height="78" rx="28" fill="#F5C8A0"/><path d="M-40 -118 Q-40 -150 -10 -150 L12 -150 Q40 -150 40 -118 Q38 -132 26 -136 Q0 -128 -26 -136 Q-38 -132 -40 -118 Z" fill="#CFCBC2"/><rect x="-26" y="-112" width="22" height="11" rx="4" fill="#141413"/><rect x="4" y="-112" width="22" height="11" rx="4" fill="#141413"/><rect x="-4" y="-109" width="8" height="3" fill="#141413"/><rect x="-22" y="-110" width="6" height="3" rx="1.5" fill="#FFFFFF" opacity="0.6"/><path d="M-10 -90 q10 9 20 0 Z" fill="#141413"/></g></symbol>
-  
+
+  <!-- Messenger bot: same silhouette as bot but wears a satchel bag -->
+  <symbol id="msgbot" overflow="visible"><g transform="scale(0.44)"><ellipse rx="28" ry="6" fill="#141413" opacity="0.16"/><rect x="-12" y="-22" width="10" height="21" rx="2" fill="#264A3A"/><rect x="2" y="-22" width="10" height="21" rx="2" fill="#264A3A"/><rect x="-14" y="-4" width="12" height="5" rx="2.5" fill="#141413"/><rect x="2" y="-4" width="12" height="5" rx="2.5" fill="#141413"/><rect x="-24" y="-62" width="48" height="42" rx="12" fill="#3A6A5A"/><rect x="-30" y="-60" width="9" height="30" rx="4.5" fill="#3A6A5A"/><rect x="21" y="-60" width="9" height="30" rx="4.5" fill="#2E5A4A"/><circle cx="-25.5" cy="-28" r="4.5" fill="#8D5B3E"/><circle cx="25.5" cy="-28" r="4.5" fill="#7E5036"/><polygon points="-8,-62 8,-62 0,-44" fill="#FFFFFF"/><rect x="-2.5" y="-60" width="5" height="18" rx="1.5" fill="#9FD0D6"/><rect x="-40" y="-146" width="80" height="78" rx="28" fill="#8D5B3E"/><path d="M-40 -116 L-40 -124 Q-40 -150 -12 -150 L12 -150 Q40 -150 40 -124 L40 -118 Q30 -132 0 -132 Q-28 -132 -40 -116 Z" fill="#1E1A17"/><circle class="eye" cx="-13" cy="-106" r="4.8" fill="#141413"/><circle class="eye" cx="13" cy="-106" r="4.8" fill="#141413"/><circle cx="-11.5" cy="-107.5" r="1.4" fill="#FFFFFF"/><circle cx="14.5" cy="-107.5" r="1.4" fill="#FFFFFF"/><rect x="-7" y="-90" width="14" height="4" rx="2" fill="#141413"/>
+  <!-- satchel bag on the side -->
+  <rect x="22" y="-52" width="18" height="16" rx="3" fill="#9FD0D6"/><rect x="22" y="-56" width="6" height="6" rx="1" fill="#7ABAC2"/><rect x="26" y="-46" width="6" height="4" rx="1" fill="#7ABAC2" opacity="0.6"/>
+  </g></symbol>
+
   <symbol id="leaddesk" overflow="visible"><ellipse cx="0" cy="14" rx="36" ry="10" fill="#141413" opacity="0.07"/><polygon points="-30,-15 0,2 0,16 -30,-1" fill="#34343A"/><polygon points="30,-15 0,2 0,16 30,-1" fill="#18181B"/><polygon points="0,-32 30,-15 0,2 -30,-15" fill="#45454C" stroke="#55555C"/><polygon points="-20,-27 0,-38 0,-56 -20,-45" fill="#141413"/><polygon points="-18,-30 -2,-39 -2,-53 -18,-44" fill="currentColor" opacity="0.85"/><polygon points="6,-20 18,-13 13,-10 1,-17" fill="#FAF9F5" stroke="#5A5A62" stroke-width="0.6"/></symbol>
   <symbol id="table" overflow="visible"><ellipse cx="0" cy="2" rx="26" ry="9" fill="#141413" opacity="0.08"/><ellipse cx="0" cy="0" rx="12" ry="5" fill="#8A6446"/><rect x="-2" y="-22" width="4" height="22" fill="#8A6446"/><ellipse cx="0" cy="-22" rx="26" ry="12" fill="#B98B64"/><ellipse cx="0" cy="-24" rx="26" ry="12" fill="#CFA47C"/><ellipse cx="-6" cy="-26" rx="10" ry="4" fill="#DDB892" opacity="0.6"/></symbol>
   <symbol id="stool" overflow="visible"><ellipse cx="0" cy="0" rx="7" ry="2.5" fill="#141413" opacity="0.1"/><rect x="-1.5" y="-14" width="3" height="14" fill="#8A6446"/><ellipse cx="0" cy="-14" rx="9" ry="4.5" fill="#3D3D3A"/><ellipse cx="-2" cy="-15" rx="5" ry="2" fill="#55534D"/></symbol>
@@ -42,10 +48,22 @@
   <symbol id="tallplant" overflow="visible"><ellipse cx="0" cy="0" rx="13" ry="4.5" fill="#141413" opacity="0.1"/><path d="M0 -18 C-2 -40 -14 -52 -18 -70 M0 -18 C3 -45 12 -58 16 -78 M0 -18 C0 -50 -2 -70 2 -92" stroke="#5B7F57" stroke-width="2" fill="none"/><ellipse cx="-18" cy="-70" rx="9" ry="5" fill="#6E9668" transform="rotate(-30 -18 -70)"/><ellipse cx="-10" cy="-50" rx="9" ry="4.5" fill="#5B7F57" transform="rotate(-20 -10 -50)"/><ellipse cx="16" cy="-78" rx="9" ry="5" fill="#86AE7F" transform="rotate(30 16 -78)"/><ellipse cx="9" cy="-56" rx="9" ry="4.5" fill="#6E9668" transform="rotate(25 9 -56)"/><ellipse cx="2" cy="-92" rx="7" ry="4.5" fill="#6E9668"/><ellipse cx="-4" cy="-36" rx="8" ry="4" fill="#86AE7F" transform="rotate(-15 -4 -36)"/><polygon points="-11,-20 11,-20 8,0 -8,0" fill="#45454C" stroke="#18181B"/></symbol>
   <symbol id="lamp" overflow="visible"><line x1="0" y1="-130" x2="0" y2="-34" stroke="#55534D" stroke-width="1.2"/><ellipse cx="0" cy="0" rx="34" ry="13" fill="url(#glow)"/><path d="M-12 -20 L-7 -34 L7 -34 L12 -20 Z" fill="#141413"/><ellipse cx="0" cy="-19" rx="12" ry="3" fill="#F2C98F"/></symbol>
   <symbol id="cooler" overflow="visible"><ellipse cx="0" cy="0" rx="12" ry="4" fill="#141413" opacity="0.1"/><rect x="-10" y="-38" width="20" height="38" rx="3" fill="#6A6A72"/><rect x="0" y="-38" width="10" height="38" rx="2" fill="#5A5A62"/><rect x="-4" y="-26" width="8" height="5" rx="1" fill="#3A3935"/><path d="M-8 -38 C-8 -56 8 -56 8 -38 Z" fill="#A8C9DA" opacity="0.85"/><ellipse cx="-2" cy="-48" rx="2" ry="5" fill="#FFFFFF" opacity="0.5"/></symbol>
-  
   <symbol id="beanbag" overflow="visible"><ellipse cx="0" cy="2" rx="18" ry="6" fill="#000" opacity="0.25"/><path d="M-17 0 C-19 -12 -8 -20 0 -20 C10 -20 19 -12 17 0 Q0 6 -17 0 Z" fill="currentColor"/><path d="M-10 -14 Q-2 -19 6 -16" stroke="#fff" stroke-width="2" opacity="0.25" fill="none" stroke-linecap="round"/></symbol>
   <symbol id="armchair" overflow="visible"><ellipse cx="0" cy="2" rx="18" ry="6" fill="#000" opacity="0.25"/><rect x="-16" y="-34" width="32" height="24" rx="8" fill="#55466A"/><rect x="-18" y="-14" width="36" height="14" rx="6" fill="#6A5880"/><rect x="-21" y="-22" width="7" height="20" rx="3.5" fill="#483B5A"/><rect x="14" y="-22" width="7" height="20" rx="3.5" fill="#483B5A"/></symbol>
   <symbol id="floorlamp" overflow="visible"><ellipse cx="0" cy="0" rx="30" ry="11" fill="url(#glow)"/><line x1="0" y1="0" x2="0" y2="-62" stroke="#55555C" stroke-width="2"/><path d="M-9 -60 L-6 -74 L6 -74 L9 -60 Z" fill="#F2C98F"/></symbol>
+
+  <!-- Messenger small desk: a rounded corner table with a letter tray and name plate -->
+  <symbol id="msgdesk" overflow="visible">
+    <ellipse cx="0" cy="12" rx="28" ry="8" fill="#141413" opacity="0.07"/>
+    <polygon points="-24,-12 0,2 0,14 -24,2" fill="#4A3828"/>
+    <polygon points="24,-12 0,2 0,14 24,2" fill="#2E2018"/>
+    <polygon points="0,-26 24,-12 0,2 -24,-12" fill="#6A5240" stroke="#7A6250"/>
+    <!-- letter tray -->
+    <polygon points="-14,-20 2,-28 2,-20 -14,-12" fill="#141413" opacity="0.5"/>
+    <polygon points="-14,-14 2,-22 2,-14 -14,-6" fill="#9FD0D6" opacity="0.8"/>
+    <!-- name plate -->
+    <polygon points="4,-16 16,-10 14,-7 2,-13" fill="#D9C27A" opacity="0.9"/>
+  </symbol>
   </defs>`;
 
   const ROOM_W = 1040, ROOM_D = 1160, GAP = 40, FAC_W = 440, WORK_D = 740;
@@ -74,57 +92,73 @@
         <text class="room-name" data-room="${i}" x="${x0 + 40}" y="${y0 + 175}" font-family="Newsreader, Georgia, serif" font-size="64" fill="#FAF9F5" opacity="0.32"></text>
         <text x="${x0 + 40}" y="${y1 - 20}" font-size="30" font-weight="700" letter-spacing="8" fill="#E7B38F" opacity="0.35">REST AREA · LOUNGE</text>`;
       furn += `<use href="#leaddesk" x="${f(room.lead[0] - 25)}" y="${f(room.lead[1] + 20)}" class="room-screen" data-room="${i}" style="color:#3A3935"/><g class="lead-slot" data-room="${i}" transform="translate(${f(room.lead[0])} ${f(room.lead[1])})"></g>`;
-      if (0) furn += `<g class="add-room ghost" tabindex="0" role="button" aria-label="Ask the CEO to create a department" transform="translate(${f(P(x0 + 520, y0 + 380)[0])} ${f(P(x0 + 520, y0 + 380)[1])})"><rect x="-150" y="-22" width="300" height="44" rx="22" fill="#B5532F"/><text y="6" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">+ Add a department</text></g>`;
       furn += use('tallplant', x1 - 40, y0 + 40) + use('plant', x0 + 30, y0 + WORK_D - 30);
       // 35 desks: 7 x 5
       if (d) for (let rr = 0; rr < 5; rr++) for (let cc = 0; cc < 7; cc++) { room.desks.push(desksF.length); desksF.push([x0 + 150 + cc * 125, y0 + 200 + rr * 110]); deskRoom.push(i); }
-      // divider between work area and lounge, with a wide opening + sign
       furn += glass(x0, y0 + WORK_D + 10, x1, y0 + WORK_D + 10, 54, [0.4, 0.62]);
       furn += `<g transform="${onPlaneY(x0 + 430, y0 + WORK_D + 10, 78)}"><rect x="0" y="-16" width="150" height="26" rx="6" fill="#141413" stroke="#E7B38F" stroke-width="1.5"/><text x="75" y="2" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="2" fill="#E7B38F">REST AREA</text></g>`;
-      // outer glass walls with doors
       furn += glass(x1, y0, x1, y1, 66, [0.3, 0.42]);
       if (y1 < D - 5) furn += glass(x0, y1, x1, y1, 66, [0.45, 0.58]);
-      // lounge: 5 pods x 7 spots = 35 resting places
       const lx = x0 + 30, ly = y0 + WORK_D + 40, pods = [[], [], [], [], []];
       const add = (p, x, y, prop) => pods[p].push([x, y, prop]);
-      let px = lx; // pod 0: gaming
+      let px = lx;
       furn += box(px + 30, ly + 4, px + 170, ly + 18, 44, DARK) + poly('#3A6EA5', P(px + 38, ly + 18, 10), P(px + 162, ly + 18, 10), P(px + 162, ly + 18, 38), P(px + 38, ly + 18, 38)) + poly('#7FB0E0', P(px + 44, ly + 18, 14), P(px + 100, ly + 18, 14), P(px + 100, ly + 18, 34), P(px + 44, ly + 18, 34)) + box(px + 85, ly + 22, px + 115, ly + 34, 6, ['#F5F5F7', '#D9D9DE', '#C9C9CF']);
       [[35, 120], [80, 128], [125, 128], [170, 120], [55, 210], [100, 218], [145, 210]].forEach(([dx, dy], k) => { furn += use('beanbag', px + dx, ly + dy, `style="color:${['#B5532F', '#3F7D4E', '#A8B8E8', '#D9C27A', '#E59A7A', '#9FD0D6', '#C8A8E0'][k]}"`); add(0, px + dx, ly + dy - 4, 'pad'); });
-      px += 196; // pod 1: sofas
+      px += 196;
       furn += box(px + 15, ly + 60, px + 185, ly + 92, 14, SOFA) + box(px + 15, ly + 60, px + 185, ly + 72, 32, SOFA) + box(px + 60, ly + 150, px + 140, ly + 190, 12, WOOD) + box(px + 15, ly + 248, px + 185, ly + 280, 14, SOFA);
       furn += use('cup', px + 90, ly + 170, '', 12);
       [[40, 82], [85, 82], [130, 82], [172, 82]].forEach(([dx, dy], k) => add(1, px + dx, ly + dy, ['phone', 'mug', '', 'phone'][k]));
       [[55, 262], [100, 262], [145, 262]].forEach(([dx, dy], k) => add(1, px + dx, ly + dy, ['mug', 'phone', ''][k]));
-      px += 196; // pod 2: reading nook
+      px += 196;
       furn += box(px + 10, ly + 4, px + 190, ly + 24, 64, ['#5A402C', '#4A3424', '#3A281C']);
       for (let b = 0; b < 12; b++) furn += poly(['#B5532F', '#8FC79D', '#A8B8E8', '#D9C27A', '#E59A7A', '#FAF9F5'][b % 6], P(px + 16 + b * 14, ly + 24, 34 + (b % 2) * 22), P(px + 26 + b * 14, ly + 24, 34 + (b % 2) * 22), P(px + 26 + b * 14, ly + 24, 52 + (b % 2) * 22 - (b % 3) * 3), P(px + 16 + b * 14, ly + 24, 52 + (b % 2) * 22));
       [[40, 110], [105, 110], [170, 110], [40, 210], [105, 210], [170, 210], [105, 300]].forEach(([dx, dy]) => { furn += use('armchair', px + dx, ly + dy); add(2, px + dx, ly + dy - 2, 'book'); });
       furn += use('floorlamp', px + 72, ly + 160) + use('floorlamp', px + 140, ly + 255);
-      px += 196; // pod 3: chill + music
+      px += 196;
       furn += `<ellipse cx="${f(P(px + 100, ly + 180)[0])}" cy="${f(P(px + 100, ly + 180)[1])}" rx="105" ry="48" fill="#4A3C5A" opacity="0.7"/>` + box(px + 150, ly + 6, px + 190, ly + 30, 46, DARK) + `<circle cx="${f(P(px + 170, ly + 30, 30)[0])}" cy="${f(P(px + 170, ly + 30, 30)[1])}" r="7" fill="#55555C"/><circle cx="${f(P(px + 170, ly + 30, 14)[0])}" cy="${f(P(px + 170, ly + 30, 14)[1])}" r="5" fill="#55555C"/>`;
       [[40, 90], [115, 80], [175, 140], [50, 180], [130, 190], [70, 280], [160, 280]].forEach(([dx, dy], k) => { furn += use('beanbag', px + dx, ly + dy, `style="color:${['#E59A7A', '#8FC79D', '#D9C27A', '#A8B8E8', '#C8A8E0', '#9FD0D6', '#B5532F'][k]}"`); add(3, px + dx, ly + dy - 4, 'music'); });
-      px += 196; // pod 4: snack bar
+      px += 196;
       furn += box(px + 15, ly + 10, px + 185, ly + 50, 38, WOOD) + box(px + 15, ly + 10, px + 185, ly + 50, 3, ['#C9A984', '#A9744C', '#8A5E3C'], 38) + box(px + 30, ly + 16, px + 60, ly + 36, 26, ['#55534D', '#3A3935', '#232320'], 41) + use('cup', px + 120, ly + 30, '', 41) + use('cup', px + 150, ly + 34, '', 41);
       [[40, 85], [85, 85], [130, 85], [175, 85]].forEach(([dx, dy]) => { furn += use('stool', px + dx, ly + dy); add(4, px + dx, ly + dy, 'mug'); });
       furn += use('table', px + 95, ly + 250);
       [[50, 225], [140, 225], [95, 300]].forEach(([dx, dy]) => add(4, px + dx, ly + dy, 'mug'));
-      // interleave pods so a half-full lounge still looks lively
       if (d) for (let k = 0; k < 7; k++) for (let p = 0; p < 5; p++) { const s = pods[p][k]; if (s) { room.rest.push(spotsF.length); spotsF.push([s[0], s[1]]); spotProp.push(s[2]); } }
       rooms.push(room);
     }
 
-    // facility column: CEO office, café, open desks
-    floor += `<rect x="${fx}" width="${FAC_W}" height="420" fill="#2A2519"/><rect x="${fx + 24}" y="24" width="${FAC_W - 48}" height="372" rx="18" fill="#D9C27A" opacity="0.14"/>
-      <rect x="${fx}" y="440" width="${FAC_W}" height="560" fill="#3A2B22"/><rect x="${fx}" y="440" width="${FAC_W}" height="560" fill="url(#planks)"/><ellipse cx="${fx + 220}" cy="720" rx="170" ry="190" fill="#C9714F" opacity="0.12"/>
-      <text x="${fx + 30}" y="985" font-family="Newsreader, Georgia, serif" font-size="56" fill="#E7B38F" opacity="0.3">Café</text>
-      <rect x="${fx}" y="1020" width="${FAC_W}" height="${D - 1020}" fill="#202024"/><text x="${fx + 30}" y="${D - 24}" font-size="26" font-weight="700" letter-spacing="6" fill="#FAF9F5" opacity="0.22">OPEN DESKS</text>`;
-    furn += glass(fx, 0, fx, 420, 74, [0.55, 0.8]) + glass(fx, 420, W, 420, 74) + box(fx + 160, 110, fx + 300, 180, 34, ['#3D3D3A', '#2B2B29', '#232320']) + box(fx + 160, 110, fx + 300, 180, 3, ['#55534D', '#3A3935', '#2B2B29'], 34) + use('tallplant', fx + 400, 40) + use('plant', fx + 40, 380);
-    furn += `<g transform="${onPlaneY(fx + 140, 420, 66)}"><rect x="0" y="-14" width="140" height="22" rx="4" fill="#141413"/><text x="70" y="2" text-anchor="middle" font-size="11" font-weight="700" letter-spacing="2" fill="#D9C27A">CEO OFFICE</text></g>`;
-    furn += box(fx + 40, 455, fx + 400, 490, 38, WOOD) + box(fx + 40, 455, fx + 400, 490, 3, ['#C9A984', '#A9744C', '#8A5E3C'], 38) + box(fx + 60, 460, fx + 90, 480, 28, ['#55534D', '#3A3935', '#232320'], 41) + use('cup', fx + 300, 470, '', 41);
-    for (const [x, y] of [[fx + 115, 610], [fx + 295, 610], [fx + 205, 710], [fx + 115, 810], [fx + 295, 810]]) furn += use('table', x, y) + use('cup', x - 6, y, '', 24);
-    furn += use('lamp', fx + 115, 610) + use('lamp', fx + 295, 610) + use('lamp', fx + 205, 710);
-    furn += glass(fx, 1010, W, 1010, 40, [0.4, 0.6]);
-    const hot = [], hotXY = []; for (let y = 1130; y < D - 60; y += 140) hotXY.push([fx + 130, y], [fx + 310, y]); for (const [x, y] of hotXY) { hot.push(desksF.length); desksF.push([x, y]); deskRoom.push(-1); }
+    // ── FACILITY COLUMN ──────────────────────────────────────────────────────
+    // CEO office (y 0–425), Messenger corner (y 435–555), Café (y 565–1035), Open desks (y 1045+)
+    floor += `<rect x="${fx}" width="${FAC_W}" height="425" fill="#2A2519"/><rect x="${fx + 24}" y="24" width="${FAC_W - 48}" height="377" rx="18" fill="#D9C27A" opacity="0.14"/>
+      <rect x="${fx}" y="435" width="${FAC_W}" height="120" fill="#252520"/><rect x="${fx + 16}" y="445" width="${FAC_W - 32}" height="100" rx="12" fill="#3A3020" opacity="0.7"/>
+      <rect x="${fx}" y="565" width="${FAC_W}" height="470" fill="#3A2B22"/><rect x="${fx}" y="565" width="${FAC_W}" height="470" fill="url(#planks)"/><ellipse cx="${fx + 220}" cy="800" rx="170" ry="190" fill="#C9714F" opacity="0.12"/>
+      <text x="${fx + 30}" y="1010" font-family="Newsreader, Georgia, serif" font-size="56" fill="#E7B38F" opacity="0.3">Café</text>
+      <rect x="${fx}" y="1045" width="${FAC_W}" height="${D - 1045}" fill="#202024"/><text x="${fx + 30}" y="${D - 24}" font-size="26" font-weight="700" letter-spacing="6" fill="#FAF9F5" opacity="0.22">OPEN DESKS</text>`;
+
+    // CEO furniture + glass
+    furn += glass(fx, 0, fx, 425, 74, [0.55, 0.8]) + glass(fx, 425, W, 425, 74) +
+      box(fx + 160, 110, fx + 300, 180, 34, ['#3D3D3A', '#2B2B29', '#232320']) +
+      box(fx + 160, 110, fx + 300, 180, 3, ['#55534D', '#3A3935', '#2B2B29'], 34) +
+      use('tallplant', fx + 400, 40) + use('plant', fx + 40, 380);
+    furn += `<g transform="${onPlaneY(fx + 140, 425, 66)}"><rect x="0" y="-14" width="140" height="22" rx="4" fill="#141413"/><text x="70" y="2" text-anchor="middle" font-size="11" font-weight="700" letter-spacing="2" fill="#D9C27A">CEO OFFICE</text></g>`;
+
+    // Messenger corner (y 435–555): small desk, sign, partition glass
+    const helperX = fx + 220, helperY = 495;
+    furn += glass(fx, 435, W, 435, 32, [0.25, 0.72]);
+    furn += glass(fx, 555, W, 555, 32, [0.22, 0.68]);
+    furn += use('msgdesk', helperX, helperY);
+    furn += use('plant', fx + 40, 500);
+    furn += `<g transform="${onPlaneY(fx + 110, 435, 48)}"><rect x="0" y="-12" width="190" height="20" rx="4" fill="#141413" stroke="#9FD0D6" stroke-width="1.2"/><text x="95" y="2" text-anchor="middle" font-size="10" font-weight="700" letter-spacing="2.5" fill="#9FD0D6">MESSENGER</text></g>`;
+
+    // Café bar + tables
+    furn += box(fx + 40, 580, fx + 400, 615, 38, WOOD) + box(fx + 40, 580, fx + 400, 615, 3, ['#C9A984', '#A9744C', '#8A5E3C'], 38) +
+      box(fx + 60, 585, fx + 90, 605, 28, ['#55534D', '#3A3935', '#232320'], 41) + use('cup', fx + 300, 595, '', 41);
+    for (const [x, y] of [[fx + 115, 735], [fx + 295, 735], [fx + 205, 835], [fx + 115, 935], [fx + 295, 935]])
+      furn += use('table', x, y) + use('cup', x - 6, y, '', 24);
+    furn += use('lamp', fx + 115, 735) + use('lamp', fx + 295, 735) + use('lamp', fx + 205, 835);
+    furn += glass(fx, 1035, W, 1035, 40, [0.4, 0.6]);
+    const hot = [], hotXY = [];
+    for (let y = 1155; y < D - 60; y += 140) hotXY.push([fx + 130, y], [fx + 310, y]);
+    for (const [x, y] of hotXY) { hot.push(desksF.length); desksF.push([x, y]); deskRoom.push(-1); }
 
     // walls, windows, clock, task board
     const wins = []; for (let x = 120; x < fx - 160; x += 330) wins.push(sky(x, x + 160, 50, 92, 'R'));
@@ -143,10 +177,11 @@
     const order = desks.map((d, i) => i).sort((a, b) => desks[a][1] - desks[b][1]);
     const deskSvg = order.map((i) => `<g class="desk" data-desk="${i}" transform="translate(${f(desks[i][0])} ${f(desks[i][1])}) scale(1.1)"><use href="#chair" x="22" y="-26"/><g class="seat" transform="translate(20 -30)"></g><use class="desk-top" href="#desk" style="color:#3A3935"/></g>`).join('');
     const ceo = P(fx + 230, 80);
+    const helper = P(helperX, helperY);
     const minX = P(0, D)[0], maxX = P(W, 0)[0], maxY = P(W, D)[1] + 30;
     const vb = { x: minX - 40, y: -10, w: maxX - minX + 80, h: maxY + 20 };
-    const inner = `${DEFS}<g id="layer-back">${back}${furn}<g id="ceo-slot" transform="translate(${f(ceo[0])} ${f(ceo[1])})"></g></g><g id="layer-desks">${deskSvg}</g><g id="layer-free"></g><g id="layer-walk"></g>`;
-    return { inner, vb, desks, deskRoom, rooms, hot, cafe, cafeIdx, spotProp, ceo };
+    const inner = `${DEFS}<g id="layer-back">${back}${furn}<g id="ceo-slot" transform="translate(${f(ceo[0])} ${f(ceo[1])})"></g><g id="helper-slot" transform="translate(${f(helper[0])} ${f(helper[1])})"></g></g><g id="layer-desks">${deskSvg}</g><g id="layer-free"></g><g id="layer-walk"></g>`;
+    return { inner, vb, desks, deskRoom, rooms, hot, cafe, cafeIdx, spotProp, ceo, helper };
   }
   window.VScene = { build };
 })();

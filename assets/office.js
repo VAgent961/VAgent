@@ -1,4 +1,5 @@
 // VAgent office: live n8n workflows as agents. Working -> desk, idle/help -> café, off -> off duty.
+// Office Helper is special: he lives at S.helper (messenger corner). When working he walks to the target lead's room.
 (() => {
   const $ = (s, r = document) => r.querySelector(s);
   const NS = 'http://www.w3.org/2000/svg';
@@ -27,12 +28,11 @@
   function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3500); }
 
   // ---------- scene ----------
-  // the building is generated from the departments (one big room each) and rebuilt when they change
   let S = VScene.build([]), sceneKey = '';
   $('#stage').innerHTML = '<svg id="scene" preserveAspectRatio="xMidYMid meet" role="img" aria-label="The VAgent office: one room per department, the CEO office, the café and open desks."></svg>';
   const svg = $('#scene'); svg.innerHTML = S.inner;
   let free = $('#layer-free'), walkL = $('#layer-walk');
-  // ---------- zoom + pan (only inside the office) ----------
+  // ---------- zoom + pan ----------
   const stage = $('#stage'); let VB0 = { ...S.vb }; const vb = { ...VB0 }, MAXZ = 5;
   stage.insertAdjacentHTML('beforeend', '<div class="zoom" role="group" aria-label="Zoom the office"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button><button type="button" data-z="reset" aria-label="Fit the whole office" style="font-size:14px">⤢</button></div>');
   const setVB = () => { svg.setAttribute('viewBox', vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h); };
@@ -64,13 +64,17 @@
   addEventListener('pointerup', up); addEventListener('pointercancel', up);
   svg.addEventListener('click', (e) => { if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; } }, true);
   const deskG = (i) => svg.querySelector(`.desk[data-desk="${i}"]`);
-  const posOf = (p) => (p.t === 'desk' ? [S.desks[p.i][0] + 22, S.desks[p.i][1] - 33] : S.cafe[p.i]);
+  const posOf = (p) => (p.t === 'desk' ? [S.desks[p.i][0] + 22, S.desks[p.i][1] - 33] : p.t === 'helper' ? S.helper : S.cafe[p.i]);
   const tr = (x, y) => `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(1.1)`;
+
+  // ── detect the Office Helper (messenger) by name ─────────────────────────
+  const isHelper = (a) => /office.?helper/i.test((a.name || '').replace(/\s+/g, '.'));
 
   function makeAgent(a) {
     const g = document.createElementNS(NS, 'g');
     g.setAttribute('class', 'agent'); g.setAttribute('tabindex', '0'); g.setAttribute('role', 'button'); g.dataset.key = a.key;
-    g.innerHTML = `<circle class="ring" cy="-30" r="34" fill="none" stroke="#B5532F" stroke-width="3"/><g class="body"><use href="#bot" style="color:${colorOf(a.key)}"/></g>
+    const botRef = isHelper(a) ? '#msgbot' : '#bot';
+    g.innerHTML = `<circle class="ring" cy="-30" r="34" fill="none" stroke="${isHelper(a) ? '#9FD0D6' : '#B5532F'}" stroke-width="3"/><g class="body"><use href="${botRef}" style="color:${colorOf(a.key)}"/></g>
       <g class="props"><g class="p p-book" transform="translate(0 -15)"><rect x="-10" y="-6" width="20" height="13" rx="1.5" fill="#B5532F"/><rect x="-8" y="-4" width="7" height="9" fill="#FAF9F5"/><rect x="1" y="-4" width="7" height="9" fill="#FAF9F5"/></g><g class="p p-pad" transform="translate(0 -14)"><rect x="-11" y="-5" width="22" height="10" rx="5" fill="#F5F5F7" stroke="#141413" stroke-width="1"/><circle cx="-5" cy="0" r="1.8" fill="#3A6EA5"/><circle cx="5" cy="0" r="1.8" fill="#B5532F"/></g><g class="p p-phone" transform="translate(6 -16)"><rect x="-4" y="-7" width="8" height="13" rx="2" fill="#141413"/><rect x="-3" y="-5.5" width="6" height="9" rx="1" fill="#7FB0E0"/></g><g class="p p-mug" transform="translate(9 -16)"><rect x="-4" y="-5" width="8" height="9" rx="2" fill="#FAF9F5"/><path d="M4 -3 q4 1 0 5" stroke="#FAF9F5" stroke-width="1.6" fill="none"/></g><g class="p p-music"><path d="M-18 -46 Q0 -78 18 -46" stroke="#141413" stroke-width="3.5" fill="none"/><rect x="-22" y="-52" width="7" height="12" rx="3" fill="#B5532F"/><rect x="15" y="-52" width="7" height="12" rx="3" fill="#B5532F"/><text class="note" x="20" y="-62" font-size="14" fill="#E7B38F">♪</text></g><g class="p p-rest"><text class="zz" x="16" y="-62" font-size="13" font-weight="700" fill="#A8B8E8">z z</text></g></g><g class="bubble typing" transform="translate(27 -52)"><rect x="-15" y="-10" width="30" height="18" rx="9" fill="#FAF9F5" stroke="#E3E0D5"/><circle cx="-6" cy="-1" r="2.2" fill="#B5532F"/><circle cx="0" cy="-1" r="2.2" fill="#B5532F"/><circle cx="6" cy="-1" r="2.2" fill="#B5532F"/></g>
       <g class="bubble alert" transform="translate(18 -66)"><circle r="8" fill="#B3261E"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">!</text></g>
       <g class="tag" transform="translate(0 -86)"><rect y="-12" height="22" rx="11"/><circle class="tdot" cy="-1" r="3.5"/><text y="3" text-anchor="middle"></text></g>`;
@@ -84,12 +88,18 @@
     const t = g.querySelector('.tag text'); t.textContent = name; t.setAttribute('x', 6); const dt = g.querySelector('.tdot'); dt.setAttribute('cx', -w / 2 + 12); dt.setAttribute('fill', dotColor[a.status]);
   }
   svg.addEventListener('pointerover', (e) => { const g = e.target.closest('#layer-free .agent'); if (g && g.parentNode.lastChild !== g) g.parentNode.appendChild(g); });
+
   function attach(g, p) {
     if (p.t === 'desk') { deskG(p.i).querySelector('.seat').appendChild(g); g.setAttribute('transform', ''); }
+    else if (p.t === 'helper') {
+      // place inside the helper-slot group so he sits at his desk
+      const slot = svg.querySelector('#helper-slot'); if (slot) { slot.appendChild(g); g.setAttribute('transform', ''); } else { free.appendChild(g); g.setAttribute('transform', tr(S.helper[0], S.helper[1])); }
+    }
     else { const [x, y] = posOf(p); free.appendChild(g); g.setAttribute('transform', tr(x, y)); }
     g.dataset.prop = p.t === 'cafe' ? (S.spotProp[p.i] || 'rest') : '';
     g._pos = posOf(p);
   }
+
   function walk(g, from, to) {
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!window.gsap || reduce || !from) return attach(g, to);
@@ -140,22 +150,41 @@
     const count = (id) => D.agents.filter((a) => a.dept === id).length;
     box.innerHTML = '<span class="depts-h">Departments</span>' + (D.departments.map((d, i) => `<button type="button" class="dept-btn" data-room-i="${i}" data-dept="${d.id}"><span class="dd" style="background:${d.color}"></span><span class="dn">${esc(d.name)}</span><span class="dc">${count(d.id)}/35</span></button>`).join('') || '<p class="empty">No departments yet.</p>') + '<button type="button" class="dept-btn add" id="dept-add">+ New department</button>';
   }
+
   function render() {
     buildScene();
     const A = D.agents;
-    const working = A.filter((a) => a.status === 'working'), cafe = A.filter((a) => a.status === 'idle' || a.status === 'help'), off = A.filter((a) => a.status === 'off');
+    const working = A.filter((a) => a.status === 'working' && !isHelper(a));
+    const cafe = A.filter((a) => (a.status === 'idle' || a.status === 'help') && !isHelper(a));
+    const off = A.filter((a) => a.status === 'off' && !isHelper(a));
+    const helpers = A.filter(isHelper);
+
     const next = {}, used = { desk: new Set(), cafe: new Set() }, over = [];
     const roomOf = (a) => { const i = D.departments.findIndex((x) => x.id === a.dept); return i >= 0 && i < S.rooms.length ? i : -1; };
     const pick = (a, t, choices) => { const p = places[a.key]; if (p && p.t === t && choices.includes(p.i) && !used[t].has(p.i)) return p.i; return choices.find((i) => !used[t].has(i)); };
     for (const a of working) { const r = roomOf(a); let i = pick(a, 'desk', r >= 0 ? S.rooms[r].desks : S.hot); if (i === undefined) i = pick(a, 'desk', S.hot); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'desk', i }; used.desk.add(i); }
-    // idle: rest in the department lounge; no department (or lounge full) -> café
     for (const a of cafe) { const r = roomOf(a); let i = r >= 0 ? pick(a, 'cafe', S.rooms[r].rest) : undefined; if (i === undefined) i = pick(a, 'cafe', S.cafeIdx); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'cafe', i }; used.cafe.add(i); }
+
+    // ── Office Helper: messenger corner when idle/off; first dept lead room when working ──
+    for (const a of helpers) {
+      if (a.status === 'working') {
+        // walk to the first valid dept lead position (or fall back to helper spot)
+        const targetRoom = S.rooms.find((r, i) => D.departments[i] && !r.ghost);
+        const dest = targetRoom ? targetRoom.lead : S.helper;
+        // we store it as a 'lead' type with the xy baked in
+        next[a.key] = { t: 'helperworking', xy: dest };
+      } else {
+        // idle / help / off → sit at messenger desk
+        next[a.key] = { t: 'helper' };
+      }
+    }
+
     svg.querySelectorAll('.desk-top').forEach((u) => (u.style.color = '#3A3935'));
     for (const a of A) {
       const p = next[a.key]; let g = els[a.key];
       if (!p) { if (g) { leave(g); delete els[a.key]; delete places[a.key]; } continue; }
-      if (!g) { g = els[a.key] = makeAgent(a); updateAgent(g, a); attach(g, p); if (!first && window.gsap) gsap.from(g, { opacity: 0, duration: 0.6 }); }
-      else { updateAgent(g, a); const o = places[a.key]; if (!o || o.t !== p.t || o.i !== p.i) walk(g, o, p); }
+      if (!g) { g = els[a.key] = makeAgent(a); updateAgent(g, a); attachAny(g, p); if (!first && window.gsap) gsap.from(g, { opacity: 0, duration: 0.6 }); }
+      else { updateAgent(g, a); const o = places[a.key]; if (!o || o.t !== p.t || o.i !== p.i || o.xy !== p.xy) walkAny(g, o, p); }
       places[a.key] = p;
       if (p.t === 'desk') deskG(p.i).querySelector('.desk-top').style.color = colorOf(a.key);
     }
@@ -163,7 +192,7 @@
     renderRooms();
     const help = A.filter((a) => a.status === 'help').length;
     $('#n-working').textContent = working.length; $('#n-idle').textContent = cafe.length - help; $('#n-help').textContent = help;
-    const bw = (n) => String(Math.max(4, Math.min(1, n / Math.max(1, A.length)) * 100)); svg.querySelector('#board-bar1').setAttribute('opacity', working.length ? 1 : 0.35); svg.querySelector('#board-bar2').setAttribute('opacity', cafe.length ? 1 : 0.35);
+    svg.querySelector('#board-bar1').setAttribute('opacity', working.length ? 1 : 0.35); svg.querySelector('#board-bar2').setAttribute('opacity', cafe.length ? 1 : 0.35);
     $('#board-line').textContent = A.length ? working.length + ' working · ' + cafe.length + ' in café' : 'Connect n8n to start';
     $('#n-all').textContent = A.length; $('#n-off').textContent = off.length;
     const notes = [];
@@ -179,6 +208,32 @@
     renderList();
     first = false;
   }
+
+  // Extended attach/walk that handle the helper position types
+  function attachAny(g, p) {
+    if (p.t === 'helper') return attach(g, p);
+    if (p.t === 'helperworking') {
+      const [x, y] = p.xy; free.appendChild(g); g.setAttribute('transform', tr(x, y)); g._pos = [x, y];
+    } else {
+      attach(g, p);
+    }
+  }
+  function walkAny(g, from, to) {
+    if (to.t === 'helperworking') {
+      const [tx, ty] = to.xy;
+      if (!window.gsap) { const [x, y] = to.xy; free.appendChild(g); g.setAttribute('transform', tr(x, y)); g._pos = [x, y]; return; }
+      const sx = g._pos ? g._pos[0] : S.helper[0], sy = g._pos ? g._pos[1] : S.helper[1];
+      walkL.appendChild(g); g.setAttribute('transform', tr(sx, sy));
+      const body = g.querySelector('.body'), s = { x: sx, y: sy };
+      const bob = gsap.fromTo(body, { y: 0 }, { y: -4, duration: 0.18, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+      gsap.to(s, { x: tx, y: ty, duration: Math.min(3.2, Math.max(1.4, Math.hypot(tx - sx, ty - sy) / 220)), ease: 'power1.inOut',
+        onUpdate: () => { g.setAttribute('transform', tr(s.x, s.y)); g._pos = [s.x, s.y]; },
+        onComplete: () => { bob.kill(); gsap.set(body, { y: 0 }); free.appendChild(g); g.setAttribute('transform', tr(tx, ty)); g._pos = [tx, ty]; } });
+    } else {
+      walk(g, from, to);
+    }
+  }
+
   const where = (a) => { const x = D.departments.find((y) => y.id === a.dept); if (!x) return 'No department'; const t = x.teams.find((y) => y.id === a.team); return x.name + (t ? ' / ' + t.name : ''); };
   const dotColor = { working: '#3F7D4E', help: '#B3261E', idle: '#B5532F', off: '#B0AEA5' };
   const itemAgent = (a) => `<button class="item" type="button" data-agent="${esc(a.key)}"><span class="sd ${a.status}"></span><span class="grow"><b>${esc(a.name)}</b><small>${esc(a.status === 'idle' && D.departments.some((d) => d.id === a.dept) ? 'Resting in the lounge' : STATUS[a.status].split(' · ')[0])} · ${esc(where(a))}</small></span><span aria-hidden="true">›</span></button>`;
@@ -194,7 +249,6 @@
   $('#q').oninput = (e) => { q = e.target.value; renderList(); };
   $('#inst').onchange = (e) => { inst = e.target.value; renderList(); };
   document.addEventListener('keydown', (e) => { if (e.key === '/' && !e.target.closest('input,textarea,select')) { e.preventDefault(); $('#q').focus(); } });
-  // find an agent in the office: zoom to it and make its tag pulse
   function focusAgent(key) {
     const g = els[key]; if (!g || !g._pos) return;
     document.querySelectorAll('.agent.found').forEach((x) => x.classList.remove('found')); g.classList.add('found'); setTimeout(() => g.classList.remove('found'), 4000);
@@ -219,7 +273,10 @@
 
   async function openAgent(key) {
     const a = D.agents.find((x) => x.key === key); if (!a) return;
-    const head = `<div class="d-head"><span class="avatar">${botSvg(colorOf(key))}</span><div><h2 class="d-title">${esc(a.name)} <button class="rename" type="button" id="rename" aria-label="Rename" title="Rename">✎</button></h2><div class="status ${a.status}">● ${esc(STATUS[a.status])}${a.status === 'working' && a.startedAt ? ' · for ' + dur(Date.now() - Date.parse(a.startedAt)) : ''}</div><div class="d-sub">${esc(TRIG[a.trigger] || a.trigger)} · ${esc(a.inst)} · ${a.runs24} runs today</div></div></div>`;
+    const avatarSvg = isHelper(a)
+      ? `<svg aria-hidden="true" width="40" height="40" viewBox="-22 -72 44 76"><use href="#msgbot" style="color:${colorOf(key)}"/></svg>`
+      : botSvg(colorOf(key));
+    const head = `<div class="d-head"><span class="avatar">${avatarSvg}</span><div><h2 class="d-title">${esc(a.name)} <button class="rename" type="button" id="rename" aria-label="Rename" title="Rename">✎</button></h2><div class="status ${a.status}">● ${esc(STATUS[a.status])}${a.status === 'working' && a.startedAt ? ' · for ' + dur(Date.now() - Date.parse(a.startedAt)) : ''}</div><div class="d-sub">${esc(TRIG[a.trigger] || a.trigger)} · ${esc(a.inst)} · ${a.runs24} runs today</div></div></div>`;
     open(head + '<p class="empty">Loading its work…</p>', 'agent:' + key);
     let d; try { d = await api('agent?key=' + encodeURIComponent(key)); } catch (e) { inner.innerHTML = head + `<p class="empty">${esc(e.message)}</p>`; return; }
     if (current !== 'agent:' + key) return;
@@ -293,10 +350,9 @@
     $('#f-new').onsubmit = async (e) => { e.preventDefault(); try { const d = await api('departments', { body: { name: e.target.n.value, color } }); await load(); openDept(d.id); } catch (x) { toast(x.message); } };
   }
 
-  // ---------- connect an n8n: 3 simple steps ----------
   const myName = () => (D.me || '').split('@')[0].replace(/^./, (c) => c.toUpperCase());
   function openConnect(pre) {
-        const free = [];
+    const free = [];
     let url = pre || '';
     open(`<h2 class="d-title">Connect your n8n</h2><p class="help" style="font-size:14px">3 quick steps. After this, all your workflows walk into the office as agents.</p>
       <form id="f-n8n" class="steps-form" autocomplete="off">
@@ -344,7 +400,6 @@
     open(`<h2 class="d-title">Give a task</h2><p class="help">Pick the department whose lead should handle it.</p><div class="items">${D.departments.map((d) => `<button class="item" type="button" data-dept-task="${d.id}">${leadSvg(d.color, 32)}<span class="grow"><b>${esc(d.name)} Lead</b><small>${D.agents.filter((a) => a.dept === d.id).length} agents</small></span>›</button>`).join('')}</div>`, 'task');
   }
 
-  // ---------- chats: CEO, leads, agents ----------
   const store = { get: (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v.slice(-30))); } catch {} } };
   const ACT = { create_department: (a) => 'Create department "' + a.name + '"', rename_department: (a) => 'Rename ' + a.department + ' to "' + a.name + '"', set_mission: (a) => 'New mission for ' + a.department + ': ' + a.mission, delete_department: (a) => 'Delete department ' + a.department,
     create_team: (a) => 'New team "' + a.name + '" in ' + a.department, delete_team: (a) => 'Remove team ' + a.team + ' from ' + a.department, move_agent: (a) => 'Move ' + a.agent + ' → ' + a.department + (a.team ? ' / ' + a.team : ''),
@@ -396,7 +451,6 @@
     $('#clear-ceo').onclick = () => { store.set('vagent-ceo', []); openCEO(); };
   }
 
-  // ---------- events ----------
   document.addEventListener('click', async (e) => {
     const t = e.target.closest('[data-agent],[data-dept],[data-dept-task],[data-open],[data-del-n8n],[data-reconnect],.agent,.lead,.add-room,.ceo-g');
     if (!t) return;
