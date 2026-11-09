@@ -71,11 +71,17 @@
 
   function build(depts) {
     const n = depts.length <= 1 ? 1 : depts.length + (depts.length % 2), cols = n === 1 ? 1 : 2, rows = Math.ceil(n / cols);
-    const fx = cols * (ROOM_W + GAP), W = fx + FAC_W, D = Math.max(rows * (ROOM_D + GAP) - GAP, 1440);
+    const fx = cols * (ROOM_W + GAP), W = fx + FAC_W, D = Math.max(rows * (ROOM_D + GAP) - GAP, 2000);
     const desksF = [], deskRoom = [], spotsF = [], spotProp = [], rooms = [];
     let floor = '', back = '', furn = '';
-    // café spots first (indexes 0..15) so they never move
-    for (const y of [680, 780, 880, 980]) for (const x of [fx + 70, fx + 160, fx + 250, fx + 340]) { spotsF.push([x + ((y / 100) % 2) * 20, y]); spotProp.push('mug'); }
+    // café spots first (indexes 0..49) so they never move — 5 cols × 10 rows = 50 spots
+    const CAFE_COLS = [fx + 54, fx + 148, fx + 222, fx + 306, fx + 390];
+    const CAFE_ROWS = [660, 760, 860, 960, 1060, 1160, 1260, 1360, 1460, 1560];
+    const CAFE_PROPS = ['mug','mug','music','mug','rest','mug','mug','rest','mug','music'];
+    for (let ri = 0; ri < CAFE_ROWS.length; ri++) {
+      const y = CAFE_ROWS[ri], stagger = (ri % 2) * 18;
+      for (const x of CAFE_COLS) { spotsF.push([x + stagger, y]); spotProp.push(CAFE_PROPS[ri]); }
+    }
     const cafeIdx = spotsF.map((s, i) => i);
 
     for (let i = 0; i < n; i++) {
@@ -127,12 +133,15 @@
     }
 
     // ── FACILITY COLUMN ──────────────────────────────────────────────────────
-    // CEO office (y 0–425), Messenger corner (y 435–555), Café (y 565–1035), Open desks (y 1045+)
+    // CEO office (y 0–425), Messenger corner (y 435–555), Café (y 565–1660), Open desks (y 1670+)
     floor += `<rect x="${fx}" width="${FAC_W}" height="425" fill="#2A2519"/><rect x="${fx + 24}" y="24" width="${FAC_W - 48}" height="377" rx="18" fill="#D9C27A" opacity="0.14"/>
       <rect x="${fx}" y="435" width="${FAC_W}" height="120" fill="#252520"/><rect x="${fx + 16}" y="445" width="${FAC_W - 32}" height="100" rx="12" fill="#3A3020" opacity="0.7"/>
-      <rect x="${fx}" y="565" width="${FAC_W}" height="470" fill="#3A2B22"/><rect x="${fx}" y="565" width="${FAC_W}" height="470" fill="url(#planks)"/><ellipse cx="${fx + 220}" cy="800" rx="170" ry="190" fill="#C9714F" opacity="0.12"/>
-      <text x="${fx + 30}" y="1010" font-family="Newsreader, Georgia, serif" font-size="56" fill="#E7B38F" opacity="0.3">Café</text>
-      <rect x="${fx}" y="1045" width="${FAC_W}" height="${D - 1045}" fill="#202024"/><text x="${fx + 30}" y="${D - 24}" font-size="26" font-weight="700" letter-spacing="6" fill="#FAF9F5" opacity="0.22">OPEN DESKS</text>`;
+      <rect x="${fx}" y="565" width="${FAC_W}" height="1095" fill="#3A2B22"/><rect x="${fx}" y="565" width="${FAC_W}" height="1095" fill="url(#planks)"/>
+      <ellipse cx="${fx + 220}" cy="900" rx="170" ry="260" fill="#C9714F" opacity="0.10"/>
+      <ellipse cx="${fx + 220}" cy="1300" rx="150" ry="220" fill="#C9714F" opacity="0.08"/>
+      <text x="${fx + 30}" y="640" font-family="Newsreader, Georgia, serif" font-size="56" fill="#E7B38F" opacity="0.28">Café</text>
+      <text x="${fx + 30}" y="1180" font-family="Newsreader, Georgia, serif" font-size="40" fill="#E7B38F" opacity="0.18">Café</text>
+      <rect x="${fx}" y="1670" width="${FAC_W}" height="${D - 1670}" fill="#202024"/><text x="${fx + 30}" y="${D - 24}" font-size="26" font-weight="700" letter-spacing="6" fill="#FAF9F5" opacity="0.22">OPEN DESKS</text>`;
 
     // CEO furniture + glass
     furn += glass(fx, 0, fx, 425, 74, [0.55, 0.8]) + glass(fx, 425, W, 425, 74) +
@@ -149,15 +158,16 @@
     furn += use('plant', fx + 40, 500);
     furn += `<g transform="${onPlaneY(fx + 110, 435, 48)}"><rect x="0" y="-12" width="190" height="20" rx="4" fill="#141413" stroke="#9FD0D6" stroke-width="1.2"/><text x="95" y="2" text-anchor="middle" font-size="10" font-weight="700" letter-spacing="2.5" fill="#9FD0D6">MESSENGER</text></g>`;
 
-    // Café bar + tables
+    // Café bar + tables (bar at top, 7 round tables scattered through the extended café)
     furn += box(fx + 40, 580, fx + 400, 615, 38, WOOD) + box(fx + 40, 580, fx + 400, 615, 3, ['#C9A984', '#A9744C', '#8A5E3C'], 38) +
       box(fx + 60, 585, fx + 90, 605, 28, ['#55534D', '#3A3935', '#232320'], 41) + use('cup', fx + 300, 595, '', 41);
-    for (const [x, y] of [[fx + 115, 735], [fx + 295, 735], [fx + 205, 835], [fx + 115, 935], [fx + 295, 935]])
+    for (const [x, y] of [[fx + 90, 710],[fx + 330, 710],[fx + 210, 830],[fx + 90, 1000],[fx + 330, 1000],[fx + 210, 1200],[fx + 90, 1420],[fx + 330, 1420]])
       furn += use('table', x, y) + use('cup', x - 6, y, '', 24);
-    furn += use('lamp', fx + 115, 735) + use('lamp', fx + 295, 735) + use('lamp', fx + 205, 835);
-    furn += glass(fx, 1035, W, 1035, 40, [0.4, 0.6]);
+    furn += use('lamp', fx + 90, 710) + use('lamp', fx + 330, 710) + use('lamp', fx + 210, 830) + use('lamp', fx + 210, 1200);
+    furn += use('tallplant', fx + 390, 1600) + use('plant', fx + 30, 1580);
+    furn += glass(fx, 1660, W, 1660, 40, [0.4, 0.6]);
     const hot = [], hotXY = [];
-    for (let y = 1155; y < D - 60; y += 140) hotXY.push([fx + 130, y], [fx + 310, y]);
+    for (let y = 1740; y < D - 60; y += 140) hotXY.push([fx + 130, y], [fx + 310, y]);
     for (const [x, y] of hotXY) { hot.push(desksF.length); desksF.push([x, y]); deskRoom.push(-1); }
 
     // walls, windows, clock, task board
