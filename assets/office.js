@@ -10,6 +10,7 @@
   const colorOf = (k) => PAL[hash(k) % PAL.length];
   const TRIG = { webhook: 'Runs when called (webhook)', chat: 'Chat trigger', telegram: 'Telegram bot', schedule: 'Runs on a schedule', form: 'Form', helper: 'Helper for other agents', alarm: 'Error alarm', app: 'App trigger', manual: 'Manual only' };
   const STATUS = { working: 'Working', idle: 'Resting · ready', help: 'Needs help · last run failed', off: 'Off duty · turned off in n8n' };
+  const fromTxt = (s) => s ? String(s).split(',').map(Number).filter(Boolean) : [];
   const ago = (t) => { if (!t) return '—'; const s = (Date.now() - Date.parse(t)) / 1000; return s < 60 ? 'just now' : s < 3600 ? Math.round(s / 60) + ' min ago' : s < 86400 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' days ago'; };
   const dur = (ms) => (ms == null || isNaN(ms) ? '' : ms < 1000 ? (ms / 1000).toFixed(1) + 's' : ms < 60000 ? Math.round(ms / 1000) + 's' : Math.floor(ms / 60000) + 'm ' + Math.round((ms % 60000) / 1000) + 's');
   const hhmm = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -265,14 +266,16 @@
       const allowed = new Set((D.access_depts || []).map(Number));
       // CEO always dimmed + no interaction for clients
       svg.querySelectorAll('.ceo-g').forEach((el) => { el.setAttribute('opacity','0.18'); el.setAttribute('pointer-events','none'); el.removeAttribute('tabindex'); });
-      // rooms + leads: only allowed depts are interactive
+      // rooms + leads: only allowed depts are lit + interactive
       svg.querySelectorAll('.lead-slot,.room-screen,.room-floor,.room-name,.add-room,.lead').forEach((el) => {
         const roomIdx = el.dataset.room !== undefined ? Number(el.dataset.room) : null;
         const deptId = el.dataset.dept ? Number(el.dataset.dept) : (roomIdx !== null ? D.departments[roomIdx]?.id : null);
         const mine = allowed.size > 0 && allowed.has(deptId);
-        el.setAttribute('opacity', mine ? '1' : '0.18');
+        el.setAttribute('opacity', mine ? '1' : '0.08');
         el.setAttribute('pointer-events', mine ? 'auto' : 'none');
         if (!mine) el.removeAttribute('tabindex'); else el.setAttribute('tabindex','0');
+        // dim the room floor colour to near-black for locked rooms
+        if (el.classList.contains('room-floor') && !mine) el.setAttribute('fill', '#111115');
       });
       // agents: always dim + no click, but keep visible so names show on hover
       svg.querySelectorAll('.agent').forEach((el) => {
@@ -609,18 +612,20 @@
     const refresh = async () => {
       try {
         const list = await api('clients');
-        $('#cl-list').innerHTML = list.length ? list.map((c) => `
-          <details class="item" style="display:block">
+        $('#cl-list').innerHTML = list.length ? list.map((c) => {
+          const deptsArr = Array.isArray(c.access_depts) ? c.access_depts : fromTxt(String(c.access_depts || ''));
+          const names = c.dept_names ? (Array.isArray(c.dept_names) ? c.dept_names.join(', ') : String(c.dept_names)) : 'No access';
+          return `<details class="item" style="display:block">
             <summary style="cursor:pointer;display:flex;align-items:center;gap:8px">
-              <span class="grow"><b>${esc(c.email)}</b><small class="muted"> · ${c.dept_names?.length ? c.dept_names.join(', ') : 'No access'}</small></span>
+              <span class="grow"><b>${esc(c.email)}</b><small class="muted"> · ${esc(names)}</small></span>
               <button class="btn danger" type="button" data-del-client="${esc(c.email)}" style="flex:none">Remove</button>
             </summary>
             <div style="margin-top:10px">
               <p class="label">Edit access</p>
-              <div class="checks">${deptChecks((c.access_depts || []))}</div>
+              <div class="checks">${deptChecks(deptsArr)}</div>
               <button class="btn primary" type="button" data-save-client="${esc(c.email)}" style="margin-top:8px">Save access</button>
             </div>
-          </details>`).join('') : '<p class="empty">No client accounts yet.</p>';
+          </details>`;}).join('') : '<p class="empty">No client accounts yet.</p>';
       } catch (x) { $('#cl-list').innerHTML = `<p class="empty">${esc(x.message)}</p>`; }
     };
     refresh();
