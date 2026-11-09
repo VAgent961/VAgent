@@ -22,6 +22,8 @@
 ## Agent key + status
 - Agent key = `<instanceId>:<workflowId>`.
 - Status: `working` (running execution) → desk · `idle` (active) → café · `off` (inactive) → café, asleep · `help` (last run failed <24h) → red mark.
+- Calls to agent webhooks carry header `X-VAgent-Secret` (secret WEBHOOK_SECRET); protect webhooks in n8n with Header Auth "VAgent office secret".
+- Office Helper (n8n workflow ESroHEmOT74IkcBr on hassan.vagent.online): POST /webhook/office-helper → AI Helper → {output}. Example agent for chat + tasks.
 - Runnable = has a Webhook trigger with a static path (production URL `<base>/webhook/<path>`). Chat + tasks use it.
 
 ## DB tables (Neon)
@@ -35,4 +37,6 @@
 - Migrate: `DATABASE_URL="$(cat ~/agent-tools/.neon-vagent-url)" node scripts/migrate.mjs`
 - Deploy: `./scripts/deploy.sh` → https://vagent.pages.dev
 - Responsive check: `node ~/agent-tools/site-checker/resp-test.js index.html`
-- Secrets: `node ~/agent-tools/cf-pages-secrets.js vagent` (sets DATABASE_URL, SESSION_SECRET, ENC_KEY)
+- Secrets: `node ~/agent-tools/cf-pages-secrets.js vagent` (DATABASE_URL, SESSION_SECRET, ENC_KEY, WEBHOOK_SECRET; values kept in ~/agent-tools/.vagent-*)
+- API test: `~/agent-tools/vagent-api.sh office | head -c 600` (signs in as hassan)
+- Visual test: `node ~/agent-tools/site-checker/office-shot.js` → /tmp/office-desktop.png, /tmp/office-phone.png
