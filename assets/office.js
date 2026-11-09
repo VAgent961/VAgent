@@ -185,8 +185,8 @@
         const w = Math.min(label.length, 24) * 6.5 + 26;
         const body = leadA
           ? `<g transform="scale(1.15)"><use href="#bot" style="color:${colorOf(leadA.key)}"/></g><g class="tag" transform="translate(0 -100)"><rect x="${-w / 2}" y="-12" width="${w}" height="22" rx="11" fill="${d.color}" stroke="${d.color}"/><text y="3" text-anchor="middle" fill="#141413" font-weight="600">${esc(label)}</text></g>`
-          : `<g transform="scale(1.15)"><use href="#lead" style="color:${d.color}"/></g><g class="tag" transform="translate(0 -84)"><rect x="${-w / 2}" y="-12" width="${w}" height="22" rx="11" fill="#FAF9F5" stroke="#D8D5CB"/><text y="3" text-anchor="middle" fill="#141413">${esc(label)}</text></g>`;
-        slot.innerHTML = `<g class="lead" tabindex="0" role="button" data-dept="${d.id}" aria-label="${esc(label)}">${body}</g>`;
+          : `<g transform="scale(1.15)" opacity="0.35"><use href="#lead" style="color:${d.color}"/></g><g class="tag" transform="translate(0 -84)"><rect x="-62" y="-12" width="124" height="22" rx="11" fill="#FAF9F5" stroke="#B5532F" stroke-dasharray="4 3"/><text y="3" text-anchor="middle" fill="#B5532F">⭐ Set a lead</text></g>`;
+        slot.innerHTML = `<g class="lead" tabindex="0" role="button" data-dept="${d.id}" aria-label="${d.lead_key ? esc(label) : 'Set a lead for ' + esc(d.name)}">${body}</g>`;
       } else {
         slot.innerHTML = `<g class="add-room" tabindex="0" role="button" aria-label="Add a department"><g class="tag" transform="translate(0 -24)"><rect x="-56" y="-12" width="112" height="22" rx="11" fill="#FAF9F5" stroke="#B0AEA5" stroke-dasharray="4 3"/><text y="3" text-anchor="middle" fill="#5E5D59">+ Department</text></g></g>`;
       }
