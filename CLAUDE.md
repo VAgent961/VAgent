@@ -3,9 +3,11 @@
 Company website for **VAgent**, live at https://vagent.online.
 
 ## How it works
-- Plain static site: `index.html` plus image files. No framework, no build step, no npm.
-- Hosted free on **Cloudflare Pages**, connected to this GitHub repo.
-- **Every push to `main` deploys to production automatically** (live about 1 minute later). Treat a push to `main` as a release.
+- Static pages (`index.html` sign-in, `office.html`) + Cloudflare Pages Functions in `functions/` (no npm, no build step).
+- Auth: `functions/api/login.js` checks owners in Neon table `vagent_owners` (PBKDF2 hashes), sets a signed HttpOnly cookie `va_session`. `functions/_middleware.js` protects `/office`. Wrong tries logged in `vagent_login_fails` (10 per 15 min).
+- Secrets live only in Cloudflare (Pages project `vagent`): `DATABASE_URL`, `SESSION_SECRET`. Never commit them.
+- Add/reset owners: `DATABASE_URL=... OWNER_PASSWORD=... node scripts/create-owners.mjs email1 email2`.
+- Deploy: `./scripts/deploy.sh` (uploads to Cloudflare Pages project `vagent`, live at https://vagent.pages.dev). Push to GitHub `VAgent961/VAgent` too.
 
 ## Brand
 - Logo: `logo.png` (teal rounded square, dark "V" with a dot). Use it as the logo everywhere.
