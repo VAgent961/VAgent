@@ -41,7 +41,8 @@
         <button type="button" data-f="help" aria-pressed="false"><i class="sd help"></i>Help <b id="n-help">0</b></button>
         <button type="button" data-f="off" aria-pressed="false"><i class="sd off"></i>Off <b id="n-off">0</b></button>
       </div>
-      <label class="search"><span class="sr">Search agents</span><input id="q" type="search" placeholder="Search agents" autocomplete="off"></label>
+      <select id="inst" class="input" aria-label="Whose agents" hidden></select>
+      <label class="search"><span class="sr">Search agents</span><input id="q" type="search" placeholder="Search agents  ( / )" autocomplete="off"></label>
       <div id="list" class="list"></div>
       <details class="activity">
         <summary>Recent activity</summary>

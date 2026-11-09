@@ -17,7 +17,8 @@ export async function onRequestGet({ request, env }) {
   const ex = await call(env, inst, '/executions?limit=10&workflowId=' + encodeURIComponent(wfId));
   const runs = (ex.data || []).map((r) => ({ id: r.id, status: r.status, mode: r.mode, startedAt: r.startedAt, stoppedAt: r.stoppedAt }));
   const [m] = await sql(env, 'SELECT dept_id FROM vagent_agent_meta WHERE key = $1', [key]);
-  return json({ key, name: wf.name, trigger: wf.trigger, active: wf.active, runnable: !!wf.webhook, method: wf.webhook?.method || null, steps: wf.steps, runs, status: statusOf(wf, ex.data || []).status, dept: m ? m.dept_id : null, link: inst.base_url + '/workflow/' + wfId, inst: inst.label });
+  const [nm] = await sql(env, 'SELECT nickname FROM vagent_agent_meta WHERE key = $1', [key]);
+  return json({ key, name: (nm && nm.nickname) || wf.name, realName: wf.name, trigger: wf.trigger, active: wf.active, runnable: !!wf.webhook, method: wf.webhook?.method || null, steps: wf.steps, runs, status: statusOf(wf, ex.data || []).status, dept: m ? m.dept_id : null, link: inst.base_url + '/workflow/' + wfId, inst: inst.label });
 }
 
 // POST /api/agent {key, action: run|activate|deactivate|assign, message?, deptId?}
@@ -26,6 +27,11 @@ export async function onRequestPost({ request, env, data }) {
   if (b.action === 'assign') {
     const dept = b.deptId ? Number(b.deptId) : null;
     await sql(env, 'INSERT INTO vagent_agent_meta (key, dept_id) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET dept_id = EXCLUDED.dept_id', [String(b.key), dept]);
+    return json({ ok: true });
+  }
+  if (b.action === 'rename') {
+    const nick = String(b.name || '').trim().slice(0, 40) || null;
+    await sql(env, 'INSERT INTO vagent_agent_meta (key, nickname) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET nickname = EXCLUDED.nickname', [String(b.key), nick]);
     return json({ ok: true });
   }
   const { inst, wf, wfId } = await load(env, b.key);

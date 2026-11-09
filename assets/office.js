@@ -141,26 +141,32 @@
     $('#board-line').textContent = A.length ? working.length + ' working · ' + cafe.length + ' in café' : 'Connect n8n to start';
     $('#n-all').textContent = A.length; $('#n-off').textContent = off.length;
     const notes = [];
-    if (!D.instances.length) notes.push('<button class="chip warn" type="button" data-open="settings">Connect your n8n to fill the office →</button>');
+    if (!D.instances.some((i) => i.owner === D.me)) notes.push('<button class="chip hello" type="button" data-open="connect"><b>Bring your agents in</b><span>Connect your n8n in 3 quick steps →</span></button>');
     for (const e of D.errors) notes.push(`<button class="chip warn" type="button" data-open="settings">Can't reach ${esc(e.inst)} · check its API key →</button>`);
     if (over.length) notes.push(`<button class="chip" type="button" data-open="over">+${over.length} agents don't fit in the office →</button>`);
     $('#notice').innerHTML = notes.length ? '<div class="notice">' + notes.join('') + '</div>' : ''; render.over = over;
     $('#feed').innerHTML = D.activity.slice(0, 12).map((e) => `<li><i class="sd ${e.status}"></i><time>${hhmm(e.at)}</time><span>${esc(e.name)} ${e.status === 'success' ? 'finished' : e.status === 'running' ? 'is working' : /error|crashed/.test(e.status) ? 'failed' : e.status}</span></li>`).join('') || '<li>No runs yet.</li>';
+    const sel = $('#inst'); sel.hidden = D.instances.length < 2; sel.innerHTML = '<option value="">Everyone\'s agents</option>' + D.instances.map((i) => `<option value="${i.id}" ${String(i.id) === inst ? 'selected' : ''}>${esc(i.label)}</option>`).join('');
+    if (prevStatus) for (const a of A) if (a.status === 'help' && prevStatus[a.key] && prevStatus[a.key] !== 'help') toast('⚠ ' + a.name + ' needs help: its last run failed');
+    prevStatus = Object.fromEntries(A.map((a) => [a.key, a.status]));
+    document.title = (help ? '(' + help + ') ' : '') + 'VAgent HQ · Office';
     renderList();
     first = false;
   }
   const dotColor = { working: '#3F7D4E', help: '#B3261E', idle: '#B5532F', off: '#B0AEA5' };
   const itemAgent = (a) => `<button class="item" type="button" data-agent="${esc(a.key)}"><span class="sd ${a.status}"></span><span class="grow"><b>${esc(a.name)}</b><small>${esc(STATUS[a.status])} · ${esc(a.inst)}</small></span><span aria-hidden="true">›</span></button>`;
 
-  let filter = 'all', q = '';
+  let filter = 'all', q = '', inst = '', prevStatus = null;
   const groups = { all: () => true, working: (a) => a.status === 'working', cafe: (a) => a.status === 'idle', help: (a) => a.status === 'help', off: (a) => a.status === 'off' };
   function renderList() {
     const order = { working: 0, help: 1, idle: 2, off: 3 }, s = q.toLowerCase();
-    const list = D.agents.filter(groups[filter]).filter((a) => !s || (a.name + ' ' + a.inst).toLowerCase().includes(s)).sort((a, b) => order[a.status] - order[b.status] || a.name.localeCompare(b.name));
+    const list = D.agents.filter(groups[filter]).filter((a) => !inst || String(a.instId) === inst).filter((a) => !s || (a.name + ' ' + a.inst).toLowerCase().includes(s)).sort((a, b) => order[a.status] - order[b.status] || a.name.localeCompare(b.name));
     $('#list').innerHTML = list.map(itemAgent).join('') || (D.agents.length ? '<p class="empty">No agents match.</p>' : '<p class="empty">No agents yet. Open settings and connect your n8n.</p>');
   }
   document.querySelectorAll('.filters button').forEach((b) => (b.onclick = () => { filter = b.dataset.f; document.querySelectorAll('.filters button').forEach((x) => x.setAttribute('aria-pressed', x === b)); renderList(); }));
   $('#q').oninput = (e) => { q = e.target.value; renderList(); };
+  $('#inst').onchange = (e) => { inst = e.target.value; renderList(); };
+  document.addEventListener('keydown', (e) => { if (e.key === '/' && !e.target.closest('input,textarea,select')) { e.preventDefault(); $('#q').focus(); } });
   // find an agent in the office: zoom to it and make its tag pulse
   function focusAgent(key) {
     const g = els[key]; if (!g || !g._pos) return;
@@ -186,11 +192,11 @@
 
   async function openAgent(key) {
     const a = D.agents.find((x) => x.key === key); if (!a) return;
-    const head = `<div class="d-head"><span class="avatar">${botSvg(colorOf(key))}</span><div><h2 class="d-title">${esc(a.name)}</h2><div class="status ${a.status}">● ${esc(STATUS[a.status])}${a.status === 'working' && a.startedAt ? ' · for ' + dur(Date.now() - Date.parse(a.startedAt)) : ''}</div><div class="d-sub">${esc(TRIG[a.trigger] || a.trigger)} · ${esc(a.inst)} · ${a.runs24} runs today</div></div></div>`;
+    const head = `<div class="d-head"><span class="avatar">${botSvg(colorOf(key))}</span><div><h2 class="d-title">${esc(a.name)} <button class="rename" type="button" id="rename" aria-label="Rename" title="Rename">✎</button></h2><div class="status ${a.status}">● ${esc(STATUS[a.status])}${a.status === 'working' && a.startedAt ? ' · for ' + dur(Date.now() - Date.parse(a.startedAt)) : ''}</div><div class="d-sub">${esc(TRIG[a.trigger] || a.trigger)} · ${esc(a.inst)} · ${a.runs24} runs today</div></div></div>`;
     open(head + '<p class="empty">Loading its work…</p>', 'agent:' + key);
     let d; try { d = await api('agent?key=' + encodeURIComponent(key)); } catch (e) { inner.innerHTML = head + `<p class="empty">${esc(e.message)}</p>`; return; }
     if (current !== 'agent:' + key) return;
-    const runs = d.runs.map((r) => `<li><span class="sd ${r.status}"></span><span class="when">${r.status === 'running' ? 'Running now' : esc(r.status === 'success' ? 'Finished' : r.status)} · ${ago(r.stoppedAt || r.startedAt)}</span><span class="dur">${r.stoppedAt ? dur(Date.parse(r.stoppedAt) - Date.parse(r.startedAt)) : ''}</span></li>`).join('') || '<li class="empty">No runs yet.</li>';
+    const runs = d.runs.map((r) => `<li><span class="sd ${r.status}"></span><span class="when">${r.status === 'running' ? 'Running now' : esc(r.status === 'success' ? 'Finished' : r.status)} · ${ago(r.stoppedAt || r.startedAt)}</span><span class="dur">${r.stoppedAt ? dur(Date.parse(r.stoppedAt) - Date.parse(r.startedAt)) : ''}</span><a class="see" href="${esc(d.link)}/executions/${r.id}" target="_blank" rel="noopener" aria-label="See this run in n8n">${/error|crashed/.test(r.status) ? 'See why ↗' : '↗'}</a></li>`).join('') || '<li class="empty">No runs yet.</li>';
     const steps = d.steps.slice(0, 10).map((s) => `<li>${esc(s)}</li>`).join('') + (d.steps.length > 10 ? `<li>+${d.steps.length - 10} more steps</li>` : '');
     const opts = '<option value="">No department</option>' + D.departments.map((x) => `<option value="${x.id}" ${x.id === d.dept ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
     const talk = d.runnable
@@ -204,6 +210,8 @@
       + `<details class="more" open><summary>Recent runs</summary><ul class="runs">${runs}</ul></details>`
       + `<div class="row"><a class="btn" href="${esc(d.link)}" target="_blank" rel="noopener">Open in n8n</a><button class="btn ${d.active ? 'danger' : ''}" type="button" id="toggle">${d.active ? 'Turn off' : 'Turn on'}</button></div>`
       + `<p class="help">Watching costs no AI: status and runs come straight from n8n.</p>`;
+    const rn = () => { const n = prompt('New name for this agent (empty = its n8n name):', d.name); if (n === null) return; api('agent', { body: { key, action: 'rename', name: n } }).then(async () => { toast('Renamed'); await load(); openAgent(key); }).catch((x) => toast(x.message)); };
+    $('#rename').onclick = rn;
     $('#dept').onchange = async (e) => { try { await api('agent', { body: { key, action: 'assign', deptId: e.target.value || null } }); toast('Saved'); load(); } catch (x) { toast(x.message); } };
     $('#toggle').onclick = async () => {
       if (!confirm(d.active ? 'Turn off "' + d.name + '"? Its trigger stops until you turn it on again.' : 'Turn on "' + d.name + '"?')) return;
@@ -260,22 +268,48 @@
     $('#f-new').onsubmit = async (e) => { e.preventDefault(); try { const d = await api('departments', { body: { name: e.target.n.value, color } }); await load(); openDept(d.id); } catch (x) { toast(x.message); } };
   }
 
+  // ---------- connect an n8n: 3 simple steps ----------
+  const TEAM = ['hassan', 'fayez', 'aabdallah'].map((s) => 'https://' + s + '.vagent.online');
+  const myName = () => (D.me || '').split('@')[0].replace(/^./, (c) => c.toUpperCase());
+  function openConnect(pre) {
+    const taken = new Set(D.instances.map((i) => i.url));
+    const free = TEAM.filter((u) => !taken.has(u));
+    let url = pre || free.find((u) => u.includes((D.me || '').split('@')[0].slice(0, 4))) || '';
+    open(`<h2 class="d-title">Connect your n8n</h2><p class="help" style="font-size:14px">3 quick steps. After this, all your workflows walk into the office as agents.</p>
+      <form id="f-n8n" class="steps-form" autocomplete="off">
+        <div class="step"><span class="num">1</span><div class="field" style="flex:1"><label for="nu">Which n8n is yours?</label>
+          ${free.length ? `<div class="row">${free.map((u) => `<button type="button" class="pick" data-u="${u}" aria-pressed="${u === url}">${u.replace('https://', '')}</button>`).join('')}</div>` : ''}
+          <input class="input" id="nu" name="url" inputmode="url" placeholder="name.vagent.online" value="${esc(url.replace('https://', ''))}" required></div></div>
+        <div class="step"><span class="num">2</span><div class="field" style="flex:1"><span style="font-size:14px;font-weight:500">Make a key in n8n</span>
+          <a class="btn" id="open-api" href="#" target="_blank" rel="noopener">Open my n8n API page ↗</a>
+          <p class="help">In the page that opens, click <b>Create an API key</b>, name it "VAgent", and copy the key.</p></div></div>
+        <div class="step"><span class="num">3</span><div class="field" style="flex:1"><label for="nk">Paste the key</label>
+          <input class="input" id="nk" name="key" type="password" placeholder="Paste here" required autocomplete="new-password">
+          <p class="help">Saved encrypted. Only the server uses it, never shown again.</p></div></div>
+        <button class="btn primary" type="submit" style="min-height:50px">Connect and bring my agents in</button>
+        <p class="help" id="conn-msg" role="alert"></p>
+      </form>`, 'connect');
+    const f = $('#f-n8n'), link = $('#open-api');
+    const sync = () => { const v = f.url.value.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, ''); link.href = v ? 'https://' + v + '/settings/api' : '#'; link.toggleAttribute('aria-disabled', !v); };
+    sync(); f.url.oninput = sync;
+    inner.querySelectorAll('.pick').forEach((b) => (b.onclick = () => { f.url.value = b.dataset.u.replace('https://', ''); inner.querySelectorAll('.pick').forEach((x) => x.setAttribute('aria-pressed', x === b)); sync(); f.key.focus(); }));
+    link.onclick = (e) => { if (link.getAttribute('href') === '#') { e.preventDefault(); f.url.focus(); } };
+    f.onsubmit = async (e) => {
+      e.preventDefault(); const b = f.querySelector('button[type=submit]'); b.disabled = true; b.textContent = 'Connecting…'; $('#conn-msg').textContent = '';
+      try {
+        const host = f.url.value.trim().replace(/^https?:\/\//, '').split('/')[0];
+        const r = await api('n8n', { body: { label: myName() + "'s n8n", url: host, key: f.key.value } });
+        close(); toast('Connected · ' + r.workflows + ' agents are walking in'); load();
+      } catch (x) { $('#conn-msg').textContent = x.message; $('#conn-msg').style.color = '#B3261E'; b.disabled = false; b.textContent = 'Connect and bring my agents in'; }
+    };
+  }
+
   function openSettings() {
     open(`<h2 class="d-title">Settings</h2>
-      <p class="label">Connected n8n</p><div class="items">${D.instances.map((i) => { const er = D.errors.find((e) => e.id === i.id); return `<div class="item" style="cursor:default"><span class="grow"><b>${esc(i.label)}</b><small>${esc(i.url)} · added by ${esc((i.owner || '').split('@')[0])}${er ? ' · <span style="color:#B3261E">' + esc(er.error) + '</span>' : ''}</small></span><button class="btn danger" type="button" data-del-n8n="${i.id}">Remove</button></div>`; }).join('') || '<p class="empty">Nothing connected yet.</p>'}</div>
-      <form id="f-n8n" class="field" autocomplete="off"><span class="label" style="margin-top:6px">Connect an n8n</span>
-        <label for="nl">Name</label><input class="input" id="nl" name="label" placeholder="Fayez's n8n" required maxlength="40" ${D.instances.length ? '' : 'autofocus'}>
-        <label for="nu">n8n address</label><input class="input" id="nu" name="url" type="url" placeholder="https://fayez.vagent.online" required>
-        <label for="nk">API key</label><input class="input" id="nk" name="key" type="password" placeholder="Paste the n8n API key" required autocomplete="new-password">
-        <p class="help">In n8n: Settings → n8n API → Create an API key. It is saved encrypted and only the server uses it. Every owner sees all agents.</p>
-        <button class="btn primary" type="submit">Connect</button></form>
-      <p class="label">Departments</p><div class="items">${D.departments.map((d) => `<button class="item" type="button" data-dept="${d.id}"><span class="sd" style="width:12px;height:12px;border-radius:50%;background:${d.color}"></span><span class="grow"><b>${esc(d.name)}</b></span>›</button>`).join('')}<button class="btn" type="button" data-open="new-dept">+ New department</button></div>
-      <p class="label">Account</p><div class="row" style="align-items:center"><span class="grow muted" style="flex:1;font-size:14px">Signed in as ${esc(D.me)}</span><form method="post" action="/api/logout"><button class="btn" type="submit">Sign out</button></form></div>`, 'settings');
-    $('#f-n8n').onsubmit = async (e) => {
-      e.preventDefault(); const f = e.target, b = f.querySelector('button[type=submit]'); b.disabled = true;
-      try { const r = await api('n8n', { body: { label: f.label.value, url: f.url.value, key: f.key.value } }); toast('Connected · ' + r.workflows + ' workflows found'); await load(); openSettings(); }
-      catch (x) { toast(x.message); b.disabled = false; }
-    };
+      <p class="label">Connected n8n</p><div class="items">${D.instances.map((i) => { const er = D.errors.find((e) => e.id === i.id); return `<div class="item" style="cursor:default"><span class="sd ${er ? 'help' : 'working'}"></span><span class="grow"><b>${esc(i.label)}</b><small>${esc(i.url.replace('https://', ''))} · ${D.agents.filter((a) => a.instId === i.id).length} agents${er ? ' · <span style="color:#B3261E">' + esc(er.error) + '</span>' : ''}</small></span><button class="btn" type="button" data-reconnect="${esc(i.url)}">${er ? 'Fix key' : 'New key'}</button><button class="btn icon danger" type="button" data-del-n8n="${i.id}" aria-label="Remove ${esc(i.label)}">✕</button></div>`; }).join('') || '<p class="empty">Nothing connected yet.</p>'}
+      <button class="btn primary" type="button" data-open="connect">+ Connect an n8n</button></div>
+      <p class="label">Departments</p><div class="items">${D.departments.map((d) => `<button class="item" type="button" data-dept="${d.id}"><span class="sd" style="background:${d.color}"></span><span class="grow"><b>${esc(d.name)}</b><small>${D.agents.filter((a) => a.dept === d.id).length} agents</small></span>›</button>`).join('')}<button class="btn" type="button" data-open="new-dept">+ New department</button></div>
+      <p class="label">Account</p><div class="row" style="align-items:center"><span class="muted" style="flex:1;font-size:14px">Signed in as ${esc(D.me)}</span><form method="post" action="/api/logout"><button class="btn" type="submit">Sign out</button></form></div>`, 'settings');
   }
 
   function openList(kind) {
@@ -289,7 +323,7 @@
 
   // ---------- events ----------
   document.addEventListener('click', async (e) => {
-    const t = e.target.closest('[data-agent],[data-dept],[data-dept-task],[data-open],[data-del-n8n],.agent,.lead,.add-room');
+    const t = e.target.closest('[data-agent],[data-dept],[data-dept-task],[data-open],[data-del-n8n],[data-reconnect],.agent,.lead,.add-room');
     if (!t) return;
     if (t.classList.contains('agent')) return openAgent(t.dataset.key);
     if (t.classList.contains('lead')) return openDept(t.dataset.dept);
@@ -297,8 +331,9 @@
     if (t.dataset.agent) { focusAgent(t.dataset.agent); return openAgent(t.dataset.agent); }
     if (t.dataset.deptTask) return openDept(t.dataset.deptTask, true);
     if (t.dataset.dept) return openDept(t.dataset.dept);
+    if (t.dataset.reconnect) return openConnect(t.dataset.reconnect);
     if (t.dataset.delN8n) { if (!confirm('Remove this n8n? Its agents leave the office (nothing is deleted in n8n).')) return; await api('n8n?id=' + t.dataset.delN8n, { method: 'DELETE' }); await load(); return openSettings(); }
-    const o = t.dataset.open; if (o === 'settings') openSettings(); else if (o === 'new-dept') newDept(); else if (o === 'off' || o === 'over') openList(o);
+    const o = t.dataset.open; if (o === 'connect') openConnect(); else if (o === 'settings') openSettings(); else if (o === 'new-dept') newDept(); else if (o === 'off' || o === 'over') openList(o);
   });
   svg.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.agent,.lead,.add-room')) { e.preventDefault(); e.target.closest('.agent,.lead,.add-room').dispatchEvent(new MouseEvent('click', { bubbles: true })); } });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && current) close(); });

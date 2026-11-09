@@ -6,15 +6,15 @@
 - `assets/office.css` — office styles (layout, drawers, mobile).
 - `assets/scene.js` — static isometric SVG, floor 1300x900: 24 desks, 16 café spots, 6 lead rooms, VScene.vb = default view. No logic.
 - `assets/nozoom.js` — blocks browser zoom everywhere (both pages); only the office scene zooms (handled in office.js).
-- `assets/office.js` — app logic: polling /api/office, placing agents, GSAP walking, zoom/pan of the scene (viewBox), drawers (agent, department, settings, tasks).
+- `assets/office.js` — app logic: polling /api/office, placing agents, GSAP walking, zoom/pan of the scene (viewBox), drawers (agent, department, settings, tasks), 3-step "Connect your n8n" wizard (openConnect), owner filter, "/" search, failure toasts.
 - `functions/_lib.js` — sql() over Neon HTTPS, password check, signed session cookie, AES-GCM encrypt/decrypt, json().
 - `functions/_n8n.js` — n8n helpers: instances(), call(), workflow summaries (cached in DB 2 min), classify status.
 - `functions/_middleware.js` — guards /office and /api/* (sets `data.owner`); signed-in users skip sign-in page.
 - `functions/api/login.js` · `logout.js` — sign in/out.
 - `functions/api/me.js` — GET current owner.
-- `functions/api/n8n.js` — GET list / POST connect {label,url,key} / DELETE ?id= (n8n instances).
+- `functions/api/n8n.js` — GET list / POST connect {url (with or without https), key, label?} with friendly errors / DELETE ?id= (n8n instances).
 - `functions/api/office.js` — GET everything the office needs: agents, departments, activity, instance errors.
-- `functions/api/agent.js` — GET ?key= details (runs, steps) / POST {key, action: run|activate|deactivate|assign, message?, deptId?}.
+- `functions/api/agent.js` — GET ?key= details (runs, steps) / POST {key, action: run|activate|deactivate|assign|rename, message?, deptId?, name?}.
 - `functions/api/departments.js` — GET / POST {name,color} / DELETE ?id=.
 - `functions/api/tasks.js` — GET ?deptId= / POST {deptId,text}: runs the department's webhook agents, combines one result.
 - `scripts/migrate.mjs` — creates/updates all DB tables. `scripts/create-owners.mjs` — add/reset owners.

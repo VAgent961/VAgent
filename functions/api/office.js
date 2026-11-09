@@ -19,7 +19,7 @@ export async function onRequestGet({ env, data }) {
         names[w.id] = w.name;
         const runs = byWf[w.id] || [], st = statusOf(w, runs), key = inst.id + ':' + w.id, m = metaBy[key] || {};
         agents.push({
-          key, name: m.nickname || w.name, inst: inst.label, owner: inst.owner_email, link: inst.base_url + '/workflow/' + w.id,
+          key, name: m.nickname || w.name, inst: inst.label, instId: inst.id, owner: inst.owner_email, link: inst.base_url + '/workflow/' + w.id,
           active: w.active, status: st.status, trigger: w.trigger, runnable: !!w.webhook, startedAt: st.running?.startedAt || null,
           last: st.last ? { status: st.last.status, at: st.last.stoppedAt, ms: Date.parse(st.last.stoppedAt) - Date.parse(st.last.startedAt) } : null,
           runs24: runs.filter((r) => Date.now() - Date.parse(r.startedAt) < 864e5).length, dept: m.dept_id ?? null,
