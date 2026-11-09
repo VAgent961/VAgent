@@ -11,7 +11,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 /* top bar */
 .top{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px 0 20px;background:var(--cream);border-bottom:1px solid var(--line);z-index:3}
 .logo{display:flex;align-items:center;gap:10px;min-width:0}
-.mark{width:32px;height:32px;border-radius:9px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex:none}
+.mark{width:32px;height:32px;border-radius:9px;display:block;flex:none;object-fit:cover}
 .name{font-family:Newsreader,Georgia,serif;font-size:22px;letter-spacing:-.01em;white-space:nowrap}
 .live{display:inline-flex;align-items:center;gap:6px;margin-left:8px;font-size:12px;color:var(--muted);white-space:nowrap}
 .dot{width:7px;height:7px;border-radius:50%;background:#B0AEA5}.dot.on{background:var(--ok)}.dot.err{background:var(--bad)}
