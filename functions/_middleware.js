@@ -1,4 +1,4 @@
-import { readSession, json } from './_lib.js';
+import { readSession, json, sql } from './_lib.js';
 
 // Guards the site: /office and /api/* need an owner session; signed-in owners skip the sign-in page.
 export async function onRequest({ request, env, next, data }) {
@@ -11,7 +11,13 @@ export async function onRequest({ request, env, next, data }) {
   if (isApi && !session) return json({ error: 'Please sign in again.' }, 401);
   if (isOffice && !session) return Response.redirect(new URL('/', request.url).toString(), 302);
   if (isLogin && session) return Response.redirect(new URL('/office', request.url).toString(), 302);
-  if (session) data.owner = session.e;
+  if (session) {
+    data.owner = session.e;
+    try {
+      const rows = await sql(env, 'SELECT role, access_dept FROM vagent_owners WHERE email = $1', [session.e]);
+      data.role = rows[0]?.role || 'owner'; data.access_dept = rows[0]?.access_dept || null;
+    } catch { data.role = 'owner'; data.access_dept = null; }
+  }
   const res = await next();
   const out = new Response(res.body, res);
   out.headers.set('Cache-Control', 'no-store');

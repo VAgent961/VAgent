@@ -19,6 +19,12 @@ export async function sql(env, query, params = []) {
 }
 
 // Password check: stored as pbkdf2$<iterations>$<salt b64>$<hash b64>
+export async function hashPassword(password) {
+  const salt = b64u(crypto.getRandomValues(new Uint8Array(16)));
+  const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: Uint8Array.from(atob(salt), (c) => c.charCodeAt(0)), iterations: 100000 }, key, 256);
+  return 'pbkdf2$100000$' + salt + '$' + b64u(bits);
+}
 export async function checkPassword(password, stored) {
   const [kind, iter, salt, hash] = String(stored || '').split('$');
   if (kind !== 'pbkdf2') return false;

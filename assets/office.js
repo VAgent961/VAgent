@@ -19,7 +19,7 @@
   let first = true, current = null;
 
   async function api(path, opt = {}) {
-    const r = await fetch('/api/' + path, { method: opt.method || (opt.body ? 'POST' : 'GET'), headers: opt.body ? { 'Content-Type': 'application/json' } : {}, body: opt.body ? JSON.stringify(opt.body) : undefined });
+    const r = await fetch('/api/' + path + (opt.query ? '?' + opt.query : ''), { method: opt.method || (opt.body ? 'POST' : 'GET'), headers: opt.body ? { 'Content-Type': 'application/json' } : {}, body: opt.body ? JSON.stringify(opt.body) : undefined });
     if (r.status === 401) { location.href = '/'; throw new Error('Signed out'); }
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || 'Something went wrong');
@@ -73,8 +73,8 @@
   function makeAgent(a) {
     const g = document.createElementNS(NS, 'g');
     g.setAttribute('class', 'agent'); g.setAttribute('tabindex', '0'); g.setAttribute('role', 'button'); g.dataset.key = a.key;
-    const botRef = isHelper(a) ? '#msgbot' : '#bot';
-    g.innerHTML = `<circle class="ring" cy="-30" r="34" fill="none" stroke="${isHelper(a) ? '#9FD0D6' : '#B5532F'}" stroke-width="3"/><g class="body"><use href="${botRef}" style="color:${colorOf(a.key)}"/></g>
+    const botRef = isHelper(a) ? '#msgbot' : a.isLead ? '#bot-lead' : '#bot';
+    g.innerHTML = `<circle class="ring" cy="-30" r="34" fill="none" stroke="${isHelper(a) ? '#9FD0D6' : a.isLead ? '#E9C46A' : '#B5532F'}" stroke-width="3"/><g class="body"><use href="${botRef}" style="color:${colorOf(a.key)}"/></g>
       <g class="props"><g class="p p-book" transform="translate(0 -15)"><rect x="-10" y="-6" width="20" height="13" rx="1.5" fill="#B5532F"/><rect x="-8" y="-4" width="7" height="9" fill="#FAF9F5"/><rect x="1" y="-4" width="7" height="9" fill="#FAF9F5"/></g><g class="p p-pad" transform="translate(0 -14)"><rect x="-11" y="-5" width="22" height="10" rx="5" fill="#F5F5F7" stroke="#141413" stroke-width="1"/><circle cx="-5" cy="0" r="1.8" fill="#3A6EA5"/><circle cx="5" cy="0" r="1.8" fill="#B5532F"/></g><g class="p p-phone" transform="translate(6 -16)"><rect x="-4" y="-7" width="8" height="13" rx="2" fill="#141413"/><rect x="-3" y="-5.5" width="6" height="9" rx="1" fill="#7FB0E0"/></g><g class="p p-mug" transform="translate(9 -16)"><rect x="-4" y="-5" width="8" height="9" rx="2" fill="#FAF9F5"/><path d="M4 -3 q4 1 0 5" stroke="#FAF9F5" stroke-width="1.6" fill="none"/></g><g class="p p-music"><path d="M-18 -46 Q0 -78 18 -46" stroke="#141413" stroke-width="3.5" fill="none"/><rect x="-22" y="-52" width="7" height="12" rx="3" fill="#B5532F"/><rect x="15" y="-52" width="7" height="12" rx="3" fill="#B5532F"/><text class="note" x="20" y="-62" font-size="14" fill="#E7B38F">♪</text></g><g class="p p-rest"><text class="zz" x="16" y="-62" font-size="13" font-weight="700" fill="#A8B8E8">z z</text></g></g><g class="bubble typing" transform="translate(27 -52)"><rect x="-15" y="-10" width="30" height="18" rx="9" fill="#FAF9F5" stroke="#E3E0D5"/><circle cx="-6" cy="-1" r="2.2" fill="#B5532F"/><circle cx="0" cy="-1" r="2.2" fill="#B5532F"/><circle cx="6" cy="-1" r="2.2" fill="#B5532F"/></g>
       <g class="bubble alert" transform="translate(18 -66)"><circle r="8" fill="#B3261E"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">!</text></g>
       <g class="tag" transform="translate(0 -86)"><rect y="-12" height="22" rx="11"/><circle class="tdot" cy="-1" r="3.5"/><text y="3" text-anchor="middle"></text></g>`;
@@ -251,6 +251,19 @@
     }
     for (const k of Object.keys(els)) if (!A.find((a) => a.key === k)) { leave(els[k]); delete els[k]; delete places[k]; }
     renderRooms();
+    // ── client view: dim everything outside access_dept ───────────────────
+    if (D.role === 'client' && D.access_dept) {
+      svg.querySelectorAll('.lead-slot,.room-screen,.room-floor,.room-name,.add-room,.agent,.lead').forEach((el) => {
+        const roomIdx = el.dataset.room !== undefined ? Number(el.dataset.room) : null;
+        const deptId = el.dataset.dept ? Number(el.dataset.dept) : (roomIdx !== null ? D.departments[roomIdx]?.id : null);
+        const agentKey = el.dataset.key;
+        const agentDept = agentKey ? D.agents.find((a) => a.key === agentKey)?.dept : null;
+        const mine = deptId === D.access_dept || agentDept === D.access_dept;
+        el.setAttribute('opacity', mine ? '1' : '0.18');
+        if (!mine) { el.setAttribute('pointer-events','none'); el.removeAttribute('tabindex'); }
+        else { el.setAttribute('pointer-events','auto'); }
+      });
+    }
     const help = A.filter((a) => a.status === 'help').length;
     $('#n-working').textContent = working.length; $('#n-idle').textContent = cafe.length - help; $('#n-help').textContent = help;
     svg.querySelector('#board-bar1').setAttribute('opacity', working.length ? 1 : 0.35); svg.querySelector('#board-bar2').setAttribute('opacity', cafe.length ? 1 : 0.35);
@@ -542,15 +555,49 @@
     try { const h = await api('tasks'); $('#board-list').innerHTML = h.map((t) => `<details class="item" style="display:block"><summary style="cursor:pointer"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(t.color || '#888')}"></span> <b style="font-weight:500">${esc(t.text.slice(0, 80))}</b> <small class="muted">· ${esc(t.dept || 'Deleted department')} · ${esc(t.status)} · ${ago(t.created_at)}</small></summary><div class="result" style="margin-top:8px">${esc(t.final || 'Still working…')}</div></details>`).join('') || '<p class="empty">No tasks yet. Give the first one.</p>'; }
     catch (x) { $('#board-list').innerHTML = `<p class="empty">${esc(x.message)}</p>`; }
   }
+  async function openClients() {
+    const deptOpts = D.departments.map((d) => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
+    open(`<h2 class="d-title">👤 Client Accounts</h2>
+      <p class="help">Each client can log in and see only their department — everything else is dimmed and unclickable.</p>
+      <form id="f-client" class="fields" autocomplete="off">
+        <div class="field"><label>Email</label><input class="input" id="cl-email" type="email" placeholder="client@example.com" required/></div>
+        <div class="field"><label>Password</label><input class="input" id="cl-pass" type="password" placeholder="Set a password" required/></div>
+        <div class="field"><label>Access — department</label><select class="input" id="cl-dept">${deptOpts}</select></div>
+        <button class="btn primary" type="submit">Create account</button>
+      </form>
+      <div class="items" id="cl-list"><p class="empty">Loading…</p></div>`, 'clients');
+    const refresh = async () => {
+      try {
+        const list = await api('clients');
+        $('#cl-list').innerHTML = list.length
+          ? list.map((c) => `<div class="item"><span class="grow"><b>${esc(c.email)}</b><small>${esc(c.dept_name || 'No dept')}</small></span><button class="btn danger" type="button" data-del-client="${esc(c.email)}">Remove</button></div>`).join('')
+          : '<p class="empty">No client accounts yet.</p>';
+      } catch (x) { $('#cl-list').innerHTML = `<p class="empty">${esc(x.message)}</p>`; }
+    };
+    refresh();
+    $('#f-client').onsubmit = async (e) => {
+      e.preventDefault();
+      try {
+        await api('clients', { body: { email: $('#cl-email').value, password: $('#cl-pass').value, access_dept: Number($('#cl-dept').value) } });
+        toast('Account created'); $('#cl-email').value = ''; $('#cl-pass').value = ''; refresh();
+      } catch (x) { toast(x.message); }
+    };
+    inner.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-del-client]'); if (!btn) return;
+      try { await api('clients', { method: 'DELETE', query: 'email=' + encodeURIComponent(btn.dataset.delClient) }); toast('Removed'); refresh(); } catch (x) { toast(x.message); }
+    });
+  }
+
   function openCEO() {
     open(`<div class="d-head"><span class="avatar" style="background:#2B2416"><svg aria-hidden="true" width="44" height="44" viewBox="-26 -78 52 82"><use href="#ceo"/></svg></span><div><h2 class="d-title">The CEO</h2><div class="d-sub">Sees the whole company live. Ask anything, or ask for a change.</div></div></div>
       <div class="row">${['How is the company doing today?', 'Organize everyone into the right departments and teams', 'Which agents failed recently and why?', 'Give a task to ', 'Create a new department for ', 'Write a Claude prompt to add a feature: '].map((s) => `<button class="pick" type="button" ${s.endsWith(' ') ? `data-fill="${esc(s)}"` : `data-say="${esc(s)}"`}>${esc(s.trim())}</button>`).join('')}</div>
       ${chatUI('ceo', 'Ask the CEO anything…')}
       <p class="help">Changes only happen after you press Approve. For new website features he writes a prompt you paste into Claude.</p>
-      <div class="row"><button class="btn" type="button" id="ceo-board">Task board</button><button class="btn" type="button" id="clear-ceo">Clear chat</button></div>`, 'ceo');
+      <div class="row"><button class="btn" type="button" id="ceo-board">Task board</button><button class="btn" type="button" id="ceo-clients">👤 Clients</button><button class="btn" type="button" id="clear-ceo">Clear chat</button></div>`, 'ceo');
     bindChat('ceo', 'The CEO');
     inner.querySelectorAll('[data-fill]').forEach((b) => (b.onclick = () => { const i = $('#cm'); i.value = b.dataset.fill; i.focus(); }));
     $('#ceo-board').onclick = openBoard;
+    $('#ceo-clients').onclick = openClients;
     $('#clear-ceo').onclick = () => { store.set('vagent-ceo', []); openCEO(); };
   }
 
