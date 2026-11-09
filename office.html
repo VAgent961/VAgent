@@ -65,6 +65,20 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </div>
 
+  <script>
+    // Apply role-based layout before office.js runs by intercepting /api/office
+    const _f = window.fetch.bind(window);
+    window.fetch = async (...a) => {
+      const r = await _f(...a);
+      if (String(a[0]).endsWith('/api/office') || String(a[0]).includes('/api/office?')) {
+        const clone = r.clone();
+        clone.json().then(j => {
+          if (j.role) { document.body.dataset.role = j.role; }
+        }).catch(() => {});
+      }
+      return r;
+    };
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="/assets/scene.js"></script>
   <script src="/assets/office.js"></script>

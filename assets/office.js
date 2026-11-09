@@ -364,11 +364,10 @@
   async function load() {
     try {
       D = await api('office');
+      document.body.dataset.role = D.role || 'owner';
+      if (D.role !== 'client') $('#btn-clients').style.display = '';
       $('#live-dot').className = 'dot ' + (D.errors.length ? 'err' : 'on'); $('#live-text').textContent = 'Live · ' + hhmm(new Date());
-      render(); if (first) {
-        document.body.dataset.role = D.role || 'owner';
-        if (D.role !== 'client') $('#btn-clients').style.display = '';
-      }
+      render();
     } catch (e) { $('#live-dot').className = 'dot err'; $('#live-text').textContent = 'Offline, retrying'; }
     api('me').then((me) => { if (me.owners) renderOwners(me.owners); }).catch(() => {});
   }
