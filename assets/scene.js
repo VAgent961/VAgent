@@ -51,6 +51,70 @@
   <symbol id="tallplant" overflow="visible"><ellipse cx="0" cy="0" rx="13" ry="4.5" fill="#141413" opacity="0.1"/><path d="M0 -18 C-2 -40 -14 -52 -18 -70 M0 -18 C3 -45 12 -58 16 -78 M0 -18 C0 -50 -2 -70 2 -92" stroke="#5B7F57" stroke-width="2" fill="none"/><ellipse cx="-18" cy="-70" rx="9" ry="5" fill="#6E9668" transform="rotate(-30 -18 -70)"/><ellipse cx="-10" cy="-50" rx="9" ry="4.5" fill="#5B7F57" transform="rotate(-20 -10 -50)"/><ellipse cx="16" cy="-78" rx="9" ry="5" fill="#86AE7F" transform="rotate(30 16 -78)"/><ellipse cx="9" cy="-56" rx="9" ry="4.5" fill="#6E9668" transform="rotate(25 9 -56)"/><ellipse cx="2" cy="-92" rx="7" ry="4.5" fill="#6E9668"/><ellipse cx="-4" cy="-36" rx="8" ry="4" fill="#86AE7F" transform="rotate(-15 -4 -36)"/><polygon points="-11,-20 11,-20 8,0 -8,0" fill="#45454C" stroke="#18181B"/></symbol>
   <symbol id="lamp" overflow="visible"><line x1="0" y1="-130" x2="0" y2="-34" stroke="#55534D" stroke-width="1.2"/><ellipse cx="0" cy="0" rx="34" ry="13" fill="url(#glow)"/><path d="M-12 -20 L-7 -34 L7 -34 L12 -20 Z" fill="#141413"/><ellipse cx="0" cy="-19" rx="12" ry="3" fill="#F2C98F"/></symbol>
   <symbol id="cooler" overflow="visible"><ellipse cx="0" cy="0" rx="12" ry="4" fill="#141413" opacity="0.1"/><rect x="-10" y="-38" width="20" height="38" rx="3" fill="#6A6A72"/><rect x="0" y="-38" width="10" height="38" rx="2" fill="#5A5A62"/><rect x="-4" y="-26" width="8" height="5" rx="1" fill="#3A3935"/><path d="M-8 -38 C-8 -56 8 -56 8 -38 Z" fill="#A8C9DA" opacity="0.85"/><ellipse cx="-2" cy="-48" rx="2" ry="5" fill="#FFFFFF" opacity="0.5"/></symbol>
+  <symbol id="tv" overflow="visible"><!-- wall-mounted TV / PlayStation setup -->
+    <ellipse cx="0" cy="4" rx="50" ry="8" fill="#141413" opacity="0.15"/>
+    <rect x="-2" y="-46" width="4" height="46" fill="#3A3935"/>
+    <rect x="-46" y="-80" width="92" height="56" rx="4" fill="#141413"/>
+    <rect x="-42" y="-76" width="84" height="48" rx="2" fill="#1A2B3C"/>
+    <rect x="-38" y="-72" width="76" height="40" rx="1" fill="#0D1821"/>
+    <!-- screen glow: game colours -->
+    <rect x="-34" y="-68" width="30" height="32" fill="#1A3A6A" opacity="0.9"/>
+    <rect x="-2" y="-68" width="30" height="32" fill="#6A1A2A" opacity="0.9"/>
+    <circle cx="-10" cy="-52" r="6" fill="#3A6EA5" opacity="0.6"/>
+    <circle cx="10" cy="-52" r="6" fill="#B5532F" opacity="0.6"/>
+    <!-- controller on floor -->
+    <rect x="-14" y="-14" width="28" height="12" rx="4" fill="#2A2A2F"/>
+    <circle cx="-6" cy="-9" r="2" fill="#B5532F"/><circle cx="0" cy="-6" r="2" fill="#3A6EA5"/><circle cx="6" cy="-9" r="2" fill="#3F7D4E"/>
+  </symbol>
+  <symbol id="pingpong" overflow="visible"><!-- ping pong / foosball table -->
+    <ellipse cx="0" cy="10" rx="62" ry="14" fill="#141413" opacity="0.1"/>
+    <polygon points="-58,-10 58,-10 58,10 -58,10" fill="#3F7D4E"/>
+    <polygon points="-58,-14 58,-14 58,-10 -58,-10" fill="#2D6040"/>
+    <line x1="0" y1="-14" x2="0" y2="10" stroke="#FAF9F5" stroke-width="1.5" opacity="0.5"/>
+    <line x1="-58" y1="-2" x2="58" y2="-2" stroke="#FAF9F5" stroke-width="1" opacity="0.3"/>
+    <circle cx="-22" cy="-4" r="4" fill="#FAF9F5" opacity="0.9"/>
+    <!-- net -->
+    <rect x="-2" y="-20" width="4" height="10" fill="#FAF9F5" opacity="0.7"/>
+    <!-- paddles -->
+    <ellipse cx="-46" cy="-4" rx="6" ry="8" fill="#B5532F" opacity="0.9"/>
+    <ellipse cx="46" cy="-4" rx="6" ry="8" fill="#3A6EA5" opacity="0.9"/>
+    <!-- legs -->
+    <rect x="-52" y="10" width="6" height="12" fill="#5A402C"/>
+    <rect x="46" y="10" width="6" height="12" fill="#5A402C"/>
+  </symbol>
+  <symbol id="bookshelf" overflow="visible">
+    <ellipse cx="0" cy="4" rx="30" ry="6" fill="#141413" opacity="0.1"/>
+    <rect x="-28" y="-80" width="56" height="84" rx="2" fill="#4A3828"/>
+    <rect x="-24" y="-76" width="48" height="6" fill="#6A5240"/>
+    <rect x="-24" y="-66" width="48" height="6" fill="#6A5240"/>
+    <rect x="-24" y="-56" width="48" height="6" fill="#6A5240"/>
+    <rect x="-24" y="-46" width="48" height="6" fill="#6A5240"/>
+    <!-- books row 1 -->
+    <rect x="-22" y="-75" width="6" height="8" fill="#B5532F"/><rect x="-15" y="-75" width="5" height="8" fill="#3A6EA5"/><rect x="-9" y="-75" width="7" height="8" fill="#D9C27A"/><rect x="-1" y="-75" width="5" height="8" fill="#8FC79D"/><rect x="5" y="-75" width="6" height="8" fill="#E59A7A"/><rect x="12" y="-75" width="8" height="8" fill="#A8B8E8"/>
+    <!-- books row 2 -->
+    <rect x="-22" y="-65" width="7" height="8" fill="#D9C27A"/><rect x="-14" y="-65" width="5" height="8" fill="#B5532F"/><rect x="-8" y="-65" width="8" height="8" fill="#9FD0D6"/><rect x="1" y="-65" width="6" height="8" fill="#C8A8E0"/><rect x="8" y="-65" width="7" height="8" fill="#8FC79D"/>
+    <!-- books row 3 -->
+    <rect x="-22" y="-55" width="5" height="8" fill="#A8B8E8"/><rect x="-16" y="-55" width="8" height="8" fill="#B5532F"/><rect x="-7" y="-55" width="6" height="8" fill="#D9C27A"/><rect x="0" y="-55" width="7" height="8" fill="#3A6EA5"/><rect x="8" y="-55" width="6" height="8" fill="#8FC79D"/>
+    <rect x="-10" y="-28" width="20" height="6" rx="1" fill="#FAF9F5" opacity="0.3"/>
+  </symbol>
+  <symbol id="coffeestation" overflow="visible">
+    <ellipse cx="0" cy="4" rx="34" ry="7" fill="#141413" opacity="0.1"/>
+    <!-- counter -->
+    <polygon points="-32,-10 32,-10 32,4 -32,4" fill="#6A5240"/>
+    <polygon points="-32,-14 32,-14 32,-10 -32,-10" fill="#8A6446"/>
+    <polygon points="-32,-14 32,-14 32,-14 -32,-14" fill="#CFA47C"/>
+    <!-- espresso machine -->
+    <rect x="-28" y="-38" width="22" height="24" rx="3" fill="#2A2A2F"/>
+    <rect x="-26" y="-36" width="18" height="16" rx="2" fill="#141413"/>
+    <circle cx="-17" cy="-28" r="5" fill="#3A3935" stroke="#55534D" stroke-width="1"/>
+    <circle cx="-17" cy="-28" r="2" fill="#B5532F"/>
+    <rect x="-22" y="-16" width="12" height="3" rx="1" fill="#55534D"/>
+    <!-- cups on counter -->
+    <rect x="2" y="-22" width="7" height="8" rx="2" fill="#FAF9F5"/><path d="M9 -20 q3 0 0 4" stroke="#FAF9F5" stroke-width="1.2" fill="none"/>
+    <rect x="12" y="-24" width="7" height="8" rx="2" fill="#FAF9F5"/><path d="M19 -22 q3 0 0 4" stroke="#FAF9F5" stroke-width="1.2" fill="none"/>
+    <!-- steam -->
+    <path d="M-14 -40 q2-3 0-5 q-2-3 0-5" fill="none" stroke="#B0AEA5" stroke-width="1" stroke-linecap="round" class="steam"/>
+  </symbol>
   <symbol id="beanbag" overflow="visible"><ellipse cx="0" cy="2" rx="18" ry="6" fill="#000" opacity="0.25"/><path d="M-17 0 C-19 -12 -8 -20 0 -20 C10 -20 19 -12 17 0 Q0 6 -17 0 Z" fill="currentColor"/><path d="M-10 -14 Q-2 -19 6 -16" stroke="#fff" stroke-width="2" opacity="0.25" fill="none" stroke-linecap="round"/></symbol>
   <symbol id="armchair" overflow="visible"><ellipse cx="0" cy="2" rx="18" ry="6" fill="#000" opacity="0.25"/><rect x="-16" y="-34" width="32" height="24" rx="8" fill="#55466A"/><rect x="-18" y="-14" width="36" height="14" rx="6" fill="#6A5880"/><rect x="-21" y="-22" width="7" height="20" rx="3.5" fill="#483B5A"/><rect x="14" y="-22" width="7" height="20" rx="3.5" fill="#483B5A"/></symbol>
   <symbol id="floorlamp" overflow="visible"><ellipse cx="0" cy="0" rx="30" ry="11" fill="url(#glow)"/><line x1="0" y1="0" x2="0" y2="-62" stroke="#55555C" stroke-width="2"/><path d="M-9 -60 L-6 -74 L6 -74 L9 -60 Z" fill="#F2C98F"/></symbol>
@@ -116,11 +180,60 @@
         const sx = x0 + 50 + lc * LXSTEP + (lr % 2) * 18, sy = ly + lr * LYSTEP;
         room.rest.push(spotsF.length); spotsF.push([sx, sy]); spotProp.push(LPROPS[(lr + lc) % LPROPS.length]);
       }
-      // keep some lounge furniture for atmosphere
-      const lx = x0 + 30;
-      furn += box(lx + 30, ly + 4, lx + 170, ly + 18, 44, DARK);
-      furn += use('tallplant', x1 - 80, y0 + WORK_D + 60) + use('plant', x0 + 60, y0 + WORK_D + 60);
-      furn += use('floorlamp', x0 + 300, y0 + WORK_D + 200) + use('floorlamp', x0 + 700, y0 + WORK_D + 400);
+      // ── Lounge furniture zones ──────────────────────────────────────────
+      // Zone A (top): coffee station + cooler + stools bar (y = ly+30..ly+120)
+      furn += use('coffeestation', x0 + 160, ly + 60);
+      furn += use('cooler', x0 + 240, ly + 50);
+      furn += use('cooler', x0 + 270, ly + 50);
+      for (let sc = 0; sc < 5; sc++) furn += use('stool', x0 + 320 + sc * 60, ly + 80);
+      furn += box(x0 + 300, ly + 60, x0 + 620, ly + 90, 10, WOOD);  // bar counter
+      furn += use('cup', x0 + 380, ly + 68, '', 10) + use('cup', x0 + 460, ly + 68, '', 10) + use('cup', x0 + 540, ly + 68, '', 10);
+      furn += use('tallplant', x0 + 60, ly + 50) + use('tallplant', x1 - 60, ly + 50);
+
+      // Zone B (second band): sofa cluster + TV / gaming corner
+      const gy = ly + 230;
+      furn += use('tv', x0 + 130, gy + 20);
+      furn += box(x0 + 60, gy + 80, x0 + 300, gy + 110, 14, SOFA);   // sofa facing TV
+      furn += box(x0 + 60, gy + 80, x0 + 300, gy + 92, 32, SOFA);
+      furn += box(x0 + 110, gy + 150, x0 + 190, gy + 190, 10, WOOD); // coffee table
+      furn += use('cup', x0 + 140, gy + 162, '', 10);
+      // gaming beanbags in front of TV
+      const gc = ['#B5532F','#3A6EA5','#D9C27A','#8FC79D'];
+      for (let bi = 0; bi < 4; bi++) furn += use('beanbag', x0 + 80 + bi * 60, gy + 220, `style="color:${gc[bi]}"`);
+      furn += use('floorlamp', x0 + 320, gy + 100);
+
+      // Another sofa set on the right side of the same band
+      furn += box(x0 + 580, gy + 60, x0 + 820, gy + 90, 14, SOFA);
+      furn += box(x0 + 580, gy + 60, x0 + 820, gy + 72, 32, SOFA);
+      furn += box(x0 + 630, gy + 130, x0 + 710, gy + 170, 10, WOOD);
+      furn += use('cup', x0 + 660, gy + 142, '', 10);
+      furn += use('plant', x0 + 840, gy + 60) + use('plant', x0 + 550, gy + 60);
+      furn += use('floorlamp', x0 + 820, gy + 150);
+
+      // Zone C: ping pong table + open space
+      const ppy = ly + 580;
+      furn += use('pingpong', x0 + 300, ppy);
+      furn += use('plant', x0 + 60, ppy) + use('plant', x1 - 60, ppy);
+      furn += use('floorlamp', x0 + 580, ppy + 60);
+
+      // Zone D: reading nook — bookshelves + armchairs
+      const ry2 = ly + 820;
+      furn += use('bookshelf', x0 + 80, ry2);
+      furn += use('bookshelf', x0 + 170, ry2);
+      furn += use('bookshelf', x0 + 260, ry2);
+      for (let ai = 0; ai < 4; ai++) furn += use('armchair', x0 + 380 + ai * 120, ry2 + 60);
+      furn += box(x0 + 490, ry2 + 120, x0 + 570, ry2 + 160, 8, WOOD); // reading table
+      furn += use('cup', x0 + 520, ry2 + 128, '', 8);
+      furn += use('floorlamp', x0 + 340, ry2 + 80) + use('floorlamp', x0 + 720, ry2 + 80);
+      furn += use('tallplant', x1 - 80, ry2) + use('plant', x0 + 820, ry2 + 80);
+
+      // Zone E: bean bag lounge near the bottom
+      const by2 = ly + 1180;
+      const bagcols = ['#E59A7A','#A8B8E8','#C8A8E0','#9FD0D6','#D9C27A','#8FC79D','#B5532F','#3A6EA5'];
+      for (let bi = 0; bi < 8; bi++) furn += use('beanbag', x0 + 100 + (bi % 4) * 200, by2 + Math.floor(bi / 4) * 120, `style="color:${bagcols[bi]}"`);
+      furn += use('table', x0 + 500, by2 + 60) + use('cup', x0 + 492, by2 + 48, '', 24);
+      furn += use('plant', x0 + 60, by2) + use('tallplant', x1 - 60, by2) + use('plant', x0 + 950, by2 + 100);
+      furn += use('floorlamp', x0 + 300, by2 + 60) + use('floorlamp', x0 + 700, by2 + 60);
       rooms.push(room);
     }
 
