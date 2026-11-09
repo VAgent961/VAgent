@@ -8,7 +8,7 @@
   const hash = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
   const colorOf = (k) => PAL[hash(k) % PAL.length];
   const TRIG = { webhook: 'Runs when called (webhook)', chat: 'Chat trigger', telegram: 'Telegram bot', schedule: 'Runs on a schedule', form: 'Form', helper: 'Helper for other agents', alarm: 'Error alarm', app: 'App trigger', manual: 'Manual only' };
-  const STATUS = { working: 'Working', idle: 'In the café · ready', help: 'Needs help · last run failed', off: 'Off duty · turned off in n8n' };
+  const STATUS = { working: 'Working', idle: 'Resting · ready', help: 'Needs help · last run failed', off: 'Off duty · turned off in n8n' };
   const ago = (t) => { if (!t) return '—'; const s = (Date.now() - Date.parse(t)) / 1000; return s < 60 ? 'just now' : s < 3600 ? Math.round(s / 60) + ' min ago' : s < 86400 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' days ago'; };
   const dur = (ms) => (ms == null || isNaN(ms) ? '' : ms < 1000 ? (ms / 1000).toFixed(1) + 's' : ms < 60000 ? Math.round(ms / 1000) + 's' : Math.floor(ms / 60000) + 'm ' + Math.round((ms % 60000) / 1000) + 's');
   const hhmm = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -27,12 +27,16 @@
   function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3500); }
 
   // ---------- scene ----------
-  $('#stage').innerHTML = VScene.svg;
-  const svg = $('#scene'), free = $('#layer-free'), walkL = $('#layer-walk');
+  // the building is generated from the departments (one big room each) and rebuilt when they change
+  let S = VScene.build([]), sceneKey = '';
+  $('#stage').innerHTML = '<svg id="scene" preserveAspectRatio="xMidYMid meet" role="img" aria-label="The VAgent office: one room per department, the CEO office, the café and open desks."></svg>';
+  const svg = $('#scene'); svg.innerHTML = S.inner;
+  let free = $('#layer-free'), walkL = $('#layer-walk');
   // ---------- zoom + pan (only inside the office) ----------
-  const stage = $('#stage'), VB0 = { ...VScene.vb }, vb = { ...VB0 }, MAXZ = 3.5;
+  const stage = $('#stage'); let VB0 = { ...S.vb }; const vb = { ...VB0 }, MAXZ = 5;
   stage.insertAdjacentHTML('beforeend', '<div class="zoom" role="group" aria-label="Zoom the office"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button><button type="button" data-z="reset" aria-label="Fit the whole office" style="font-size:14px">⤢</button></div>');
   const setVB = () => { svg.setAttribute('viewBox', vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h); };
+  setVB();
   const clampVB = () => { vb.w = Math.min(VB0.w, Math.max(VB0.w / MAXZ, vb.w)); vb.h = vb.w * VB0.h / VB0.w; vb.x = Math.min(VB0.x + VB0.w - vb.w, Math.max(VB0.x, vb.x)); vb.y = Math.min(VB0.y + VB0.h - vb.h, Math.max(VB0.y, vb.y)); };
   const view = () => { const r = svg.getBoundingClientRect(), s = Math.min(r.width / vb.w, r.height / vb.h); return { s, ox: r.left + (r.width - vb.w * s) / 2, oy: r.top + (r.height - vb.h * s) / 2 }; };
   const zoomAt = (cx, cy, f, smooth) => {
@@ -60,14 +64,14 @@
   addEventListener('pointerup', up); addEventListener('pointercancel', up);
   svg.addEventListener('click', (e) => { if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; } }, true);
   const deskG = (i) => svg.querySelector(`.desk[data-desk="${i}"]`);
-  const posOf = (p) => (p.t === 'desk' ? [VScene.desks[p.i][0] + 22, VScene.desks[p.i][1] - 33] : VScene.cafe[p.i]);
+  const posOf = (p) => (p.t === 'desk' ? [S.desks[p.i][0] + 22, S.desks[p.i][1] - 33] : S.cafe[p.i]);
   const tr = (x, y) => `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(1.1)`;
 
   function makeAgent(a) {
     const g = document.createElementNS(NS, 'g');
     g.setAttribute('class', 'agent'); g.setAttribute('tabindex', '0'); g.setAttribute('role', 'button'); g.dataset.key = a.key;
     g.innerHTML = `<circle class="ring" cy="-30" r="34" fill="none" stroke="#B5532F" stroke-width="3"/><g class="body"><use href="#bot" style="color:${colorOf(a.key)}"/></g>
-      <g class="bubble typing" transform="translate(27 -52)"><rect x="-15" y="-10" width="30" height="18" rx="9" fill="#FAF9F5" stroke="#E3E0D5"/><circle cx="-6" cy="-1" r="2.2" fill="#B5532F"/><circle cx="0" cy="-1" r="2.2" fill="#B5532F"/><circle cx="6" cy="-1" r="2.2" fill="#B5532F"/></g>
+      <g class="props"><g class="p p-book" transform="translate(0 -15)"><rect x="-10" y="-6" width="20" height="13" rx="1.5" fill="#B5532F"/><rect x="-8" y="-4" width="7" height="9" fill="#FAF9F5"/><rect x="1" y="-4" width="7" height="9" fill="#FAF9F5"/></g><g class="p p-pad" transform="translate(0 -14)"><rect x="-11" y="-5" width="22" height="10" rx="5" fill="#F5F5F7" stroke="#141413" stroke-width="1"/><circle cx="-5" cy="0" r="1.8" fill="#3A6EA5"/><circle cx="5" cy="0" r="1.8" fill="#B5532F"/></g><g class="p p-phone" transform="translate(6 -16)"><rect x="-4" y="-7" width="8" height="13" rx="2" fill="#141413"/><rect x="-3" y="-5.5" width="6" height="9" rx="1" fill="#7FB0E0"/></g><g class="p p-mug" transform="translate(9 -16)"><rect x="-4" y="-5" width="8" height="9" rx="2" fill="#FAF9F5"/><path d="M4 -3 q4 1 0 5" stroke="#FAF9F5" stroke-width="1.6" fill="none"/></g><g class="p p-music"><path d="M-18 -46 Q0 -78 18 -46" stroke="#141413" stroke-width="3.5" fill="none"/><rect x="-22" y="-52" width="7" height="12" rx="3" fill="#B5532F"/><rect x="15" y="-52" width="7" height="12" rx="3" fill="#B5532F"/><text class="note" x="20" y="-62" font-size="14" fill="#E7B38F">♪</text></g><g class="p p-rest"><text class="zz" x="16" y="-62" font-size="13" font-weight="700" fill="#A8B8E8">z z</text></g></g><g class="bubble typing" transform="translate(27 -52)"><rect x="-15" y="-10" width="30" height="18" rx="9" fill="#FAF9F5" stroke="#E3E0D5"/><circle cx="-6" cy="-1" r="2.2" fill="#B5532F"/><circle cx="0" cy="-1" r="2.2" fill="#B5532F"/><circle cx="6" cy="-1" r="2.2" fill="#B5532F"/></g>
       <g class="bubble alert" transform="translate(18 -66)"><circle r="8" fill="#B3261E"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">!</text></g>
       <g class="tag" transform="translate(0 -86)"><rect y="-12" height="22" rx="11"/><circle class="tdot" cy="-1" r="3.5"/><text y="3" text-anchor="middle"></text></g>`;
     return g;
@@ -83,13 +87,14 @@
   function attach(g, p) {
     if (p.t === 'desk') { deskG(p.i).querySelector('.seat').appendChild(g); g.setAttribute('transform', ''); }
     else { const [x, y] = posOf(p); free.appendChild(g); g.setAttribute('transform', tr(x, y)); }
+    g.dataset.prop = p.t === 'cafe' ? (S.spotProp[p.i] || 'rest') : '';
     g._pos = posOf(p);
   }
   function walk(g, from, to) {
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!window.gsap || reduce || !from) return attach(g, to);
     const s = { x: g._pos ? g._pos[0] : posOf(from)[0], y: g._pos ? g._pos[1] : posOf(from)[1] }, [tx, ty] = posOf(to);
-    walkL.appendChild(g); g.setAttribute('transform', tr(s.x, s.y));
+    walkL.appendChild(g); g.dataset.prop = ''; g.setAttribute('transform', tr(s.x, s.y));
     const body = g.querySelector('.body');
     const bob = gsap.fromTo(body, { y: 0 }, { y: -4, duration: 0.18, yoyo: true, repeat: -1, ease: 'sine.inOut' });
     gsap.to(s, { x: tx, y: ty, duration: Math.min(3.2, Math.max(1.2, Math.hypot(tx - s.x, ty - s.y) / 230)), ease: 'power1.inOut',
@@ -100,9 +105,11 @@
 
   function renderRooms() {
     const cs = svg.querySelector("#ceo-slot"); if (cs && !cs.firstChild) cs.innerHTML = '<g class="ceo-g" tabindex="0" role="button" aria-label="Talk to the CEO"><g transform="scale(1.25)"><use href="#ceo"/></g><g class="tag" transform="translate(0 -104)"><rect x="-64" y="-13" width="128" height="24" rx="12" fill="#2B2416"/><text y="3" text-anchor="middle" fill="#E9C46A" font-size="12" font-weight="600">CEO · Talk to me</text></g></g>';
-    VScene.rooms.forEach((r, i) => {
+    renderDepts();
+    S.rooms.forEach((r, i) => {
       const d = D.departments[i], slot = svg.querySelector(`.lead-slot[data-room="${i}"]`), screen = svg.querySelector(`.room-screen[data-room="${i}"]`);
-      screen.style.color = d ? d.color : '#3A3935';
+      if (!slot) return;
+      if (screen) screen.style.color = d ? d.color : '#3A3935';
       const fl = svg.querySelector(`.room-floor[data-room="${i}"]`), nm = svg.querySelector(`.room-name[data-room="${i}"]`);
       if (fl) { fl.setAttribute("fill", d ? d.color : "#2A2A2E"); fl.setAttribute("opacity", d ? "0.16" : "0.6"); }
       if (nm) nm.textContent = d ? d.name : "";
@@ -115,15 +122,34 @@
     });
   }
 
+  function buildScene() {
+    const key = D.departments.map((d) => d.id).join(','); if (key === sceneKey) return;
+    sceneKey = key; S = VScene.build(D.departments);
+    for (const k of Object.keys(els)) { els[k].remove(); delete els[k]; delete places[k]; }
+    svg.innerHTML = S.inner; free = $('#layer-free'); walkL = $('#layer-walk');
+    VB0 = { ...S.vb }; Object.assign(vb, VB0); setVB();
+  }
+  function zoomRoom(i) {
+    const r = S.rooms[i]; if (!r) return;
+    const xs = r.box.map((p) => p[0]), ys = r.box.map((p) => p[1]), cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+    const nw = Math.min(VB0.w, (Math.max(...xs) - Math.min(...xs)) * 1.1), to = { w: nw, h: nw * VB0.h / VB0.w }; to.x = cx - to.w / 2; to.y = cy - to.h / 2 - 20;
+    if (window.gsap) gsap.to(vb, { ...to, duration: 0.6, ease: 'power2.inOut', onUpdate: () => { clampVB(); setVB(); } }); else { Object.assign(vb, to); clampVB(); setVB(); }
+  }
+  function renderDepts() {
+    const box = $('#depts'); if (!box) return;
+    const count = (id) => D.agents.filter((a) => a.dept === id).length;
+    box.innerHTML = '<span class="depts-h">Departments</span>' + (D.departments.map((d, i) => `<button type="button" class="dept-btn" data-room-i="${i}" data-dept="${d.id}"><span class="dd" style="background:${d.color}"></span><span class="dn">${esc(d.name)}</span><span class="dc">${count(d.id)}/35</span></button>`).join('') || '<p class="empty">No departments yet.</p>') + '<button type="button" class="dept-btn add" id="dept-add">+ New department</button>';
+  }
   function render() {
+    buildScene();
     const A = D.agents;
     const working = A.filter((a) => a.status === 'working'), cafe = A.filter((a) => a.status === 'idle' || a.status === 'help'), off = A.filter((a) => a.status === 'off');
     const next = {}, used = { desk: new Set(), cafe: new Set() }, over = [];
-    const roomOf = (a) => { const i = D.departments.findIndex((x) => x.id === a.dept); return i >= 0 && i < VScene.rooms.length ? i : -1; };
+    const roomOf = (a) => { const i = D.departments.findIndex((x) => x.id === a.dept); return i >= 0 && i < S.rooms.length ? i : -1; };
     const pick = (a, t, choices) => { const p = places[a.key]; if (p && p.t === t && choices.includes(p.i) && !used[t].has(p.i)) return p.i; return choices.find((i) => !used[t].has(i)); };
-    for (const a of working) { const r = roomOf(a); let i = pick(a, 'desk', r >= 0 ? VScene.rooms[r].desks : VScene.hot); if (i === undefined) i = pick(a, 'desk', VScene.hot); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'desk', i }; used.desk.add(i); }
+    for (const a of working) { const r = roomOf(a); let i = pick(a, 'desk', r >= 0 ? S.rooms[r].desks : S.hot); if (i === undefined) i = pick(a, 'desk', S.hot); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'desk', i }; used.desk.add(i); }
     // idle: rest in the department lounge; no department (or lounge full) -> café
-    for (const a of cafe) { const r = roomOf(a); let i = r >= 0 ? pick(a, 'cafe', VScene.rooms[r].rest) : undefined; if (i === undefined) i = pick(a, 'cafe', VScene.cafeIdx); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'cafe', i }; used.cafe.add(i); }
+    for (const a of cafe) { const r = roomOf(a); let i = r >= 0 ? pick(a, 'cafe', S.rooms[r].rest) : undefined; if (i === undefined) i = pick(a, 'cafe', S.cafeIdx); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'cafe', i }; used.cafe.add(i); }
     svg.querySelectorAll('.desk-top').forEach((u) => (u.style.color = '#3A3935'));
     for (const a of A) {
       const p = next[a.key]; let g = els[a.key];
@@ -155,7 +181,7 @@
   }
   const where = (a) => { const x = D.departments.find((y) => y.id === a.dept); if (!x) return 'No department'; const t = x.teams.find((y) => y.id === a.team); return x.name + (t ? ' / ' + t.name : ''); };
   const dotColor = { working: '#3F7D4E', help: '#B3261E', idle: '#B5532F', off: '#B0AEA5' };
-  const itemAgent = (a) => `<button class="item" type="button" data-agent="${esc(a.key)}"><span class="sd ${a.status}"></span><span class="grow"><b>${esc(a.name)}</b><small>${esc(STATUS[a.status].split(' · ')[0])} · ${esc(where(a))}</small></span><span aria-hidden="true">›</span></button>`;
+  const itemAgent = (a) => `<button class="item" type="button" data-agent="${esc(a.key)}"><span class="sd ${a.status}"></span><span class="grow"><b>${esc(a.name)}</b><small>${esc(a.status === 'idle' && D.departments.some((d) => d.id === a.dept) ? 'Resting in the lounge' : STATUS[a.status].split(' · ')[0])} · ${esc(where(a))}</small></span><span aria-hidden="true">›</span></button>`;
 
   let filter = 'all', q = '', inst = '', prevStatus = null;
   const groups = { all: () => true, working: (a) => a.status === 'working', cafe: (a) => a.status === 'idle', help: (a) => a.status === 'help', off: (a) => a.status === 'off' };
@@ -385,6 +411,7 @@
     if (t.dataset.delN8n) { if (!confirm('Remove this n8n? Its agents leave the office (nothing is deleted in n8n).')) return; await api('n8n?id=' + t.dataset.delN8n, { method: 'DELETE' }); await load(); return openSettings(); }
     const o = t.dataset.open; if (o === 'connect') openConnect(); else if (o === 'settings') openSettings(); else if (o === 'new-dept') newDept(); else if (o === 'off' || o === 'over') openList(o);
   });
+  document.addEventListener('click', (e) => { const b = e.target.closest('.dept-btn'); if (!b) return; if (b.id === 'dept-add') return newDept(); zoomRoom(+b.dataset.roomI); }, true);
   svg.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.agent,.lead,.add-room,.ceo-g')) { e.preventDefault(); e.target.closest('.agent,.lead,.add-room,.ceo-g').dispatchEvent(new MouseEvent('click', { bubbles: true })); } });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && current) close(); });
   $('#drawer-close').onclick = close; scrim.onclick = close;

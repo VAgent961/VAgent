@@ -51,7 +51,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .stage.panning{cursor:grabbing}
 .stage svg{width:100%;height:100%;display:block}
 .zoom{position:absolute;right:16px;bottom:16px;z-index:3;display:flex;flex-direction:column;gap:6px}
-.zoom button{width:44px;height:44px;border-radius:12px;border:1px solid #3A3A40;background:rgba(30,30,33,.92);color:#FAF9F5;cursor:pointer;font-size:20px;line-height:1;color:var(--ink);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px -12px rgba(20,20,19,.3)}
+.zoom button{width:44px;height:44px;border-radius:12px;border:1px solid #3A3A40;background:rgba(30,30,33,.92);color:#FAF9F5;cursor:pointer;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px -12px rgba(20,20,19,.3)}
 .zoom button:hover{background:#2A2A2E}
 .agent,.lead,.add-room{cursor:pointer}
 .agent .tag{filter:drop-shadow(0 2px 3px rgba(20,20,19,.18))}
@@ -144,3 +144,24 @@ a.btn[aria-disabled]{opacity:.5}
 .typing-msg{color:var(--muted);font-style:italic}
 .chat{max-height:46vh;overflow-y:auto}
 .teams{display:flex;flex-wrap:wrap;gap:6px}
+
+/* resting props: book, controller, phone, mug, headphones, z z */
+.agent .props .p{display:none}
+.agent[data-prop="book"] .p-book,.agent[data-prop="pad"] .p-pad,.agent[data-prop="phone"] .p-phone,.agent[data-prop="mug"] .p-mug,.agent[data-prop="music"] .p-music,.agent[data-prop="rest"] .p-rest{display:inline}
+.agent[data-prop="pad"] .p-pad{animation:pad .5s ease-in-out infinite alternate}
+@keyframes pad{to{transform:translate(0px,-15.5px) rotate(-6deg)}}
+.agent .note,.agent .zz{animation:floatup 2.4s ease-in-out infinite}
+@keyframes floatup{0%{opacity:0;transform:translateY(4px)}40%{opacity:1}100%{opacity:0;transform:translateY(-10px)}}
+@media (prefers-reduced-motion:reduce){.agent .note,.agent .zz,.agent[data-prop="pad"] .p-pad{animation:none}}
+/* departments list in the sidebar */
+.depts{display:flex;flex-direction:column;gap:4px;margin:4px 0 8px}
+.depts-h{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#6B6A64;margin-bottom:2px}
+.dept-btn{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 12px;border:1px solid #E3E0D5;border-radius:10px;background:#fff;font:inherit;font-size:14px;cursor:pointer;text-align:left;color:#141413}
+.dept-btn:hover{border-color:#B5532F}
+.dept-btn .dd{width:10px;height:10px;border-radius:50%;flex:none}
+.dept-btn .dn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dept-btn .dc{font-size:12px;color:#6B6A64}
+.dept-btn.add{justify-content:center;border-style:dashed;color:#5E5D59;background:transparent}
+
+/* sitting on a chair / bean bag */
+.agent[data-prop="book"] .body>use,.agent[data-prop="pad"] .body>use,.agent[data-prop="music"] .body>use,.agent[data-prop="book"] .props,.agent[data-prop="pad"] .props,.agent[data-prop="music"] .props{transform:translateY(8px)}
