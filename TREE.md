@@ -15,6 +15,10 @@
 - `functions/api/n8n.js` — GET list / POST connect {url (with or without https), key, label?} with friendly errors / DELETE ?id= (n8n instances).
 - `functions/api/office.js` — GET everything the office needs: agents, departments, activity, instance errors.
 - `functions/api/agent.js` — GET ?key= details (runs, steps) / POST {key, action: run|activate|deactivate|assign|rename, message?, deptId?, name?}.
+- `functions/_brain.js` — think(): calls n8n "VAgent Brain" (Groq first, Gemini backup) via BRAIN_URL + X-VAgent-Secret; parseJSON/plain helpers.
+- `functions/_office.js` — officeData() (whole company) + companyText() (short text for AI prompts). Used by office.js, talk.js, act.js.
+- `functions/api/talk.js` — POST {to: ceo | lead:<id> | agent:<key>, message, history}: AI personas. CEO returns {reply, actions[], prompt (Claude prompt)}. Agents with their own webhook get the message directly.
+- `functions/api/act.js` — POST {actions[]}: runs CEO actions after the owner approves (departments, teams, move/rename/run/turn on/off agents).
 - `functions/api/departments.js` — GET / POST {name,color} / DELETE ?id=.
 - `functions/api/tasks.js` — GET ?deptId= / POST {deptId,text}: runs the department's webhook agents, combines one result.
 - `scripts/migrate.mjs` — creates/updates all DB tables. `scripts/create-owners.mjs` — add/reset owners.
@@ -26,14 +30,18 @@
 - Status: `working` (running execution) → desk · `idle` (active) → café · `off` (inactive) → café, asleep · `help` (last run failed <24h) → red mark.
 - Calls to agent webhooks carry header `X-VAgent-Secret` (secret WEBHOOK_SECRET); protect webhooks in n8n with Header Auth "VAgent office secret".
 - Office Helper (n8n workflow ESroHEmOT74IkcBr on hassan.vagent.online): POST /webhook/office-helper → AI Helper → {output}. Example agent for chat + tasks.
+- Auto run-now hooks: on import, workflows with schedule/manual triggers get a "VAgent: run now" webhook (path vagent-run-<id>, header auth) via ensureHooks() in _n8n.js. Other triggers are never modified.
+- n8n "VAgent Brain (office AI)" n9gGqB09jODqaESZ on hassan.vagent.online: POST /webhook/vagent-brain {system,prompt} → {ok,text}.
 - Runnable = has a Webhook trigger with a static path (production URL `<base>/webhook/<path>`). Chat + tasks use it.
 
 ## DB tables (Neon)
 - `vagent_owners`, `vagent_login_fails` — auth.
 - `vagent_n8n` (id, label, base_url, api_key_enc, owner_email) — connected n8n instances.
 - `vagent_wf_cache` (inst_id, summary jsonb, at) — compact workflow list cache.
-- `vagent_agent_meta` (key, dept_id, nickname) — department assignment.
-- `vagent_departments` (id, name, color, created_by) · `vagent_tasks` (id, dept_id, text, status, results, final, created_by, times).
+- `vagent_agent_meta` (key, dept_id, team_id, nickname) — department assignment.
+- `vagent_departments` (id, name, color, mission, created_by) · `vagent_teams` (id, dept_id, name) · `vagent_hooks` (key, status, note): run-now hooks added
+- seeded org: Sales & Growth, Marketing, Engineering, Operations, Customer Success, Quality & Security (2 teams each)
+- `vagent_departments` (old line) · `vagent_tasks` (id, dept_id, text, status, results, final, created_by, times).
 
 ## Commands (run in repo root)
 - Migrate: `DATABASE_URL="$(cat ~/agent-tools/.neon-vagent-url)" node scripts/migrate.mjs`

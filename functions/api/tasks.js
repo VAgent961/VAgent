@@ -1,5 +1,6 @@
 import { sql, json, bad, body } from '../_lib.js';
 import { instances, summaries, runWebhook } from '../_n8n.js';
+import { think } from '../_brain.js';
 
 // GET /api/tasks?deptId= -> last 10 tasks of a department
 export async function onRequestGet({ request, env }) {
@@ -20,14 +21,15 @@ export async function onRequestPost({ request, env, data }) {
     const mine = keys.filter((k) => k.startsWith(inst.id + ':'));
     if (!mine.length) continue;
     const wfs = await summaries(env, inst);
-    for (const k of mine) { const w = wfs.find((x) => inst.id + ':' + x.id === k); if (w) team.push({ key: k, name: w.name, webhook: w.webhook }); }
+    for (const k of mine) { const w = wfs.find((x) => inst.id + ':' + x.id === k); if (w) team.push({ key: k, name: w.name, webhook: w.webhook || (w.runHook && w.active ? w.runHook : null) }); }
   }
   const workers = team.filter((t) => t.webhook);
   if (!workers.length) return bad(team.length ? 'None of these agents can take tasks yet. Give one a Webhook trigger in n8n.' : 'This department has no agents yet. Open an agent and add it here.');
   const [task] = await sql(env, 'INSERT INTO vagent_tasks (dept_id, text, created_by) VALUES ($1, $2, $3) RETURNING id', [dept.id, text, data.owner]);
   const results = await Promise.all(workers.map(async (w) => ({ key: w.key, name: w.name, ...(await runWebhook(w.webhook, { task: text, department: dept.name, from: data.owner, source: 'vagent-office' }, env.WEBHOOK_SECRET)) })));
   let final = results.map((r) => (r.ok ? '✓ ' : '✗ ') + r.name + ': ' + r.output.slice(0, 600)).join('\n\n');
-  if (env.GROQ_API_KEY && results.some((r) => r.ok)) {
+  if (results.some((r) => r.ok)) { try { final = (await think(env, 'You are the ' + dept.name + ' department lead at VAgent. Combine your agents\' results into ONE short final answer for the company owner: what was done, key results, anything they must decide. Plain text, max 120 words.', 'Task: ' + text + '\n\nResults:\n' + final.slice(0, 6000))).trim(); } catch {} }
+  if (false) {
     try {
       const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST', headers: { Authorization: 'Bearer ' + env.GROQ_API_KEY, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(20000),

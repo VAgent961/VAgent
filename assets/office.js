@@ -99,6 +99,7 @@
   function leave(g) { if (window.gsap) gsap.to(g, { opacity: 0, duration: 0.5, onComplete: () => g.remove() }); else g.remove(); }
 
   function renderRooms() {
+    const cs = svg.querySelector("#ceo-slot"); if (cs && !cs.firstChild) cs.innerHTML = '<g class="ceo-g" tabindex="0" role="button" aria-label="Talk to the CEO"><g transform="scale(1.45)"><use href="#lead" style="color:#D9C27A"/><use href="#crown" y="-46"/></g><g class="tag" transform="translate(0 -100)"><rect x="-64" y="-13" width="128" height="24" rx="12" fill="#2B2416"/><text y="3" text-anchor="middle" fill="#E9C46A" font-size="12" font-weight="600">CEO · Talk to me</text></g></g>';
     VScene.rooms.forEach((r, i) => {
       const d = D.departments[i], slot = svg.querySelector(`.lead-slot[data-room="${i}"]`), screen = svg.querySelector(`.room-screen[data-room="${i}"]`);
       screen.style.color = d ? d.color : '#3A3935';
@@ -153,8 +154,9 @@
     renderList();
     first = false;
   }
+  const where = (a) => { const x = D.departments.find((y) => y.id === a.dept); if (!x) return 'No department'; const t = x.teams.find((y) => y.id === a.team); return x.name + (t ? ' / ' + t.name : ''); };
   const dotColor = { working: '#3F7D4E', help: '#B3261E', idle: '#B5532F', off: '#B0AEA5' };
-  const itemAgent = (a) => `<button class="item" type="button" data-agent="${esc(a.key)}"><span class="sd ${a.status}"></span><span class="grow"><b>${esc(a.name)}</b><small>${esc(STATUS[a.status])} · ${esc(a.inst)}</small></span><span aria-hidden="true">›</span></button>`;
+  const itemAgent = (a) => `<button class="item" type="button" data-agent="${esc(a.key)}"><span class="sd ${a.status}"></span><span class="grow"><b>${esc(a.name)}</b><small>${esc(STATUS[a.status].split(' · ')[0])} · ${esc(where(a))}</small></span><span aria-hidden="true">›</span></button>`;
 
   let filter = 'all', q = '', inst = '', prevStatus = null;
   const groups = { all: () => true, working: (a) => a.status === 'working', cafe: (a) => a.status === 'idle', help: (a) => a.status === 'help', off: (a) => a.status === 'off' };
@@ -199,48 +201,46 @@
     const runs = d.runs.map((r) => `<li><span class="sd ${r.status}"></span><span class="when">${r.status === 'running' ? 'Running now' : esc(r.status === 'success' ? 'Finished' : r.status)} · ${ago(r.stoppedAt || r.startedAt)}</span><span class="dur">${r.stoppedAt ? dur(Date.parse(r.stoppedAt) - Date.parse(r.startedAt)) : ''}</span><a class="see" href="${esc(d.link)}/executions/${r.id}" target="_blank" rel="noopener" aria-label="See this run in n8n">${/error|crashed/.test(r.status) ? 'See why ↗' : '↗'}</a></li>`).join('') || '<li class="empty">No runs yet.</li>';
     const steps = d.steps.slice(0, 10).map((s) => `<li>${esc(s)}</li>`).join('') + (d.steps.length > 10 ? `<li>+${d.steps.length - 10} more steps</li>` : '');
     const opts = '<option value="">No department</option>' + D.departments.map((x) => `<option value="${x.id}" ${x.id === d.dept ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
-    const talk = d.runnable
-      ? `<p class="label">Talk to it</p><div class="chat" id="chat">${(chats[key] || []).map((m) => `<div class="msg ${m.me ? 'me' : 'it'}${m.bad ? ' bad' : ''}">${esc(m.t)}</div>`).join('')}</div>
-         <form id="f-talk" class="row"><label class="field" style="flex:1"><span class="sr" hidden>Message</span><input class="input" name="m" placeholder="Give it a task or ask something…" required autocomplete="off"></label><button class="btn primary" style="flex:none" type="submit">Send</button></form>
-         <p class="help">Your message goes to its webhook as <code>message</code>. Its answer appears here.</p>`
-      : `<div class="box"><b style="font-size:14px">Want to talk to it?</b><span class="help">Add a Webhook trigger to this workflow in n8n. Then you can chat with it and give it tasks from here.</span></div>`;
-    inner.innerHTML = head + talk
-      + `<div class="field"><label for="dept">Department</label><select class="input" id="dept">${opts}</select></div>`
+    const teamOpts = (deptId) => { const x = D.departments.find((y) => y.id === Number(deptId)); return '<option value="">No team</option>' + (x ? x.teams.map((t) => `<option value="${t.id}" ${t.id === d.team ? 'selected' : ''}>${esc(t.name)}</option>`).join('') : ''); };
+    const how = d.runnable ? 'It has its own webhook, so your messages go straight to it.' : d.canRun ? 'Ask it anything. Press Run now to start it.' : d.hasHook ? 'Ask it anything. Turn it on to be able to start it from here.' : 'Ask it anything. It starts from its own trigger (' + esc(TRIG[d.trigger] || d.trigger) + ').';
+    inner.innerHTML = head
+      + (d.canRun ? `<button class="btn primary" type="button" id="run-now">▶ Run now</button>` : '')
+      + `<p class="label">Talk to ${esc(d.name)}</p>` + chatUI('agent:' + key, 'Ask it something…') + `<p class="help">${how}</p>`
+      + `<div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1"><label for="dept">Department</label><select class="input" id="dept">${opts}</select></div><div class="field" style="flex:1"><label for="team">Team</label><select class="input" id="team">${teamOpts(d.dept)}</select></div></div>`
       + `<details class="more"><summary>What it does (${d.steps.length} steps)</summary><ol class="steps">${steps}</ol></details>`
-      + `<details class="more" open><summary>Recent runs</summary><ul class="runs">${runs}</ul></details>`
-      + `<div class="row"><a class="btn" href="${esc(d.link)}" target="_blank" rel="noopener">Open in n8n</a><button class="btn ${d.active ? 'danger' : ''}" type="button" id="toggle">${d.active ? 'Turn off' : 'Turn on'}</button></div>`
-      + `<p class="help">Watching costs no AI: status and runs come straight from n8n.</p>`;
+      + `<details class="more"><summary>Recent runs</summary><ul class="runs">${runs}</ul></details>`
+      + `<div class="row"><a class="btn" href="${esc(d.link)}" target="_blank" rel="noopener">Open in n8n</a><button class="btn ${d.active ? 'danger' : ''}" type="button" id="toggle">${d.active ? 'Turn off' : 'Turn on'}</button></div>`;
+    bindChat('agent:' + key, d.name);
     const rn = () => { const n = prompt('New name for this agent (empty = its n8n name):', d.name); if (n === null) return; api('agent', { body: { key, action: 'rename', name: n } }).then(async () => { toast('Renamed'); await load(); openAgent(key); }).catch((x) => toast(x.message)); };
     $('#rename').onclick = rn;
-    $('#dept').onchange = async (e) => { try { await api('agent', { body: { key, action: 'assign', deptId: e.target.value || null } }); toast('Saved'); load(); } catch (x) { toast(x.message); } };
+    const saveAssign = async () => { try { await api('agent', { body: { key, action: 'assign', deptId: $('#dept').value || null, teamId: $('#team').value || null } }); toast('Moved'); load(); } catch (x) { toast(x.message); } };
+    $('#dept').onchange = () => { d.team = null; $('#team').innerHTML = teamOpts($('#dept').value); saveAssign(); };
+    $('#team').onchange = saveAssign;
+    if ($('#run-now')) $('#run-now').onclick = async (e) => { e.target.disabled = true; try { const r = await api('agent', { body: { key, action: 'run', message: 'Run now from the office' } }); toast(r.output); load(); } catch (x) { toast(x.message); } e.target.disabled = false; };
     $('#toggle').onclick = async () => {
       if (!confirm(d.active ? 'Turn off "' + d.name + '"? Its trigger stops until you turn it on again.' : 'Turn on "' + d.name + '"?')) return;
       try { await api('agent', { body: { key, action: d.active ? 'deactivate' : 'activate' } }); toast(d.active ? 'Turned off' : 'Turned on'); await load(); openAgent(key); } catch (x) { toast(x.message); }
-    };
-    const f = $('#f-talk');
-    if (f) f.onsubmit = async (e) => {
-      e.preventDefault(); const m = f.m.value.trim(); if (!m) return;
-      const log = (chats[key] ||= []); log.push({ me: 1, t: m }); f.m.value = '';
-      const chat = $('#chat'); chat.insertAdjacentHTML('beforeend', `<div class="msg me">${esc(m)}</div><div class="msg it" id="wait">…</div>`);
-      const btn = f.querySelector('button'); btn.disabled = true;
-      try { const r = await api('agent', { body: { key, action: 'run', message: m } }); log.push({ t: r.output, bad: !r.ok }); $('#wait').outerHTML = `<div class="msg it${r.ok ? '' : ' bad'}">${esc(r.output)}</div>`; }
-      catch (x) { $('#wait').outerHTML = `<div class="msg it bad">${esc(x.message)}</div>`; }
-      btn.disabled = false; load();
     };
   }
 
   async function openDept(id, focusTask) {
     const d = D.departments.find((x) => x.id === Number(id)); if (!d) return;
     const team = D.agents.filter((a) => a.dept === d.id), can = team.filter((a) => a.runnable).length;
-    open(`<div class="d-head"><span class="avatar">${leadSvg(d.color)}</span><div><h2 class="d-title">${esc(d.name)} Lead</h2><div class="d-sub">${team.length} agents · ${can} can take tasks</div></div></div>
+    open(`<div class="d-head"><span class="avatar">${leadSvg(d.color)}</span><div><h2 class="d-title">${esc(d.name)} Lead</h2><div class="d-sub">${team.length} employees · ${can} can take tasks${d.mission ? '<br>' + esc(d.mission) : ''}</div></div></div>
+      <p class="label">Talk to the lead</p>${chatUI('lead:' + d.id, 'Ask the ' + d.name + ' lead…')}
       <form id="f-task" class="field"><label for="task">Give the lead a task</label><textarea class="input" id="task" name="t" required placeholder="Example: check vagent.online and report anything broken" ${focusTask ? 'autofocus' : ''}></textarea>
       <button class="btn primary" type="submit">Send to the team</button><p class="help">The lead sends it to every agent here that has a webhook, waits for them, and gives you one final result.</p></form>
       <div id="task-out"></div>
-      <p class="label">Team</p><div class="items">${team.map(itemAgent).join('') || '<p class="empty">No agents yet. Open an agent and choose this department.</p>'}</div>
+      <p class="label">Teams</p><div class="teams">${(d.teams || []).map((t) => `<span class="pick" style="display:inline-flex;align-items:center;gap:6px">${esc(t.name)} <small class="muted">${D.agents.filter((a) => a.team === t.id).length}</small><button type="button" class="rename" data-del-team="${t.id}" aria-label="Remove team ${esc(t.name)}">✕</button></span>`).join('')}</div>
+      <form id="f-team" class="row" style="flex-wrap:nowrap"><label class="sr" for="tn">New team</label><input class="input" id="tn" name="t" placeholder="New team name" required maxlength="40" style="flex:1"><button class="btn" type="submit">Add team</button></form>
+      <p class="label">Employees</p><div class="items">${team.map(itemAgent).join('') || '<p class="empty">No employees yet. Ask the CEO to move some here, or open an agent and choose this department.</p>'}</div>
       <p class="label">Past tasks</p><div class="items" id="history"><p class="empty">Loading…</p></div>
       <p class="label">Edit</p><form id="f-edit" class="field"><input class="input" name="n" value="${esc(d.name)}" aria-label="Department name" required><div class="sw">${DEPT_COLORS.map((c) => `<button type="button" aria-label="Color ${c}" aria-pressed="${c === d.color}" data-c="${c}" style="background:${c}"></button>`).join('')}</div>
       <div class="row"><button class="btn" type="submit">Save</button><button class="btn danger" type="button" id="del-dept">Delete department</button></div></form>`, 'dept:' + d.id);
     let color = d.color;
+    bindChat('lead:' + d.id, d.name + ' lead');
+    $("#f-team").onsubmit = async (e) => { e.preventDefault(); try { await api("departments", { body: { deptId: d.id, team: e.target.t.value } }); await load(); openDept(d.id); } catch (x) { toast(x.message); } };
+    inner.querySelectorAll("[data-del-team]").forEach((b) => (b.onclick = async () => { if (!confirm("Remove this team? Its employees stay in the department.")) return; await api("departments?teamId=" + b.dataset.delTeam, { method: "DELETE" }); await load(); openDept(d.id); }));
     inner.querySelectorAll('.sw button').forEach((b) => (b.onclick = () => { color = b.dataset.c; inner.querySelectorAll('.sw button').forEach((x) => x.setAttribute('aria-pressed', x === b)); }));
     $('#f-edit').onsubmit = async (e) => { e.preventDefault(); try { await api('departments', { body: { id: d.id, name: e.target.n.value, color } }); toast('Saved'); await load(); openDept(d.id); } catch (x) { toast(x.message); } };
     $('#del-dept').onclick = async () => { if (!confirm('Delete the ' + d.name + ' department? Its agents stay, they just leave the team.')) return; await api('departments?id=' + d.id, { method: 'DELETE' }); close(); load(); };
@@ -319,12 +319,63 @@
     open(`<h2 class="d-title">Give a task</h2><p class="help">Pick the department whose lead should handle it.</p><div class="items">${D.departments.map((d) => `<button class="item" type="button" data-dept-task="${d.id}">${leadSvg(d.color, 32)}<span class="grow"><b>${esc(d.name)} Lead</b><small>${D.agents.filter((a) => a.dept === d.id).length} agents</small></span>›</button>`).join('')}</div>`, 'task');
   }
 
+  // ---------- chats: CEO, leads, agents ----------
+  const store = { get: (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v.slice(-30))); } catch {} } };
+  const ACT = { create_department: (a) => 'Create department "' + a.name + '"', rename_department: (a) => 'Rename ' + a.department + ' to "' + a.name + '"', set_mission: (a) => 'New mission for ' + a.department + ': ' + a.mission, delete_department: (a) => 'Delete department ' + a.department,
+    create_team: (a) => 'New team "' + a.name + '" in ' + a.department, delete_team: (a) => 'Remove team ' + a.team + ' from ' + a.department, move_agent: (a) => 'Move ' + a.agent + ' → ' + a.department + (a.team ? ' / ' + a.team : ''),
+    rename_agent: (a) => 'Rename ' + a.agent + ' to "' + a.name + '"', run_agent: (a) => 'Start ' + a.agent + ' now', turn_on: (a) => 'Turn on ' + a.agent, turn_off: (a) => 'Turn off ' + a.agent };
+  const bubble = (m) => {
+    if (m.me) return `<div class="msg me">${esc(m.t)}</div>`;
+    let h = `<div class="msg it${m.bad ? ' bad' : ''}">${esc(m.t)}</div>`;
+    if (m.actions && m.actions.length) h += `<div class="plan" data-plan="${m.id}"><p class="label">The CEO wants to</p><ul>${m.actions.map((a) => `<li>${esc((ACT[a.type] || ((x) => x.type))(a))}</li>`).join('')}</ul>${m.done ? `<div class="result">${esc(m.done)}</div>` : `<div class="row"><button class="btn primary" type="button" data-approve="${m.id}">Approve</button><button class="btn" type="button" data-skip="${m.id}">No thanks</button></div>`}</div>`;
+    if (m.prompt) h += `<div class="plan"><p class="label">Prompt for Claude</p><pre class="prompt">${esc(m.prompt)}</pre><button class="btn" type="button" data-copy="${m.id}">Copy prompt</button></div>`;
+    return h;
+  };
+  function chatUI(to, hint) { return `<div class="chat" id="chat">${(to === 'ceo' ? store.get('vagent-ceo') : chats[to] || []).map(bubble).join('')}</div>
+    <form id="f-chat" class="row" style="flex-wrap:nowrap"><label class="sr" for="cm">Message</label><input class="input" id="cm" name="m" placeholder="${esc(hint)}" required autocomplete="off" style="flex:1"><button class="btn primary" type="submit" style="flex:none">Send</button></form>`; }
+  function bindChat(to, who) {
+    const f = $('#f-chat'), log = () => (to === 'ceo' ? store.get('vagent-ceo') : (chats[to] ||= []));
+    const save = (l) => (to === 'ceo' ? store.set('vagent-ceo', l) : (chats[to] = l));
+    const paint = () => { const c = $('#chat'); if (!c) return; c.innerHTML = log().map(bubble).join(''); c.lastElementChild && c.lastElementChild.scrollIntoView({ block: 'nearest' }); };
+    const send = async (m) => {
+      const l = log(); const history = l.slice(-8).map((x) => ({ me: !!x.me, t: x.t })); l.push({ me: 1, t: m }); save(l); paint();
+      $('#chat').insertAdjacentHTML('beforeend', `<div class="msg it typing-msg" id="wait">${esc(who)} is typing…</div>`); $('#wait').scrollIntoView({ block: 'nearest' });
+      const btn = f.querySelector('button'); btn.disabled = true;
+      try { const r = await api('talk', { body: { to, message: m, history } }); const l2 = log(); l2.push({ id: Date.now(), t: r.reply, actions: r.actions, prompt: r.prompt, bad: r.ok === false }); save(l2); }
+      catch (x) { const l2 = log(); l2.push({ id: Date.now(), t: x.message, bad: 1 }); save(l2); }
+      btn.disabled = false; paint(); if (to.startsWith('agent:')) load();
+    };
+    f.onsubmit = (e) => { e.preventDefault(); const m = f.m.value.trim(); if (m) { f.m.value = ''; send(m); } };
+    inner.querySelectorAll('[data-say]').forEach((b) => (b.onclick = () => send(b.dataset.say)));
+    inner.onclick = async (e) => {
+      const ap = e.target.closest('[data-approve],[data-skip],[data-copy]'); if (!ap) return;
+      const l = log(), m = l.find((x) => String(x.id) === (ap.dataset.approve || ap.dataset.skip || ap.dataset.copy)); if (!m) return;
+      if (ap.dataset.copy) { try { await navigator.clipboard.writeText(m.prompt); toast('Prompt copied'); } catch { toast('Select the prompt and copy it'); } return; }
+      if (ap.dataset.skip) { m.done = 'Skipped.'; save(l); return paint(); }
+      ap.disabled = true; ap.textContent = 'Working…';
+      try { const r = await api('act', { body: { actions: m.actions } }); m.done = r.done.join('\n'); toast('Done'); } catch (x) { m.done = 'Could not do it: ' + x.message; }
+      save(l); paint(); load();
+    };
+    paint();
+  }
+  function openCEO() {
+    open(`<div class="d-head"><span class="avatar" style="background:#2B2416">${leadSvg('#D9C27A')}</span><div><h2 class="d-title">The CEO</h2><div class="d-sub">Sees the whole company live. Ask anything, or ask for a change.</div></div></div>
+      <div class="row">${['How is the company doing today?', 'Organize everyone into the right departments and teams', 'Which agents failed recently and why?', 'Create a new department for ', 'Write a Claude prompt to add a feature: '].map((s) => `<button class="pick" type="button" ${s.endsWith(' ') ? `data-fill="${esc(s)}"` : `data-say="${esc(s)}"`}>${esc(s.trim())}</button>`).join('')}</div>
+      ${chatUI('ceo', 'Ask the CEO anything…')}
+      <p class="help">Changes only happen after you press Approve. For new website features he writes a prompt you paste into Claude.</p>
+      <button class="btn" type="button" id="clear-ceo" style="align-self:flex-start">Clear chat</button>`, 'ceo');
+    bindChat('ceo', 'The CEO');
+    inner.querySelectorAll('[data-fill]').forEach((b) => (b.onclick = () => { const i = $('#cm'); i.value = b.dataset.fill; i.focus(); }));
+    $('#clear-ceo').onclick = () => { store.set('vagent-ceo', []); openCEO(); };
+  }
+
   // ---------- events ----------
   document.addEventListener('click', async (e) => {
-    const t = e.target.closest('[data-agent],[data-dept],[data-dept-task],[data-open],[data-del-n8n],[data-reconnect],.agent,.lead,.add-room');
+    const t = e.target.closest('[data-agent],[data-dept],[data-dept-task],[data-open],[data-del-n8n],[data-reconnect],.agent,.lead,.add-room,.ceo-g');
     if (!t) return;
     if (t.classList.contains('agent')) return openAgent(t.dataset.key);
     if (t.classList.contains('lead')) return openDept(t.dataset.dept);
+    if (t.classList.contains('ceo-g')) return openCEO();
     if (t.classList.contains('add-room')) return newDept();
     if (t.dataset.agent) { focusAgent(t.dataset.agent); return openAgent(t.dataset.agent); }
     if (t.dataset.deptTask) return openDept(t.dataset.deptTask, true);
@@ -333,10 +384,10 @@
     if (t.dataset.delN8n) { if (!confirm('Remove this n8n? Its agents leave the office (nothing is deleted in n8n).')) return; await api('n8n?id=' + t.dataset.delN8n, { method: 'DELETE' }); await load(); return openSettings(); }
     const o = t.dataset.open; if (o === 'connect') openConnect(); else if (o === 'settings') openSettings(); else if (o === 'new-dept') newDept(); else if (o === 'off' || o === 'over') openList(o);
   });
-  svg.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.agent,.lead,.add-room')) { e.preventDefault(); e.target.closest('.agent,.lead,.add-room').dispatchEvent(new MouseEvent('click', { bubbles: true })); } });
+  svg.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.agent,.lead,.add-room,.ceo-g')) { e.preventDefault(); e.target.closest('.agent,.lead,.add-room,.ceo-g').dispatchEvent(new MouseEvent('click', { bubbles: true })); } });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && current) close(); });
   $('#drawer-close').onclick = close; scrim.onclick = close;
-  $('#btn-settings').onclick = openSettings; $('#btn-task').onclick = openTask;
+  $('#btn-settings').onclick = openSettings; $('#btn-task').onclick = openCEO;
   const tick = () => { const n = new Date(); const h = $('#clock-h'), m = $('#clock-m'); if (h) { h.setAttribute('transform', 'rotate(' + ((n.getHours() % 12) * 30 + n.getMinutes() / 2) + ')'); m.setAttribute('transform', 'rotate(' + n.getMinutes() * 6 + ')'); } };
   tick(); setInterval(tick, 30000);
   load(); setInterval(() => { if (!document.hidden) load(); }, 15000);
