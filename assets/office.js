@@ -39,15 +39,15 @@
     g.innerHTML = `<g class="body"><use href="#bot" style="color:${colorOf(a.key)}"/></g>
       <g class="bubble typing" transform="translate(27 -52)"><rect x="-15" y="-10" width="30" height="18" rx="9" fill="#FAF9F5" stroke="#E3E0D5"/><circle cx="-6" cy="-1" r="2.2" fill="#B5532F"/><circle cx="0" cy="-1" r="2.2" fill="#B5532F"/><circle cx="6" cy="-1" r="2.2" fill="#B5532F"/></g>
       <g class="bubble alert" transform="translate(18 -66)"><circle r="8" fill="#B3261E"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">!</text></g>
-      <g class="tag" transform="translate(0 -86)"><rect y="-12" height="22" rx="11"/><text y="3" text-anchor="middle"></text></g>`;
+      <g class="tag" transform="translate(0 -86)"><rect y="-12" height="22" rx="11"/><circle class="tdot" cy="-1" r="3.5"/><text y="3" text-anchor="middle"></text></g>`;
     return g;
   }
   function updateAgent(g, a) {
     g.setAttribute('class', 'agent ' + a.status);
     g.setAttribute('aria-label', a.name + ', ' + (STATUS[a.status] || a.status));
-    const name = a.name.length > 22 ? a.name.slice(0, 21) + '…' : a.name, w = name.length * 6.5 + 26;
+    const name = a.name.length > 22 ? a.name.slice(0, 21) + '…' : a.name, w = name.length * 6.5 + 38;
     const r = g.querySelector('.tag rect'); r.setAttribute('x', -w / 2); r.setAttribute('width', w);
-    g.querySelector('.tag text').textContent = name;
+    const t = g.querySelector('.tag text'); t.textContent = name; t.setAttribute('x', 6); const dt = g.querySelector('.tdot'); dt.setAttribute('cx', -w / 2 + 12); dt.setAttribute('fill', dotColor[a.status]);
   }
   svg.addEventListener('pointerover', (e) => { const g = e.target.closest('#layer-free .agent'); if (g && g.parentNode.lastChild !== g) g.parentNode.appendChild(g); });
   function attach(g, p) {
@@ -94,19 +94,20 @@
       }
     };
     place(working, 'desk', VScene.desks.length); place(cafe, 'cafe', VScene.cafe.length);
-    svg.querySelectorAll('.desk > use').forEach((u) => (u.style.color = '#3A3935'));
+    svg.querySelectorAll('.desk-top').forEach((u) => (u.style.color = '#3A3935'));
     for (const a of A) {
       const p = next[a.key]; let g = els[a.key];
       if (!p) { if (g) { leave(g); delete els[a.key]; delete places[a.key]; } continue; }
       if (!g) { g = els[a.key] = makeAgent(a); updateAgent(g, a); attach(g, p); if (!first && window.gsap) gsap.from(g, { opacity: 0, duration: 0.6 }); }
       else { updateAgent(g, a); const o = places[a.key]; if (!o || o.t !== p.t || o.i !== p.i) walk(g, o, p); }
       places[a.key] = p;
-      if (p.t === 'desk') deskG(p.i).querySelector(':scope > use').style.color = colorOf(a.key);
+      if (p.t === 'desk') deskG(p.i).querySelector('.desk-top').style.color = colorOf(a.key);
     }
     for (const k of Object.keys(els)) if (!A.find((a) => a.key === k)) { leave(els[k]); delete els[k]; delete places[k]; }
     renderRooms();
     const help = A.filter((a) => a.status === 'help').length;
     $('#n-working').textContent = working.length; $('#n-idle').textContent = cafe.length - help; $('#n-help').textContent = help;
+    const bw = (n) => String(Math.max(4, Math.min(1, n / Math.max(1, A.length)) * 100)); svg.querySelector('#board-bar1').setAttribute('opacity', working.length ? 1 : 0.35); svg.querySelector('#board-bar2').setAttribute('opacity', cafe.length ? 1 : 0.35);
     $('#board-line').textContent = A.length ? working.length + ' working · ' + cafe.length + ' in café' : 'Connect n8n to start';
     const chips = [];
     if (!D.instances.length) chips.push('<button class="chip warn" type="button" data-open="settings">Connect your n8n to fill the office</button>');
@@ -114,7 +115,7 @@
     if (off.length) chips.push(`<button class="chip" type="button" data-open="off">${off.length} off duty</button>`);
     if (over.length) chips.push(`<button class="chip" type="button" data-open="over">+${over.length} more inside</button>`);
     $('#chips').innerHTML = chips.join(''); render.over = over;
-    $('#feed').innerHTML = D.activity.slice(0, 5).map((e) => `<li class="${/error|crashed/.test(e.status) ? 'bad' : ''}"><time>${hhmm(e.at)}</time><span>${esc(e.name)} ${e.status === 'success' ? 'finished' : e.status === 'running' ? 'is working' : /error|crashed/.test(e.status) ? 'failed' : e.status}</span></li>`).join('') || '<li><span>No runs yet.</span></li>';
+    $('#feed').innerHTML = D.activity.slice(0, 5).map((e) => `<li class="${/error|crashed/.test(e.status) ? 'bad' : ''}"><i class="fd ${e.status}"></i><time>${hhmm(e.at)}</time><span>${esc(e.name)} ${e.status === 'success' ? 'finished' : e.status === 'running' ? 'is working' : /error|crashed/.test(e.status) ? 'failed' : e.status}</span></li>`).join('') || '<li><span>No runs yet.</span></li>';
     const order = { working: 0, help: 1, idle: 2, off: 3 };
     $('#list').innerHTML = [...A].sort((a, b) => order[a.status] - order[b.status]).map((a) => itemAgent(a)).join('') || '<p class="empty">No agents yet. Open settings and connect your n8n.</p>';
     first = false;
@@ -258,7 +259,7 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && current) close(); });
   $('#drawer-close').onclick = close; scrim.onclick = close;
   $('#btn-settings').onclick = openSettings; $('#btn-task').onclick = openTask;
-  const tick = () => ($('#clock').textContent = new Date().toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }));
+  const tick = () => { const n = new Date(); $('#clock').textContent = n.toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); const h = $('#clock-h'), m = $('#clock-m'); if (h) { h.setAttribute('transform', 'rotate(' + ((n.getHours() % 12) * 30 + n.getMinutes() / 2) + ')'); m.setAttribute('transform', 'rotate(' + n.getMinutes() * 6 + ')'); } };
   tick(); setInterval(tick, 30000);
   load(); setInterval(() => { if (!document.hidden) load(); }, 15000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
