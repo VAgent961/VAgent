@@ -30,7 +30,7 @@
   $('#stage').innerHTML = VScene.svg;
   const svg = $('#scene'), free = $('#layer-free'), walkL = $('#layer-walk');
   // ---------- zoom + pan (only inside the office) ----------
-  const stage = $('#stage'), VB0 = { x: 20, y: 0, w: 1400, h: 930 }, vb = { ...VB0 }, MAXZ = 3.5;
+  const stage = $('#stage'), VB0 = { ...VScene.vb }, vb = { ...VB0 }, MAXZ = 3.5;
   stage.insertAdjacentHTML('beforeend', '<div class="zoom" role="group" aria-label="Zoom the office"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button><button type="button" data-z="reset" aria-label="Fit the whole office" style="font-size:14px">⤢</button></div>');
   const setVB = () => { svg.setAttribute('viewBox', vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h); };
   const clampVB = () => { vb.w = Math.min(VB0.w, Math.max(VB0.w / MAXZ, vb.w)); vb.h = vb.w * VB0.h / VB0.w; vb.x = Math.min(VB0.x + VB0.w - vb.w, Math.max(VB0.x, vb.x)); vb.y = Math.min(VB0.y + VB0.h - vb.h, Math.max(VB0.y, vb.y)); };
@@ -66,7 +66,7 @@
   function makeAgent(a) {
     const g = document.createElementNS(NS, 'g');
     g.setAttribute('class', 'agent'); g.setAttribute('tabindex', '0'); g.setAttribute('role', 'button'); g.dataset.key = a.key;
-    g.innerHTML = `<g class="body"><use href="#bot" style="color:${colorOf(a.key)}"/></g>
+    g.innerHTML = `<circle class="ring" cy="-30" r="34" fill="none" stroke="#B5532F" stroke-width="3"/><g class="body"><use href="#bot" style="color:${colorOf(a.key)}"/></g>
       <g class="bubble typing" transform="translate(27 -52)"><rect x="-15" y="-10" width="30" height="18" rx="9" fill="#FAF9F5" stroke="#E3E0D5"/><circle cx="-6" cy="-1" r="2.2" fill="#B5532F"/><circle cx="0" cy="-1" r="2.2" fill="#B5532F"/><circle cx="6" cy="-1" r="2.2" fill="#B5532F"/></g>
       <g class="bubble alert" transform="translate(18 -66)"><circle r="8" fill="#B3261E"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">!</text></g>
       <g class="tag" transform="translate(0 -86)"><rect y="-12" height="22" rx="11"/><circle class="tdot" cy="-1" r="3.5"/><text y="3" text-anchor="middle"></text></g>`;
@@ -139,20 +139,35 @@
     $('#n-working').textContent = working.length; $('#n-idle').textContent = cafe.length - help; $('#n-help').textContent = help;
     const bw = (n) => String(Math.max(4, Math.min(1, n / Math.max(1, A.length)) * 100)); svg.querySelector('#board-bar1').setAttribute('opacity', working.length ? 1 : 0.35); svg.querySelector('#board-bar2').setAttribute('opacity', cafe.length ? 1 : 0.35);
     $('#board-line').textContent = A.length ? working.length + ' working · ' + cafe.length + ' in café' : 'Connect n8n to start';
-    const chips = [];
-    if (!D.instances.length) chips.push('<button class="chip warn" type="button" data-open="settings">Connect your n8n to fill the office</button>');
-    for (const e of D.errors) chips.push(`<button class="chip warn" type="button" data-open="settings">Can't reach ${esc(e.inst)}</button>`);
-    if (off.length) chips.push(`<button class="chip" type="button" data-open="off">${off.length} off duty</button>`);
-    if (over.length) chips.push(`<button class="chip" type="button" data-open="over">+${over.length} more inside</button>`);
-    $('#chips').innerHTML = chips.join(''); render.over = over;
-    $('#feed').innerHTML = D.activity.slice(0, 5).map((e) => `<li class="${/error|crashed/.test(e.status) ? 'bad' : ''}"><i class="fd ${e.status}"></i><time>${hhmm(e.at)}</time><span>${esc(e.name)} ${e.status === 'success' ? 'finished' : e.status === 'running' ? 'is working' : /error|crashed/.test(e.status) ? 'failed' : e.status}</span></li>`).join('') || '<li><span>No runs yet.</span></li>';
-    const order = { working: 0, help: 1, idle: 2, off: 3 };
-    $('#list').innerHTML = [...A].sort((a, b) => order[a.status] - order[b.status]).map((a) => itemAgent(a)).join('') || '<p class="empty">No agents yet. Open settings and connect your n8n.</p>';
+    $('#n-all').textContent = A.length; $('#n-off').textContent = off.length;
+    const notes = [];
+    if (!D.instances.length) notes.push('<button class="chip warn" type="button" data-open="settings">Connect your n8n to fill the office →</button>');
+    for (const e of D.errors) notes.push(`<button class="chip warn" type="button" data-open="settings">Can't reach ${esc(e.inst)} · check its API key →</button>`);
+    if (over.length) notes.push(`<button class="chip" type="button" data-open="over">+${over.length} agents don't fit in the office →</button>`);
+    $('#notice').innerHTML = notes.length ? '<div class="notice">' + notes.join('') + '</div>' : ''; render.over = over;
+    $('#feed').innerHTML = D.activity.slice(0, 12).map((e) => `<li><i class="sd ${e.status}"></i><time>${hhmm(e.at)}</time><span>${esc(e.name)} ${e.status === 'success' ? 'finished' : e.status === 'running' ? 'is working' : /error|crashed/.test(e.status) ? 'failed' : e.status}</span></li>`).join('') || '<li>No runs yet.</li>';
+    renderList();
     first = false;
   }
   const dotColor = { working: '#3F7D4E', help: '#B3261E', idle: '#B5532F', off: '#B0AEA5' };
-  const itemAgent = (a) => `<button class="item" type="button" data-agent="${esc(a.key)}"><span class="sd" style="width:10px;height:10px;border-radius:50%;background:${dotColor[a.status]}"></span><span class="grow"><b>${esc(a.name)}</b><small>${esc(STATUS[a.status])} · ${esc(a.inst)}</small></span><span aria-hidden="true">›</span></button>`;
+  const itemAgent = (a) => `<button class="item" type="button" data-agent="${esc(a.key)}"><span class="sd ${a.status}"></span><span class="grow"><b>${esc(a.name)}</b><small>${esc(STATUS[a.status])} · ${esc(a.inst)}</small></span><span aria-hidden="true">›</span></button>`;
 
+  let filter = 'all', q = '';
+  const groups = { all: () => true, working: (a) => a.status === 'working', cafe: (a) => a.status === 'idle', help: (a) => a.status === 'help', off: (a) => a.status === 'off' };
+  function renderList() {
+    const order = { working: 0, help: 1, idle: 2, off: 3 }, s = q.toLowerCase();
+    const list = D.agents.filter(groups[filter]).filter((a) => !s || (a.name + ' ' + a.inst).toLowerCase().includes(s)).sort((a, b) => order[a.status] - order[b.status] || a.name.localeCompare(b.name));
+    $('#list').innerHTML = list.map(itemAgent).join('') || (D.agents.length ? '<p class="empty">No agents match.</p>' : '<p class="empty">No agents yet. Open settings and connect your n8n.</p>');
+  }
+  document.querySelectorAll('.filters button').forEach((b) => (b.onclick = () => { filter = b.dataset.f; document.querySelectorAll('.filters button').forEach((x) => x.setAttribute('aria-pressed', x === b)); renderList(); }));
+  $('#q').oninput = (e) => { q = e.target.value; renderList(); };
+  // find an agent in the office: zoom to it and make its tag pulse
+  function focusAgent(key) {
+    const g = els[key]; if (!g || !g._pos) return;
+    document.querySelectorAll('.agent.found').forEach((x) => x.classList.remove('found')); g.classList.add('found'); setTimeout(() => g.classList.remove('found'), 4000);
+    const nw = Math.min(VB0.w, VB0.w / 2.2), to = { w: nw, h: nw * VB0.h / VB0.w }; to.x = g._pos[0] - to.w / 2; to.y = g._pos[1] - 40 - to.h / 2;
+    if (window.gsap) gsap.to(vb, { ...to, duration: 0.6, ease: 'power2.inOut', onUpdate: () => { clampVB(); setVB(); } }); else { Object.assign(vb, to); clampVB(); setVB(); }
+  }
   async function load() {
     try {
       D = await api('office');
@@ -185,8 +200,8 @@
       : `<div class="box"><b style="font-size:14px">Want to talk to it?</b><span class="help">Add a Webhook trigger to this workflow in n8n. Then you can chat with it and give it tasks from here.</span></div>`;
     inner.innerHTML = head + talk
       + `<div class="field"><label for="dept">Department</label><select class="input" id="dept">${opts}</select></div>`
-      + `<p class="label">Its steps</p><ol class="steps">${steps}</ol>`
-      + `<p class="label">Recent runs</p><ul class="runs">${runs}</ul>`
+      + `<details class="more"><summary>What it does (${d.steps.length} steps)</summary><ol class="steps">${steps}</ol></details>`
+      + `<details class="more" open><summary>Recent runs</summary><ul class="runs">${runs}</ul></details>`
       + `<div class="row"><a class="btn" href="${esc(d.link)}" target="_blank" rel="noopener">Open in n8n</a><button class="btn ${d.active ? 'danger' : ''}" type="button" id="toggle">${d.active ? 'Turn off' : 'Turn on'}</button></div>`
       + `<p class="help">Watching costs no AI: status and runs come straight from n8n.</p>`;
     $('#dept').onchange = async (e) => { try { await api('agent', { body: { key, action: 'assign', deptId: e.target.value || null } }); toast('Saved'); load(); } catch (x) { toast(x.message); } };
@@ -279,7 +294,7 @@
     if (t.classList.contains('agent')) return openAgent(t.dataset.key);
     if (t.classList.contains('lead')) return openDept(t.dataset.dept);
     if (t.classList.contains('add-room')) return newDept();
-    if (t.dataset.agent) return openAgent(t.dataset.agent);
+    if (t.dataset.agent) { focusAgent(t.dataset.agent); return openAgent(t.dataset.agent); }
     if (t.dataset.deptTask) return openDept(t.dataset.deptTask, true);
     if (t.dataset.dept) return openDept(t.dataset.dept);
     if (t.dataset.delN8n) { if (!confirm('Remove this n8n? Its agents leave the office (nothing is deleted in n8n).')) return; await api('n8n?id=' + t.dataset.delN8n, { method: 'DELETE' }); await load(); return openSettings(); }
@@ -289,7 +304,7 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && current) close(); });
   $('#drawer-close').onclick = close; scrim.onclick = close;
   $('#btn-settings').onclick = openSettings; $('#btn-task').onclick = openTask;
-  const tick = () => { const n = new Date(); $('#clock').textContent = n.toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); const h = $('#clock-h'), m = $('#clock-m'); if (h) { h.setAttribute('transform', 'rotate(' + ((n.getHours() % 12) * 30 + n.getMinutes() / 2) + ')'); m.setAttribute('transform', 'rotate(' + n.getMinutes() * 6 + ')'); } };
+  const tick = () => { const n = new Date(); const h = $('#clock-h'), m = $('#clock-m'); if (h) { h.setAttribute('transform', 'rotate(' + ((n.getHours() % 12) * 30 + n.getMinutes() / 2) + ')'); m.setAttribute('transform', 'rotate(' + n.getMinutes() * 6 + ')'); } };
   tick(); setInterval(tick, 30000);
   load(); setInterval(() => { if (!document.hidden) load(); }, 15000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });

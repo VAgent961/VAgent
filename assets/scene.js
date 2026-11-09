@@ -1,10 +1,10 @@
-// Static isometric office art (no app logic). Floor coords -> screen: X = 600 + 0.8(x - y), Y = 110 + 0.462(x + y).
-// Exposes window.VScene = { svg, desks, cafe, rooms }.
+// Static isometric office art (no app logic). Floor is 1300 x 900 units.
+// Floor coords -> screen: X = 600 + 0.8(x - y), Y = 110 + 0.462(x + y). Exposes window.VScene = { svg, desks, cafe, rooms, vb }.
 (function () {
+  const W = 1300, D = 900;
   const P = (x, y, h = 0) => [600 + 0.8 * (x - y), 110 + 0.462 * (x + y) - h];
   const pts = (...a) => a.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
   const poly = (fill, ...a) => `<polygon points="${pts(...a)}" fill="${fill}"/>`;
-  // iso box on the floor: x0..x1, y0..y1, height h, raised z
   const box = (x0, y0, x1, y1, h, [top, front, side], z = 0) =>
     poly(side, P(x1, y0, z), P(x1, y1, z), P(x1, y1, z + h), P(x1, y0, z + h)) +
     poly(front, P(x0, y1, z), P(x1, y1, z), P(x1, y1, z + h), P(x0, y1, z + h)) +
@@ -12,14 +12,17 @@
   const wallR = (x0, x1, h0, h1, fill, extra = '') => `<polygon points="${pts(P(x0, 0, h0), P(x1, 0, h0), P(x1, 0, h1), P(x0, 0, h1))}" fill="${fill}" ${extra}/>`;
   const wallL = (y0, y1, h0, h1, fill, extra = '') => `<polygon points="${pts(P(0, y0, h0), P(0, y1, h0), P(0, y1, h1), P(0, y0, h1))}" fill="${fill}" ${extra}/>`;
   const onR = (x, h) => { const [X, Y] = P(x, 0, h); return `matrix(0.866 0.5 0 1 ${X.toFixed(1)} ${Y.toFixed(1)})`; };
-  const onL = (y, h) => { const [X, Y] = P(0, y, h); return `matrix(0.866 -0.5 0 1 ${X.toFixed(1)} ${Y.toFixed(1)})`; };
-  const use = (id, x, y, extra = '') => { const [X, Y] = P(x, y); return `<use href="#${id}" x="${X.toFixed(1)}" y="${Y.toFixed(1)}" ${extra}/>`; };
-  const windowR = (x0, x1, h0, h1) => wallR(x0 - 4, x1 + 4, h0 - 4, h1 + 4, '#F7F3EA') + wallR(x0, x1, h0, h1, 'url(#sky)') + `<polyline points="${pts(P((x0 + x1) / 2, 0, h0), P((x0 + x1) / 2, 0, h1))}" stroke="#F7F3EA" stroke-width="3"/>` + wallR(x0, x1, h0 + (h1 - h0) * 0.62, h0 + (h1 - h0) * 0.66, '#F7F3EA');
+  const at = (x, y, h = 0) => { const [X, Y] = P(x, y, h); return `x="${X.toFixed(1)}" y="${Y.toFixed(1)}"`; };
+  const use = (id, x, y, h = 0) => `<use href="#${id}" ${at(x, y, h)}/>`;
+  const windowR = (x0, x1, h0, h1) => wallR(x0 - 4, x1 + 4, h0 - 4, h1 + 4, '#F7F3EA') + wallR(x0, x1, h0, h1, 'url(#sky)') + `<polyline points="${pts(P((x0 + x1) / 2, 0, h0), P((x0 + x1) / 2, 0, h1))}" stroke="#F7F3EA" stroke-width="3"/>`;
   const windowL = (y0, y1, h0, h1) => wallL(y0 - 4, y1 + 4, h0 - 4, h1 + 4, '#F7F3EA') + wallL(y0, y1, h0, h1, 'url(#sky)') + `<polyline points="${pts(P(0, (y0 + y1) / 2, h0), P(0, (y0 + y1) / 2, h1))}" stroke="#F7F3EA" stroke-width="3"/>`;
 
-  const desks = [[488, 443], [600, 507], [712, 572], [824, 637], [936, 701], [360, 517], [472, 581], [584, 646], [696, 711], [808, 775]];
-  const cafe = [[1226, 634], [1012, 578], [1100, 566], [1150, 650], [1300, 600], [1190, 536], [1262, 578], [960, 612], [1060, 700]];
-  const rooms = [[590, 185], [450, 266], [310, 347], [170, 427]];
+  // 24 desks (3 rows x 8), 16 café spots, 6 lead rooms
+  const deskF = []; for (const y of [530, 680, 830]) for (let x = 280; x <= 1260; x += 140) deskF.push([x, y]);
+  const desks = deskF.map(([x, y]) => P(x, y));
+  const cafeF = []; for (const y of [110, 200, 290, 380]) for (const x of [990, 1070, 1150, 1230]) cafeF.push([x + (y / 90) % 2 * 20, y]);
+  const cafe = cafeF.map(([x, y]) => P(x, y));
+  const rooms = [0, 1, 2, 3, 4, 5].map((i) => P(80, 80 + i * 150));
   const deskOrder = desks.map((d, i) => i).sort((a, b) => desks[a][1] - desks[b][1]);
 
   const defs = `<defs>
@@ -41,65 +44,52 @@
   <symbol id="cooler" overflow="visible"><ellipse cx="0" cy="0" rx="12" ry="4" fill="#141413" opacity="0.1"/><rect x="-10" y="-38" width="20" height="38" rx="3" fill="#E8E6DC"/><rect x="0" y="-38" width="10" height="38" rx="2" fill="#D6D1C3"/><rect x="-4" y="-26" width="8" height="5" rx="1" fill="#3A3935"/><path d="M-8 -38 C-8 -56 8 -56 8 -38 Z" fill="#A8C9DA" opacity="0.85"/><ellipse cx="-2" cy="-48" rx="2" ry="5" fill="#FFFFFF" opacity="0.5"/></symbol>
   </defs>`;
 
-  // ---- floor, walls, wall decor ----
-  const lights = []; for (let x = 715; x <= 985; x += 30) lights.push(P(x, 0, 92 - 6 * Math.sin(((x - 715) / 30) * Math.PI)));
+  const lights = []; for (let x = 975; x <= 1285; x += 31) lights.push(P(x, 0, 92 - 6 * Math.sin(((x - 975) / 31) * Math.PI)));
   const back = `
-  ${poly('#CDC4B0', P(0, 700), P(1000, 700), P(1000, 700, -16), P(0, 700, -16))}${poly('#BFB6A1', P(1000, 0), P(1000, 700), P(1000, 700, -16), P(1000, 0, -16))}
-  <polygon points="${pts(P(0, 0), P(1000, 0), P(1000, 700), P(0, 700))}" fill="#141413" opacity="0.05" transform="translate(0 26)"/>
-  ${wallR(0, 1000, 0, 100, '#E9E4D8')}${wallL(0, 700, 0, 100, '#DCD5C4')}
-  ${wallR(0, 1000, 100, 106, '#F2EEE4')}${wallL(0, 700, 100, 106, '#E6E0D1')}
+  ${poly('#CDC4B0', P(0, D), P(W, D), P(W, D, -16), P(0, D, -16))}${poly('#BFB6A1', P(W, 0), P(W, D), P(W, D, -16), P(W, 0, -16))}
+  ${wallR(0, W, 0, 100, '#E9E4D8')}${wallL(0, D, 0, 100, '#DCD5C4')}${wallR(0, W, 100, 106, '#F2EEE4')}${wallL(0, D, 100, 106, '#E6E0D1')}
   <g transform="matrix(0.8 0.462 -0.8 0.462 600 110)">
-    <rect width="1000" height="700" fill="#F2EEE4"/><rect width="1000" height="700" fill="url(#tiles)"/>
-    <rect width="150" height="175" fill="#EDE6D6"/><rect y="175" width="150" height="175" fill="#E8E1D1"/><rect y="350" width="150" height="175" fill="#EDE6D6"/><rect y="525" width="150" height="175" fill="#E8E1D1"/>
-    <rect x="25" y="40" width="100" height="110" rx="14" fill="#E3D8C2"/><rect x="25" y="215" width="100" height="110" rx="14" fill="#DFD3BB"/><rect x="25" y="390" width="100" height="110" rx="14" fill="#E3D8C2"/><rect x="25" y="565" width="100" height="110" rx="14" fill="#DFD3BB"/>
-    <rect x="700" width="300" height="330" fill="#E2C9AD"/><rect x="700" width="300" height="330" fill="url(#planks)"/>
-    <ellipse cx="850" cy="230" rx="120" ry="80" fill="#C9714F" opacity="0.16"/><ellipse cx="850" cy="230" rx="100" ry="64" fill="none" stroke="#C9714F" stroke-width="3" opacity="0.18"/>
-    <rect x="240" y="370" width="760" height="320" rx="24" fill="#E7E1D2"/>
-    <rect x="252" y="382" width="736" height="296" rx="18" fill="none" stroke="#DCD4C1" stroke-width="2" stroke-dasharray="10 10"/>
-    <polygon points="525,0 665,0 735,160 595,160" fill="#FFFFFF" opacity="0.22"/><polygon points="895,0 985,0 1040,120 950,120" fill="#FFFFFF" opacity="0.16"/>
-    <rect x="300" y="210" width="330" height="140" rx="70" fill="#E9E3D5"/>
-    <rect width="1000" height="700" fill="none" stroke="#D8D1BF" stroke-width="2"/>
+    <rect width="${W}" height="${D}" fill="#F2EEE4"/><rect width="${W}" height="${D}" fill="url(#tiles)"/>
+    ${[0, 1, 2, 3, 4, 5].map((i) => `<rect y="${i * 150}" width="150" height="150" fill="${i % 2 ? '#E8E1D1' : '#EDE6D6'}"/><rect x="28" y="${i * 150 + 26}" width="96" height="100" rx="14" fill="${i % 2 ? '#DFD3BB' : '#E3D8C2'}"/>`).join('')}
+    <rect x="950" width="350" height="430" fill="#E2C9AD"/><rect x="950" width="350" height="430" fill="url(#planks)"/>
+    <ellipse cx="1120" cy="245" rx="150" ry="120" fill="#C9714F" opacity="0.14"/>
+    <rect x="215" y="460" width="1080" height="435" rx="26" fill="#E7E1D2"/>
+    <rect x="228" y="472" width="1054" height="410" rx="20" fill="none" stroke="#DCD4C1" stroke-width="2" stroke-dasharray="10 10"/>
+    <rect x="360" y="150" width="420" height="200" rx="100" fill="#E9E3D5"/>
+    <polygon points="615,0 765,0 840,170 690,170" fill="#FFFFFF" opacity="0.2"/>
+    <rect width="${W}" height="${D}" fill="none" stroke="#D8D1BF" stroke-width="2"/>
   </g>
-  ${wallR(0, 1000, 0, 7, '#D2C9B5')}${wallL(0, 700, 0, 7, '#C9C0AC')}
-  ${windowR(535, 655, 52, 92)}${windowR(900, 985, 40, 88)}${windowL(40, 140, 32, 82)}${windowL(300, 400, 32, 82)}
-  ${wallL(205, 285, 38, 78, '#FAF9F5', 'stroke="#D2C9B5"')}<g transform="${onL(215, 68)}" font-size="7" fill="#9A4527"><text>Q4 goals</text><text y="11" fill="#5E5D59">• 10 clients</text><text y="20" fill="#5E5D59">• 3 new agents</text></g>
-  ${wallL(565, 645, 38, 78, '#FAF9F5', 'stroke="#D2C9B5"')}<g transform="${onL(575, 68)}" font-size="7" fill="#9A4527"><text>Pipeline</text><text y="11" fill="#5E5D59">lead → demo → won</text></g>
-  <g transform="${onR(195, 78)}"><circle r="15" fill="#FAF9F5" stroke="#3A3935" stroke-width="2.5"/><circle r="1.6" fill="#3A3935"/><line id="clock-h" x1="0" y1="0" x2="0" y2="-7" stroke="#3A3935" stroke-width="2" stroke-linecap="round"/><line id="clock-m" x1="0" y1="0" x2="0" y2="-11" stroke="#B5532F" stroke-width="1.5" stroke-linecap="round"/></g>
-  <g transform="${onR(700, 70)}"><rect x="-30" y="-22" width="60" height="44" rx="3" fill="#141413"/><rect x="-26" y="-18" width="52" height="36" fill="#B5532F"/><path d="M-16 -8 l16 26 l16 -26" fill="none" stroke="#FAF9F5" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></g>
-  ${wallR(250, 480, 22, 92, '#141413')}${wallR(258, 472, 29, 85, '#232320')}
-  <text transform="${onR(266, 74)}" font-size="11" font-weight="600" letter-spacing="1.2" fill="#E7B38F">TASK BOARD</text>
-  <text id="board-line" transform="${onR(266, 58)}" font-size="10" fill="#D6D4CC">loading…</text>
-  ${wallR(266, 340, 44, 48, '#8FC79D', 'id="board-bar1"')}${wallR(266, 400, 36, 40, '#A8B8E8', 'id="board-bar2"')}
-  ${wallR(760, 880, 45, 75, '#B5532F')}<text transform="${onR(782, 54)}" font-family="Newsreader, Georgia, serif" font-size="20" fill="#FAF9F5">Café</text>
+  ${wallR(0, W, 0, 7, '#D2C9B5')}${wallL(0, D, 0, 7, '#C9C0AC')}
+  ${windowR(620, 760, 50, 92)}${windowR(1080, 1200, 46, 90)}${windowL(40, 120, 32, 82)}${windowL(340, 420, 32, 82)}${windowL(640, 720, 32, 82)}
+  <g transform="${onR(230, 76)}"><circle r="15" fill="#FAF9F5" stroke="#3A3935" stroke-width="2.5"/><circle r="1.6" fill="#3A3935"/><line id="clock-h" y2="-7" stroke="#3A3935" stroke-width="2" stroke-linecap="round"/><line id="clock-m" y2="-11" stroke="#B5532F" stroke-width="1.5" stroke-linecap="round"/></g>
+  ${wallR(300, 560, 22, 92, '#141413')}${wallR(308, 552, 29, 85, '#232320')}
+  <text transform="${onR(318, 72)}" font-size="12" font-weight="600" letter-spacing="1.2" fill="#E7B38F">TASK BOARD</text>
+  <text id="board-line" transform="${onR(318, 55)}" font-size="11" fill="#D6D4CC">loading…</text>
+  ${wallR(318, 400, 42, 46, '#8FC79D', 'id="board-bar1"')}${wallR(318, 470, 34, 38, '#A8B8E8', 'id="board-bar2"')}
+  ${wallR(1010, 1140, 46, 76, '#B5532F')}<text transform="${onR(1036, 55)}" font-family="Newsreader, Georgia, serif" font-size="20" fill="#FAF9F5">Café</text>
   <polyline points="${pts(...lights)}" fill="none" stroke="#55534D" stroke-width="1"/>${lights.map((p) => `<circle cx="${p[0].toFixed(1)}" cy="${(p[1] + 3).toFixed(1)}" r="6" fill="url(#glow)"/><circle cx="${p[0].toFixed(1)}" cy="${(p[1] + 3).toFixed(1)}" r="2.2" fill="#F7D9A8"/>`).join('')}
-  ${box(540, 2, 660, 24, 46, ['#D9CDB4', '#C9B89A', '#B8A586'])}
-  ${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => poly(['#B5532F', '#8FC79D', '#A8B8E8', '#D9C27A', '#3A3935', '#E59A7A', '#FAF9F5', '#9FD0D6'][i], P(546 + i * 14, 24, 26), P(556 + i * 14, 24, 26), P(556 + i * 14, 24, 42), P(546 + i * 14, 24, 42 - (i % 3) * 3))).join('')}
-  ${poly('#B8A586', P(540, 24, 23), P(660, 24, 23), P(660, 24, 25), P(540, 24, 25))}
-  ${use('cooler', 210, 30)}${box(175, 300, 230, 345, 26, ['#E8E6DC', '#D6D1C3', '#C8C3B5'])}${box(186, 310, 220, 334, 5, ['#8A8880', '#6B6A64', '#55534D'], 26)}${poly('#FAF9F5', P(192, 314, 32), P(214, 314, 32), P(214, 330, 32), P(192, 330, 32))}
-  <use href="#lamp" x="1150" y="540"/><use href="#lamp" x="1250" y="600"/><use href="#lamp" x="1062" y="626"/>
-  ${box(730, 15, 970, 60, 40, ['#CFA47C', '#A9744C', '#8A5E3C'])}${box(730, 15, 970, 60, 3, ['#E8D2B6', '#D4B796', '#C9A984'], 40)}
-  ${box(760, 22, 790, 44, 30, ['#55534D', '#3A3935', '#232320'], 43)}${box(830, 20, 900, 50, 18, ['#F3EADB', '#E8DCC6', '#DCCDB3'], 43)}
-  ${[0, 1, 2].map((i) => `<circle cx="${P(840 + i * 20, 44, 50)[0].toFixed(1)}" cy="${P(840 + i * 20, 44, 50)[1].toFixed(1)}" r="4" fill="${['#C9714F', '#D9C27A', '#8A5E3C'][i]}"/>`).join('')}
-  <use href="#cup" x="${P(920, 40, 43)[0].toFixed(1)}" y="${P(920, 40, 43)[1].toFixed(1)}"/><use href="#cup" x="${P(945, 45, 43)[0].toFixed(1)}" y="${P(945, 45, 43)[1].toFixed(1)}"/>
-  ${use('stool', 750, 85)}${use('stool', 830, 85)}${use('stool', 910, 85)}
-  ${use('tallplant', 690, 20)}${use('tallplant', 995, 15)}
-  ${rooms.map((r, i) => `<use href="#leaddesk" x="${r[0] - 25}" y="${r[1] + 20}" class="room-screen" data-room="${i}" style="color:#3A3935"/>${use('plant', 20, 30 + i * 175)}<g class="lead-slot" data-room="${i}" transform="translate(${r[0]} ${r[1]})"></g>`
-    + (i < 3 ? `<polygon points="${pts(P(0, 175 * (i + 1)), P(150, 175 * (i + 1)), P(150, 175 * (i + 1), 70), P(0, 175 * (i + 1), 70))}" fill="#CFE3E8" opacity="0.32" stroke="#B9CFD5"/>` : '')).join('')}
-  <polygon points="${pts(P(150, 0), P(150, 700), P(150, 700, 70), P(150, 0, 70))}" fill="#CFE3E8" opacity="0.26" stroke="#B9CFD5"/>
-  <polyline points="${pts(P(150, 0, 70), P(150, 700, 70))}" fill="none" stroke="#A9C3CA" stroke-width="2.5"/>
-  ${[175, 350, 525].map((y) => `<polyline points="${pts(P(150, y), P(150, y, 70))}" stroke="#A9C3CA" stroke-width="2"/>`).join('')}
-  <ellipse cx="816" cy="418" rx="80" ry="36" fill="#141413" opacity="0.07"/><ellipse cx="816" cy="405" rx="76" ry="34" fill="#D2C9B5"/><ellipse cx="816" cy="400" rx="76" ry="34" fill="#F7F3EA" stroke="#CFC8B6"/>
-  <ellipse cx="816" cy="398" rx="40" ry="16" fill="none" stroke="#E6DFCF" stroke-width="2"/><use href="#cup" x="790" y="398"/><polygon points="826,392 846,402 838,406 818,396" fill="#FAF9F5" stroke="#D6D1C3"/>
-  <use href="#chair" x="752" y="404"/><use href="#chair" x="880" y="404"/><use href="#chair" x="816" y="372"/>
-  <use href="#table" x="1048" y="554"/><use href="#cup" x="1042" y="532"/><use href="#table" x="1184" y="604"/><use href="#cup" x="1190" y="582"/><use href="#table" x="1060" y="648"/><use href="#cup" x="1066" y="626"/>
-  <use href="#stool" x="1012" y="560"/><use href="#stool" x="1150" y="616"/><use href="#stool" x="1095" y="662"/><use href="#stool" x="1222" y="612"/>
-  ${use('plant', 230, 20)}`;
+  ${box(800, 2, 930, 24, 46, ['#D9CDB4', '#C9B89A', '#B8A586'])}
+  ${[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => poly(['#B5532F', '#8FC79D', '#A8B8E8', '#D9C27A', '#3A3935', '#E59A7A', '#FAF9F5', '#9FD0D6', '#C8A8E0'][i], P(806 + i * 13.5, 24, 26), P(815 + i * 13.5, 24, 26), P(815 + i * 13.5, 24, 42), P(806 + i * 13.5, 24, 42 - (i % 3) * 3))).join('')}
+  ${box(990, 15, 1270, 60, 40, ['#CFA47C', '#A9744C', '#8A5E3C'])}${box(990, 15, 1270, 60, 3, ['#E8D2B6', '#D4B796', '#C9A984'], 40)}
+  ${box(1020, 22, 1050, 44, 30, ['#55534D', '#3A3935', '#232320'], 43)}${box(1100, 20, 1170, 50, 18, ['#F3EADB', '#E8DCC6', '#DCCDB3'], 43)}
+  ${use('cup', 1210, 40, 43)}${use('cup', 1235, 45, 43)}
+  ${rooms.map((r, i) => `<use href="#leaddesk" x="${(r[0] - 25).toFixed(1)}" y="${(r[1] + 20).toFixed(1)}" class="room-screen" data-room="${i}" style="color:#3A3935"/>${use('plant', 22, 22 + i * 150)}<g class="lead-slot" data-room="${i}" transform="translate(${r[0].toFixed(1)} ${r[1].toFixed(1)})"></g>`
+    + (i < 5 ? `<polygon points="${pts(P(0, 150 * (i + 1)), P(150, 150 * (i + 1)), P(150, 150 * (i + 1), 70), P(0, 150 * (i + 1), 70))}" fill="#CFE3E8" opacity="0.32" stroke="#B9CFD5"/>` : '')).join('')}
+  <polygon points="${pts(P(150, 0), P(150, D), P(150, D, 70), P(150, 0, 70))}" fill="#CFE3E8" opacity="0.24" stroke="#B9CFD5"/>
+  <polyline points="${pts(P(150, 0, 70), P(150, D, 70))}" fill="none" stroke="#A9C3CA" stroke-width="2.5"/>
+  ${[150, 300, 450, 600, 750].map((y) => `<polyline points="${pts(P(150, y), P(150, y, 70))}" stroke="#A9C3CA" stroke-width="2"/>`).join('')}
+  <ellipse cx="${P(570, 250)[0]}" cy="${P(570, 250)[1] + 18}" rx="110" ry="46" fill="#141413" opacity="0.07"/><ellipse cx="${P(570, 250)[0]}" cy="${P(570, 250)[1] + 5}" rx="104" ry="44" fill="#D2C9B5"/><ellipse cx="${P(570, 250)[0]}" cy="${P(570, 250)[1]}" rx="104" ry="44" fill="#F7F3EA" stroke="#CFC8B6"/>
+  <use href="#chair" ${at(470, 250)}/><use href="#chair" ${at(570, 160)}/><use href="#chair" ${at(670, 250)}/><use href="#chair" ${at(500, 170)}/><use href="#chair" ${at(650, 175)}/>
+  ${[[1030, 155], [1190, 155], [1110, 245], [1030, 335], [1190, 335]].map(([x, y]) => use('table', x, y) + use('cup', x - 6, y, 24) + use('stool', x + 30, y + 10)).join('')}
+  <use href="#lamp" ${at(1030, 155)}/><use href="#lamp" ${at(1190, 155)}/><use href="#lamp" ${at(1110, 245)}/>
+  ${use('tallplant', 945, 20)}${use('tallplant', 1290, 15)}${use('plant', 270, 18)}`;
 
-  const deskSvg = deskOrder.map((i) => `<g class="desk" data-desk="${i}" transform="translate(${desks[i][0]} ${desks[i][1]}) scale(1.1)"><use href="#chair" x="22" y="-26"/><g class="seat" transform="translate(20 -30)"></g><use class="desk-top" href="#desk" style="color:#3A3935"/></g>`).join('');
-  const front = `${use('tallplant', 260, 690)}${use('plant', 990, 690)}${use('plant', 160, 690)}${use('tallplant', 1000, 340)}`;
+  const deskSvg = deskOrder.map((i) => `<g class="desk" data-desk="${i}" transform="translate(${desks[i][0].toFixed(1)} ${desks[i][1].toFixed(1)}) scale(1.1)"><use href="#chair" x="22" y="-26"/><g class="seat" transform="translate(20 -30)"></g><use class="desk-top" href="#desk" style="color:#3A3935"/></g>`).join('');
+  const front = `${use('tallplant', 205, 885)}${use('plant', 1290, 890)}${use('tallplant', 1290, 440)}`;
+  const vb = { x: -150, y: -10, w: 1820, h: 1170 };
 
   window.VScene = {
-    desks, cafe, rooms,
-    svg: `<svg id="scene" viewBox="20 0 1400 930" preserveAspectRatio="xMidYMid meet" role="img" aria-label="The VAgent office. Agents work at desks or rest in the café.">${defs}<g id="layer-back">${back}</g><g id="layer-desks">${deskSvg}</g><g id="layer-free"></g>${front}<g id="layer-walk"></g></svg>`,
+    desks, cafe, rooms, vb,
+    svg: `<svg id="scene" viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="The VAgent office. Agents work at desks or rest in the café.">${defs}<g id="layer-back">${back}</g><g id="layer-desks">${deskSvg}</g><g id="layer-free"></g>${front}<g id="layer-walk"></g></svg>`,
   };
 })();

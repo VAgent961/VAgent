@@ -2,9 +2,9 @@
 
 ## Files
 - `index.html` — sign-in page (one screen, no scroll). Posts to /api/login.
-- `office.html` — the office app shell (needs session; middleware redirects to / if not signed in).
+- `office.html` — office app: top bar (task, settings), left sidebar (filters, search, agent list, activity), office stage. Needs session.
 - `assets/office.css` — office styles (layout, drawers, mobile).
-- `assets/scene.js` — static isometric SVG (floor, walls, café, desks, lead rooms) + seat/desk coordinates. No logic.
+- `assets/scene.js` — static isometric SVG, floor 1300x900: 24 desks, 16 café spots, 6 lead rooms, VScene.vb = default view. No logic.
 - `assets/nozoom.js` — blocks browser zoom everywhere (both pages); only the office scene zooms (handled in office.js).
 - `assets/office.js` — app logic: polling /api/office, placing agents, GSAP walking, zoom/pan of the scene (viewBox), drawers (agent, department, settings, tasks).
 - `functions/_lib.js` — sql() over Neon HTTPS, password check, signed session cookie, AES-GCM encrypt/decrypt, json().
@@ -18,6 +18,7 @@
 - `functions/api/departments.js` — GET / POST {name,color} / DELETE ?id=.
 - `functions/api/tasks.js` — GET ?deptId= / POST {deptId,text}: runs the department's webhook agents, combines one result.
 - `scripts/migrate.mjs` — creates/updates all DB tables. `scripts/create-owners.mjs` — add/reset owners.
+- `_headers` — no-cache for html/assets so updates show at once.
 - `scripts/deploy.sh` — upload site + functions to Cloudflare Pages project `vagent`.
 
 ## Agent key + status
