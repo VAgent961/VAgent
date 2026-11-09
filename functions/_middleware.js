@@ -14,9 +14,9 @@ export async function onRequest({ request, env, next, data }) {
   if (session) {
     data.owner = session.e;
     try {
-      const rows = await sql(env, 'SELECT role, access_dept FROM vagent_owners WHERE email = $1', [session.e]);
-      data.role = rows[0]?.role || 'owner'; data.access_dept = rows[0]?.access_dept || null;
-    } catch { data.role = 'owner'; data.access_dept = null; }
+      const rows = await sql(env, 'SELECT role, access_depts FROM vagent_owners WHERE email = $1', [session.e]);
+      data.role = rows[0]?.role || 'owner'; data.access_depts = rows[0]?.access_depts || [];
+    } catch { data.role = 'owner'; data.access_depts = []; }
   }
   const res = await next();
   const out = new Response(res.body, res);

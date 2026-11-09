@@ -14,6 +14,7 @@ const steps = [
   "ALTER TABLE vagent_departments ADD COLUMN IF NOT EXISTS lead_key text",
   "ALTER TABLE vagent_owners ADD COLUMN IF NOT EXISTS role text NOT NULL DEFAULT 'owner'",
   "ALTER TABLE vagent_owners ADD COLUMN IF NOT EXISTS access_dept int REFERENCES vagent_departments(id) ON DELETE SET NULL",
+  "ALTER TABLE vagent_owners ADD COLUMN IF NOT EXISTS access_depts int[] NOT NULL DEFAULT '{}'",
   "CREATE TABLE IF NOT EXISTS vagent_wf_cache (inst_id int PRIMARY KEY REFERENCES vagent_n8n(id) ON DELETE CASCADE, summary jsonb NOT NULL, at timestamptz DEFAULT now())",
   "CREATE TABLE IF NOT EXISTS vagent_departments (id serial PRIMARY KEY, name text NOT NULL, color text NOT NULL DEFAULT '#8FC79D', created_by text, created_at timestamptz DEFAULT now())",
   "ALTER TABLE vagent_departments ADD COLUMN IF NOT EXISTS mission text",

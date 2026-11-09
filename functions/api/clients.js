@@ -1,14 +1,18 @@
 import { sql, hashPassword, json } from '../_lib.js';
 
-const INSERT = `INSERT INTO vagent_owners (email, pass_hash, role, access_dept) VALUES ($1,$2,'client',$3) ON CONFLICT (email) DO UPDATE SET pass_hash=$2, role='client', access_dept=$3`;
-const LIST   = `SELECT o.email, o.access_dept, d.name AS dept_name FROM vagent_owners o LEFT JOIN vagent_departments d ON d.id = o.access_dept WHERE o.role = 'client' ORDER BY o.email`;
-const DEL    = `DELETE FROM vagent_owners WHERE email=$1 AND role='client'`;
+const UPSERT = `INSERT INTO vagent_owners (email, pass_hash, role, access_depts)
+  VALUES ($1,$2,'client',$3::int[])
+  ON CONFLICT (email) DO UPDATE SET pass_hash=$2, role='client', access_depts=$3::int[]`;
+const LIST = `SELECT o.email, o.access_depts,
+  (SELECT json_agg(d.name ORDER BY d.id) FROM vagent_departments d WHERE d.id = ANY(o.access_depts)) AS dept_names
+  FROM vagent_owners o WHERE o.role='client' ORDER BY o.email`;
 
 export async function onRequestPost({ request, env, data }) {
   if (data.role !== 'owner') return json({ error: 'Not allowed.' }, 403);
   const b = await request.json();
-  if (!b.email || !b.password || !b.access_dept) return json({ error: 'email, password and access_dept required.' }, 400);
-  await sql(env, INSERT, [b.email.toLowerCase().trim(), await hashPassword(b.password), Number(b.access_dept)]);
+  if (!b.email || !b.password) return json({ error: 'email and password required.' }, 400);
+  const depts = Array.isArray(b.access_depts) ? b.access_depts.map(Number).filter(Boolean) : [];
+  await sql(env, UPSERT, [b.email.toLowerCase().trim(), await hashPassword(b.password), '{' + depts.join(',') + '}']);
   return json({ ok: true });
 }
 
@@ -20,6 +24,6 @@ export async function onRequestGet({ env, data }) {
 export async function onRequestDelete({ request, env, data }) {
   if (data.role !== 'owner') return json({ error: 'Not allowed.' }, 403);
   const email = new URL(request.url).searchParams.get('email');
-  await sql(env, DEL, [email]);
+  await sql(env, "DELETE FROM vagent_owners WHERE email=$1 AND role='client'", [email]);
   return json({ ok: true });
 }

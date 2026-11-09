@@ -13,5 +13,5 @@ export async function onRequestGet({ env, data }) {
     _cache = await officeData(env);
     _cacheAt = now;
   }
-  return json({ me: data.owner, role: data.role || "owner", access_dept: data.access_dept || null, ..._cache, ai: !!(env.BRAIN_URL || env.GROQ_API_KEY) });
+  return json({ me: data.owner, role: data.role || "owner", access_depts: data.access_depts || [], ..._cache, ai: !!(env.BRAIN_URL || env.GROQ_API_KEY) });
 }

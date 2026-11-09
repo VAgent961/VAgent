@@ -252,16 +252,17 @@
     for (const k of Object.keys(els)) if (!A.find((a) => a.key === k)) { leave(els[k]); delete els[k]; delete places[k]; }
     renderRooms();
     // ── client view: dim everything outside access_dept ───────────────────
-    if (D.role === 'client' && D.access_dept) {
+    if (D.role === 'client') {
+      const allowed = new Set((D.access_depts || []).map(Number));
       svg.querySelectorAll('.lead-slot,.room-screen,.room-floor,.room-name,.add-room,.agent,.lead').forEach((el) => {
         const roomIdx = el.dataset.room !== undefined ? Number(el.dataset.room) : null;
         const deptId = el.dataset.dept ? Number(el.dataset.dept) : (roomIdx !== null ? D.departments[roomIdx]?.id : null);
         const agentKey = el.dataset.key;
         const agentDept = agentKey ? D.agents.find((a) => a.key === agentKey)?.dept : null;
-        const mine = deptId === D.access_dept || agentDept === D.access_dept;
+        const mine = allowed.size > 0 && (allowed.has(deptId) || allowed.has(agentDept));
         el.setAttribute('opacity', mine ? '1' : '0.18');
-        if (!mine) { el.setAttribute('pointer-events','none'); el.removeAttribute('tabindex'); }
-        else { el.setAttribute('pointer-events','auto'); }
+        el.setAttribute('pointer-events', mine ? 'auto' : 'none');
+        if (!mine) el.removeAttribute('tabindex'); else el.setAttribute('tabindex','0');
       });
     }
     const help = A.filter((a) => a.status === 'help').length;
@@ -556,13 +557,15 @@
     catch (x) { $('#board-list').innerHTML = `<p class="empty">${esc(x.message)}</p>`; }
   }
   async function openClients() {
-    const deptOpts = D.departments.map((d) => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
+    const deptChecks = D.departments.length
+      ? D.departments.map((d) => `<label class="check-row"><input type="checkbox" name="cl-depts" value="${d.id}"/> ${esc(d.name)}</label>`).join('')
+      : '<p class="help">No departments yet.</p>';
     open(`<h2 class="d-title">👤 Client Accounts</h2>
-      <p class="help">Each client can log in and see only their department — everything else is dimmed and unclickable.</p>
+      <p class="help">Pick which departments the client can interact with. Leave all unchecked for view-only (everything dimmed).</p>
       <form id="f-client" class="fields" autocomplete="off">
         <div class="field"><label>Email</label><input class="input" id="cl-email" type="email" placeholder="client@example.com" required/></div>
         <div class="field"><label>Password</label><div class="row" style="gap:6px"><input class="input" id="cl-pass" type="password" placeholder="Set a password" required style="flex:1"/><button class="btn" type="button" id="cl-show" style="flex:none">Show</button></div></div>
-        <div class="field"><label>Access — department</label><select class="input" id="cl-dept">${deptOpts}</select></div>
+        <div class="field"><label>Access — departments</label><div class="checks">${deptChecks}</div></div>
         <button class="btn primary" type="submit">Create account</button>
       </form>
       <div class="items" id="cl-list"><p class="empty">Loading…</p></div>`, 'clients');
@@ -570,7 +573,7 @@
       try {
         const list = await api('clients');
         $('#cl-list').innerHTML = list.length
-          ? list.map((c) => `<div class="item"><span class="grow"><b>${esc(c.email)}</b><small>${esc(c.dept_name || 'No dept')}</small></span><button class="btn danger" type="button" data-del-client="${esc(c.email)}">Remove</button></div>`).join('')
+          ? list.map((c) => `<div class="item"><span class="grow"><b>${esc(c.email)}</b><small>${c.dept_names?.length ? c.dept_names.join(', ') : 'No access'}</small></span><button class="btn danger" type="button" data-del-client="${esc(c.email)}">Remove</button></div>`).join('')
           : '<p class="empty">No client accounts yet.</p>';
       } catch (x) { $('#cl-list').innerHTML = `<p class="empty">${esc(x.message)}</p>`; }
     };
@@ -578,9 +581,12 @@
     $('#cl-show').onclick = () => { const i = $('#cl-pass'); i.type = i.type === 'password' ? 'text' : 'password'; $('#cl-show').textContent = i.type === 'password' ? 'Show' : 'Hide'; };
     $('#f-client').onsubmit = async (e) => {
       e.preventDefault();
+      const depts = [...inner.querySelectorAll('input[name="cl-depts"]:checked')].map((cb) => Number(cb.value));
       try {
-        await api('clients', { body: { email: $('#cl-email').value, password: $('#cl-pass').value, access_dept: Number($('#cl-dept').value) } });
-        toast('Account created'); $('#cl-email').value = ''; $('#cl-pass').value = ''; refresh();
+        await api('clients', { body: { email: $('#cl-email').value, password: $('#cl-pass').value, access_depts: depts } });
+        toast('Account created'); $('#cl-email').value = ''; $('#cl-pass').value = '';
+        inner.querySelectorAll('input[name="cl-depts"]').forEach((cb) => (cb.checked = false));
+        refresh();
       } catch (x) { toast(x.message); }
     };
     inner.addEventListener('click', async (e) => {
