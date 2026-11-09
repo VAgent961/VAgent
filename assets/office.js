@@ -261,6 +261,7 @@
       $('#live-dot').className = 'dot ' + (D.errors.length ? 'err' : 'on'); $('#live-text').textContent = 'Live · ' + hhmm(new Date());
       render();
     } catch (e) { $('#live-dot').className = 'dot err'; $('#live-text').textContent = 'Offline, retrying'; }
+    api('me').then((me) => { if (me.owners) renderOwners(me.owners); }).catch(() => {});
   }
 
   // ---------- drawer ----------
@@ -488,6 +489,15 @@
   $('#btn-settings').onclick = openSettings; $('#btn-task').onclick = openCEO;
   const tick = () => { const n = new Date(); const h = $('#clock-h'), m = $('#clock-m'); if (h) { h.setAttribute('transform', 'rotate(' + ((n.getHours() % 12) * 30 + n.getMinutes() / 2) + ')'); m.setAttribute('transform', 'rotate(' + n.getMinutes() * 6 + ')'); } };
   tick(); setInterval(tick, 30000);
+  // ── owner presence ─────────────────────────────────────────────────────────
+  const ping = () => api('ping', { method: 'POST' }).catch(() => {});
+  const renderOwners = (owners) => {
+    const box = $('#owners'); if (!box) return;
+    box.innerHTML = owners.map((o) => `<span class="owner"><span class="od${o.online ? ' on' : ''}"></span><b>${esc(o.name)}</b>${o.online ? '' : '<span>· away</span>'}</span>`).join('');
+  };
+  ping(); setInterval(ping, 60000);
+  api('me').then((me) => { if (me.owners) renderOwners(me.owners); }).catch(() => {});
+
   load(); setInterval(() => { if (!document.hidden) load(); }, 15000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
 })();

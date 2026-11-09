@@ -139,6 +139,11 @@ textarea.input{min-height:90px;resize:vertical}
 #inst{min-height:42px;padding:0 12px}
 a.btn[aria-disabled]{opacity:.5}
 .ceo-g{cursor:pointer}.ceo-g:hover .tag rect,.ceo-g:focus .tag rect{fill:#B5532F}.ceo-g:focus{outline:none}
+.owners{display:flex;align-items:center;gap:10px;padding:10px 4px 4px;flex-wrap:wrap}
+.owner{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+.owner .od{width:8px;height:8px;border-radius:50%;background:#B0AEA5;flex:none;transition:background .4s}
+.owner .od.on{background:#3F7D4E}
+.owner b{color:var(--ink);font-weight:500}
 .plan{border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;align-self:stretch}.plan ul{margin:0;padding-left:18px;font-size:14px;line-height:1.5}
 .prompt{white-space:pre-wrap;font:12px/1.5 ui-monospace,Menlo,monospace;background:var(--sand);padding:10px;border-radius:8px;max-height:220px;overflow:auto;margin:0}
 .typing-msg{color:var(--muted);font-style:italic}
