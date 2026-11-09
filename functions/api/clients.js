@@ -12,7 +12,13 @@ export async function onRequestPost({ request, env, data }) {
   const b = await request.json();
   if (!b.email || !b.password) return json({ error: 'email and password required.' }, 400);
   const depts = Array.isArray(b.access_depts) ? b.access_depts.map(Number).filter(Boolean) : [];
-  await sql(env, UPSERT, [b.email.toLowerCase().trim(), await hashPassword(b.password), '{' + depts.join(',') + '}']);
+  const email = b.email.toLowerCase().trim();
+  if (b.password === '__keep__') {
+    // access-only update — don't touch the password
+    await sql(env, "UPDATE vagent_owners SET access_depts=$1::int[], role='client' WHERE email=$2", ['{' + depts.join(',') + '}', email]);
+  } else {
+    await sql(env, UPSERT, [email, await hashPassword(b.password), '{' + depts.join(',') + '}']);
+  }
   return json({ ok: true });
 }
 

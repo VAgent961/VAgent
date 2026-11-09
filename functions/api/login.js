@@ -1,6 +1,6 @@
 import { sql, checkPassword, makeSession, cookie, json } from '../_lib.js';
 
-const DUMMY = 'pbkdf2$100000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
+const DUMMY = 'pbkdf2$10000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
 // POST /api/login  {email, password, remember}
 export async function onRequestPost({ request, env }) {
