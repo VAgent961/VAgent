@@ -15,7 +15,9 @@ export async function onRequest({ request, env, next, data }) {
     data.owner = session.e;
     try {
       const rows = await sql(env, 'SELECT role, access_depts FROM vagent_owners WHERE email = $1', [session.e]);
-      data.role = rows[0]?.role || 'owner'; data.access_depts = rows[0]?.access_depts || [];
+      data.role = rows[0]?.role || 'owner';
+      const txt = rows[0]?.access_depts || '';
+      data.access_depts = txt ? txt.split(',').map(Number).filter(Boolean) : [];
     } catch { data.role = 'owner'; data.access_depts = []; }
   }
   const res = await next();

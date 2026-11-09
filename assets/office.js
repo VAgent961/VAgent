@@ -366,16 +366,8 @@
       D = await api('office');
       $('#live-dot').className = 'dot ' + (D.errors.length ? 'err' : 'on'); $('#live-text').textContent = 'Live · ' + hhmm(new Date());
       render(); if (first) {
-        if (D.role === 'client') {
-          $('#btn-task').style.display = 'none';
-          $('#btn-settings').style.display = 'none';
-          // hide entire sidebar, let stage fill width
-          const side = document.querySelector('.side'); if (side) side.style.display = 'none';
-          document.querySelector('.app').style.gridTemplateColumns = '0 1fr';
-
-        } else {
-          $('#btn-clients').style.display = '';
-        }
+        document.body.dataset.role = D.role || 'owner';
+        if (D.role !== 'client') $('#btn-clients').style.display = '';
       }
     } catch (e) { $('#live-dot').className = 'dot err'; $('#live-text').textContent = 'Offline, retrying'; }
     api('me').then((me) => { if (me.owners) renderOwners(me.owners); }).catch(() => {});

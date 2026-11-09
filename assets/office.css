@@ -7,6 +7,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .muted{color:var(--muted)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .app{height:100vh;height:100dvh;display:grid;grid-template-columns:var(--side) 1fr;grid-template-rows:var(--top) 1fr;overflow:hidden}
+body[data-role=client] .side{display:none}
+body[data-role=client] .app{grid-template-columns:0 1fr}
+body[data-role=client] #btn-task,body[data-role=client] #btn-settings,body[data-role=client] #btn-clients{display:none!important}
 
 /* top bar */
 .top{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px 0 20px;background:var(--cream);border-bottom:1px solid var(--line);z-index:3}
