@@ -46,6 +46,9 @@
     .remember input{width:18px;height:18px;accent-color:#B5532F;margin:0}
     .submit{height:52px;border:0;border-radius:10px;background:#B5532F;color:#fff;font:inherit;font-size:16px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .15s}
     .submit:hover{background:#9A4527}
+    .submit[disabled]{opacity:.7;cursor:wait}
+    .msg{margin:0;font-size:13px;line-height:1.4;color:#A1301B}
+    .msg:empty{display:none}
     button:focus-visible,a:focus-visible{outline:2px solid #B5532F;outline-offset:2px}
 
     @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
@@ -149,7 +152,8 @@
             </div>
           </div>
           <label class="remember"><input type="checkbox" name="remember"> Keep me signed in</label>
-          <button class="submit" type="submit">
+          <p class="msg" id="msg" role="alert" aria-live="polite"></p>
+          <button class="submit" type="submit" id="go">
             Enter the office
             <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
@@ -164,8 +168,20 @@
       pw.type = show ? 'text' : 'password';
       eye.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
     });
-    // Sign-in is not connected to a server yet; the office page will be wired here.
-    document.getElementById('login').addEventListener('submit', (e) => e.preventDefault());
+    const form = document.getElementById('login'), msg = document.getElementById('msg'), go = document.getElementById('go');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault(); msg.textContent = '';
+      const email = form.email.value.trim(), password = form.password.value;
+      if (!email || !password) { msg.textContent = 'Enter your email and password.'; return; }
+      go.disabled = true;
+      try {
+        const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, remember: form.remember.checked }) });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.ok) { location.href = d.next || '/office'; return; }
+        msg.textContent = d.error || 'Something went wrong. Try again.';
+      } catch { msg.textContent = 'No connection. Check your internet and try again.'; }
+      go.disabled = false;
+    });
   </script>
 </body>
 </html>
