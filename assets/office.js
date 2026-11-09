@@ -89,18 +89,74 @@
   }
   svg.addEventListener('pointerover', (e) => { const g = e.target.closest('#layer-free .agent'); if (g && g.parentNode.lastChild !== g) g.parentNode.appendChild(g); });
 
+  // ── wander engine ──────────────────────────────────────────────────────────
+  // Each resting bot gets a looping micro-walk around its home spot.
+  // Cancelled whenever the bot gets a new assignment (status/position change).
+  const rng = (a, b) => a + Math.random() * (b - a);
+  function stopWander(g) { if (g._wanderKill) { g._wanderKill(); g._wanderKill = null; } }
+  function startWander(g, hx, hy) {
+    if (!window.gsap || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    stopWander(g);
+    let alive = true;
+    g._wanderKill = () => { alive = false; };
+    // randomise start delay so bots don't all move at once
+    const delay = rng(0, 12);
+    const loop = () => {
+      if (!alive || !g.isConnected) return;
+      // pick a spot within 32px of home, biased isometrically
+      const ox = rng(-28, 28), oy = rng(-16, 16);
+      const tx = hx + ox, ty = hy + oy;
+      const dist = Math.hypot(ox, oy);
+      const dur = dist / 55; // ~55 px/s — slow stroll
+      free.appendChild(g);
+      g.setAttribute('transform', tr(g._pos ? g._pos[0] : hx, g._pos ? g._pos[1] : hy));
+      const body = g.querySelector('.body');
+      const bob = gsap.fromTo(body, { y: 0 }, { y: -3, duration: 0.22, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+      const s = { x: g._pos ? g._pos[0] : hx, y: g._pos ? g._pos[1] : hy };
+      gsap.to(s, {
+        x: tx, y: ty, duration: dur, ease: 'none',
+        onUpdate: () => { if (!alive) return; g.setAttribute('transform', tr(s.x, s.y)); g._pos = [s.x, s.y]; },
+        onComplete: () => {
+          bob.kill(); gsap.set(body, { y: 0 });
+          if (!alive) return;
+          // pause at destination, then walk home
+          const pause = rng(4, 18);
+          gsap.delayedCall(pause, () => {
+            if (!alive) return;
+            const s2 = { x: s.x, y: s.y };
+            const bob2 = gsap.fromTo(body, { y: 0 }, { y: -3, duration: 0.22, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+            gsap.to(s2, {
+              x: hx, y: hy, duration: Math.hypot(hx - s.x, hy - s.y) / 55, ease: 'none',
+              onUpdate: () => { if (!alive) return; g.setAttribute('transform', tr(s2.x, s2.y)); g._pos = [s2.x, s2.y]; },
+              onComplete: () => {
+                bob2.kill(); gsap.set(body, { y: 0 });
+                if (!alive) return;
+                g._pos = [hx, hy];
+                gsap.delayedCall(rng(6, 20), loop);
+              },
+            });
+          });
+        },
+      });
+    };
+    gsap.delayedCall(delay, loop);
+  }
+
   function attach(g, p) {
+    stopWander(g);
     if (p.t === 'desk') { deskG(p.i).querySelector('.seat').appendChild(g); g.setAttribute('transform', ''); }
     else if (p.t === 'helper') {
-      // place inside the helper-slot group so he sits at his desk
       const slot = svg.querySelector('#helper-slot'); if (slot) { slot.appendChild(g); g.setAttribute('transform', ''); } else { free.appendChild(g); g.setAttribute('transform', tr(S.helper[0], S.helper[1])); }
     }
     else { const [x, y] = posOf(p); free.appendChild(g); g.setAttribute('transform', tr(x, y)); }
     g.dataset.prop = p.t === 'cafe' ? (S.spotProp[p.i] || 'rest') : '';
-    g._pos = posOf(p);
+    const [bx, by] = posOf(p); g._pos = [bx, by]; g._home = [bx, by];
+    // start wandering for resting bots
+    if (p.t === 'cafe') startWander(g, bx, by);
   }
 
   function walk(g, from, to) {
+    stopWander(g);
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!window.gsap || reduce || !from) return attach(g, to);
     const s = { x: g._pos ? g._pos[0] : posOf(from)[0], y: g._pos ? g._pos[1] : posOf(from)[1] }, [tx, ty] = posOf(to);
@@ -111,7 +167,7 @@
       onUpdate: () => { g.setAttribute('transform', tr(s.x, s.y)); g._pos = [s.x, s.y]; },
       onComplete: () => { bob.kill(); gsap.set(body, { y: 0 }); attach(g, to); } });
   }
-  function leave(g) { if (window.gsap) gsap.to(g, { opacity: 0, duration: 0.5, onComplete: () => g.remove() }); else g.remove(); }
+  function leave(g) { stopWander(g); if (window.gsap) gsap.to(g, { opacity: 0, duration: 0.5, onComplete: () => g.remove() }); else g.remove(); }
 
   function renderRooms() {
     const cs = svg.querySelector("#ceo-slot"); if (cs && !cs.firstChild) cs.innerHTML = '<g class="ceo-g" tabindex="0" role="button" aria-label="Talk to the CEO"><g transform="scale(1.25)"><use href="#ceo"/></g><g class="tag" transform="translate(0 -104)"><rect x="-64" y="-13" width="128" height="24" rx="12" fill="#2B2416"/><text y="3" text-anchor="middle" fill="#E9C46A" font-size="12" font-weight="600">CEO · Talk to me</text></g></g>';
@@ -211,6 +267,7 @@
 
   // Extended attach/walk that handle the helper position types
   function attachAny(g, p) {
+    stopWander(g);
     if (p.t === 'helper') return attach(g, p);
     if (p.t === 'helperworking') {
       const [x, y] = p.xy; free.appendChild(g); g.setAttribute('transform', tr(x, y)); g._pos = [x, y];
@@ -498,6 +555,6 @@
   ping(); setInterval(ping, 60000);
   api('me').then((me) => { if (me.owners) renderOwners(me.owners); }).catch(() => {});
 
-  load(); setInterval(() => { if (!document.hidden) load(); }, 15000);
+  load(); setInterval(() => { if (!document.hidden) load(); }, 5000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
 })();
