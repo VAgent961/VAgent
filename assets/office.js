@@ -269,17 +269,15 @@
   }
 
   // ---------- connect an n8n: 3 simple steps ----------
-  const TEAM = ['hassan', 'fayez', 'boudy'].map((s) => 'https://' + s + '.vagent.online');
   const myName = () => (D.me || '').split('@')[0].replace(/^./, (c) => c.toUpperCase());
   function openConnect(pre) {
-    const taken = new Set(D.instances.map((i) => i.url));
-    const free = TEAM.filter((u) => !taken.has(u));
-    let url = pre || free.find((u) => u.includes((D.me || '').split('@')[0].slice(0, 4))) || '';
+        const free = [];
+    let url = pre || '';
     open(`<h2 class="d-title">Connect your n8n</h2><p class="help" style="font-size:14px">3 quick steps. After this, all your workflows walk into the office as agents.</p>
       <form id="f-n8n" class="steps-form" autocomplete="off">
         <div class="step"><span class="num">1</span><div class="field" style="flex:1"><label for="nu">Which n8n is yours?</label>
           ${free.length ? `<div class="row">${free.map((u) => `<button type="button" class="pick" data-u="${u}" aria-pressed="${u === url}">${u.replace('https://', '')}</button>`).join('')}</div>` : ''}
-          <input class="input" id="nu" name="url" inputmode="url" placeholder="name.vagent.online" value="${esc(url.replace('https://', ''))}" required></div></div>
+          <input class="input" id="nu" name="url" inputmode="url" placeholder="your-n8n.example.com" value="${esc(url.replace('https://', ''))}" required></div></div>
         <div class="step"><span class="num">2</span><div class="field" style="flex:1"><span style="font-size:14px;font-weight:500">Make a key in n8n</span>
           <a class="btn" id="open-api" href="#" target="_blank" rel="noopener">Open my n8n API page ↗</a>
           <p class="help">In the page that opens, click <b>Create an API key</b>, name it "VAgent", and copy the key.</p></div></div>
