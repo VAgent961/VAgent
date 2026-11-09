@@ -69,19 +69,20 @@
   </symbol>
   </defs>`;
 
-  const ROOM_W = 1040, ROOM_D = 5000, GAP = 40, FAC_W = 220, WORK_D = 740;
+  const ROOM_W = 1040, ROOM_D = 5000, GAP = 40, FAC_W = 440, WORK_D = 740;
   const SOFA = ['#6A5880', '#55466A', '#483B5A'], WOOD = ['#8A6446', '#6E4F37', '#5A402C'], DARK = ['#2B2B2F', '#202024', '#18181B'];
 
   function build(depts) {
     const n = depts.length <= 1 ? 1 : depts.length + (depts.length % 2), cols = n === 1 ? 1 : 2, rows = Math.ceil(n / cols);
-    const fx = cols * (ROOM_W + GAP), W = fx + FAC_W, D = Math.max(rows * (ROOM_D + GAP) - GAP, 11000);
+    const fx = cols * (ROOM_W + GAP), W = fx + FAC_W, D = Math.max(rows * (ROOM_D + GAP) - GAP, 2600);
     const desksF = [], deskRoom = [], spotsF = [], spotProp = [], rooms = [];
     let floor = '', back = '', furn = '';
     // café spots first (indexes 0..499) so they never move — 5 cols × 100 rows = 500 spots
-    const CAFE_COLS = [fx+22, fx+62, fx+102, fx+148, fx+192];
-    const CAFE_PROP_CYCLE = ['mug','music','rest','mug','music','mug','rest','mug','music','mug'];
-    for (let ri = 0; ri < 100; ri++) {
-      const y = 660 + ri * 100, stagger = (ri % 2) * 14;
+    const CAFE_COLS = [fx+26,fx+68,fx+110,fx+152,fx+200,fx+248,fx+292,fx+336,fx+378,fx+418];
+    const CAFE_PROP_CYCLE = ['mug','music','rest','mug','mug','rest','music','mug','rest','mug','mug','music','rest','mug','mug','rest','music','mug','rest','mug'];
+    // café spots: 10 cols × 20 rows = 200 spots, floor ~square on screen
+    for (let ri = 0; ri < 20; ri++) {
+      const y = 666 + ri * 38, stagger = (ri % 2) * 20;
       for (const x of CAFE_COLS) { spotsF.push([x + stagger, y]); spotProp.push(CAFE_PROP_CYCLE[ri % CAFE_PROP_CYCLE.length]); }
     }
     const cafeIdx = spotsF.map((s, i) => i);
@@ -127,40 +128,36 @@
     // CEO office (y 0–425), Messenger corner (y 435–555), Café (y 565–1660), Open desks (y 1670+)
     floor += `<rect x="${fx}" width="${FAC_W}" height="425" fill="#2A2519"/><rect x="${fx + 24}" y="24" width="${FAC_W - 48}" height="377" rx="18" fill="#D9C27A" opacity="0.14"/>
       <rect x="${fx}" y="435" width="${FAC_W}" height="120" fill="#252520"/><rect x="${fx + 16}" y="445" width="${FAC_W - 32}" height="100" rx="12" fill="#3A3020" opacity="0.7"/>
-      <rect x="${fx}" y="565" width="${FAC_W}" height="10095" fill="#3A2B22"/><rect x="${fx}" y="565" width="${FAC_W}" height="10095" fill="url(#planks)"/>
-      <ellipse cx="${fx + 110}" cy="900" rx="90" ry="260" fill="#C9714F" opacity="0.10"/>
-      <ellipse cx="${fx + 110}" cy="3000" rx="80" ry="220" fill="#C9714F" opacity="0.08"/>
-      <ellipse cx="${fx + 110}" cy="6000" rx="80" ry="220" fill="#C9714F" opacity="0.07"/>
-      <text x="${fx + 10}" y="640" font-family="Newsreader, Georgia, serif" font-size="36" fill="#E7B38F" opacity="0.28">Café</text>
-      <text x="${fx + 10}" y="3200" font-family="Newsreader, Georgia, serif" font-size="28" fill="#E7B38F" opacity="0.18">Café</text>
-      <text x="${fx + 10}" y="6500" font-family="Newsreader, Georgia, serif" font-size="28" fill="#E7B38F" opacity="0.14">Café</text>
-      <rect x="${fx}" y="10660" width="${FAC_W}" height="${D - 10660}" fill="#202024"/><text x="${fx + 10}" y="${D - 24}" font-size="20" font-weight="700" letter-spacing="4" fill="#FAF9F5" opacity="0.22">OPEN DESKS</text>`;
+      <rect x="${fx}" y="565" width="${FAC_W}" height="765" fill="#3A2B22"/><rect x="${fx}" y="565" width="${FAC_W}" height="765" fill="url(#planks)"/>
+      <ellipse cx="${fx + 220}" cy="950" rx="170" ry="180" fill="#C9714F" opacity="0.10"/>
+      <text x="${fx + 30}" y="636" font-family="Newsreader, Georgia, serif" font-size="52" fill="#E7B38F" opacity="0.28">Café</text>
+      <rect x="${fx}" y="1340" width="${FAC_W}" height="${D - 1340}" fill="#202024"/><text x="${fx + 30}" y="${D - 24}" font-size="26" font-weight="700" letter-spacing="6" fill="#FAF9F5" opacity="0.22">OPEN DESKS</text>`;
 
     // CEO furniture + glass
     furn += glass(fx, 0, fx, 425, 74, [0.55, 0.8]) + glass(fx, 425, W, 425, 74) +
-      box(fx + 60, 110, fx + 160, 180, 34, ['#3D3D3A', '#2B2B29', '#232320']) +
-      box(fx + 60, 110, fx + 160, 180, 3, ['#55534D', '#3A3935', '#2B2B29'], 34) +
-      use('tallplant', fx + 190, 40) + use('plant', fx + 20, 380);
-    furn += `<g transform="${onPlaneY(fx + 50, 425, 66)}"><rect x="0" y="-14" width="130" height="22" rx="4" fill="#141413"/><text x="65" y="2" text-anchor="middle" font-size="10" font-weight="700" letter-spacing="2" fill="#D9C27A">CEO OFFICE</text></g>`;
+      box(fx + 160, 110, fx + 300, 180, 34, ['#3D3D3A', '#2B2B29', '#232320']) +
+      box(fx + 160, 110, fx + 300, 180, 3, ['#55534D', '#3A3935', '#2B2B29'], 34) +
+      use('tallplant', fx + 400, 40) + use('plant', fx + 40, 380);
+    furn += `<g transform="${onPlaneY(fx + 140, 425, 66)}"><rect x="0" y="-14" width="140" height="22" rx="4" fill="#141413"/><text x="70" y="2" text-anchor="middle" font-size="11" font-weight="700" letter-spacing="2" fill="#D9C27A">CEO OFFICE</text></g>`;
 
     // Messenger corner (y 435–555): small desk, sign, partition glass
-    const helperX = fx + 110, helperY = 495;
+    const helperX = fx + 220, helperY = 495;
     furn += glass(fx, 435, W, 435, 32, [0.25, 0.72]);
     furn += glass(fx, 555, W, 555, 32, [0.22, 0.68]);
     furn += use('msgdesk', helperX, helperY);
-    furn += use('plant', fx + 10, 500);
-    furn += `<g transform="${onPlaneY(fx + 10, 435, 48)}"><rect x="0" y="-12" width="130" height="20" rx="4" fill="#141413" stroke="#9FD0D6" stroke-width="1.2"/><text x="65" y="2" text-anchor="middle" font-size="10" font-weight="700" letter-spacing="2" fill="#9FD0D6">MESSENGER</text></g>`;
+    furn += use('plant', fx + 40, 500);
+    furn += `<g transform="${onPlaneY(fx + 110, 435, 48)}"><rect x="0" y="-12" width="190" height="20" rx="4" fill="#141413" stroke="#9FD0D6" stroke-width="1.2"/><text x="95" y="2" text-anchor="middle" font-size="10" font-weight="700" letter-spacing="2.5" fill="#9FD0D6">MESSENGER</text></g>`;
 
     // Café bar + tables (narrow column — bar + scattered small tables)
-    furn += box(fx + 10, 580, fx + 210, 610, 34, WOOD) + box(fx + 10, 580, fx + 210, 610, 3, ['#C9A984', '#A9744C', '#8A5E3C'], 34) +
-      box(fx + 14, 583, fx + 40, 600, 24, ['#55534D', '#3A3935', '#232320'], 37) + use('cup', fx + 150, 592, '', 37);
-    for (const [x, y] of [[fx+55,720],[fx+160,820],[fx+55,1100],[fx+160,1400],[fx+55,2000],[fx+160,2800],[fx+55,4000],[fx+160,6000],[fx+55,8000],[fx+160,9500]])
-      furn += use('table', x, y) + use('cup', x - 4, y, '', 20);
-    furn += use('lamp', fx + 55, 720) + use('lamp', fx + 160, 820) + use('lamp', fx + 55, 1100);
-    furn += use('tallplant', fx + 190, 10550) + use('plant', fx + 10, 10530);
-    furn += glass(fx, 10600, W, 10600, 40, [0.4, 0.6]);
+    furn += box(fx + 40, 580, fx + 400, 612, 36, WOOD) + box(fx + 40, 580, fx + 400, 612, 3, ['#C9A984', '#A9744C', '#8A5E3C'], 34) +
+      box(fx + 60, 585, fx + 90, 605, 26, ['#55534D', '#3A3935', '#232320'], 37) + use('cup', fx + 300, 594, '', 37);
+    for (const [x, y] of [[fx+90,710],[fx+310,720],[fx+180,800],[fx+90,900],[fx+310,900],[fx+200,1000],[fx+90,1120],[fx+310,1120]])
+      furn += use('table', x, y) + use('cup', x - 6, y, '', 24);
+    furn += use('lamp', fx + 90, 710) + use('lamp', fx + 310, 720) + use('lamp', fx + 200, 800);
+    furn += use('tallplant', fx + 390, 1250) + use('plant', fx + 30, 1230);
+    furn += glass(fx, 1320, W, 1320, 40, [0.4, 0.6]);
     const hot = [], hotXY = [];
-    for (let y = 10720; y < D - 60; y += 140) hotXY.push([fx + 60, y], [fx + 160, y]);
+    for (let y = 1440; y < D - 60; y += 140) hotXY.push([fx + 130, y], [fx + 310, y]);
     for (const [x, y] of hotXY) { hot.push(desksF.length); desksF.push([x, y]); deskRoom.push(-1); }
 
     // walls, windows, clock, task board
