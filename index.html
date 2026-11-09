@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>VAgent · Sign in</title>
   <meta name="robots" content="noindex">
   <link rel="icon" href="favicon.ico" sizes="any">
@@ -15,7 +15,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box}
-    html,body{margin:0;height:100%;overflow:hidden;background:#F3F1EA}
+    html,body{margin:0;height:100%;overflow:hidden;background:#F3F1EA;touch-action:pan-x pan-y;-webkit-text-size-adjust:100%}
     body{font-family:Inter,system-ui,-apple-system,sans-serif;color:#141413}
     a{color:#9A4527}a:hover{color:#6E2F19}
 
@@ -183,5 +183,6 @@
       go.disabled = false;
     });
   </script>
+  <script src="/assets/nozoom.js"></script>
 </body>
 </html>

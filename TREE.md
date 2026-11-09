@@ -5,7 +5,8 @@
 - `office.html` — the office app shell (needs session; middleware redirects to / if not signed in).
 - `assets/office.css` — office styles (layout, drawers, mobile).
 - `assets/scene.js` — static isometric SVG (floor, walls, café, desks, lead rooms) + seat/desk coordinates. No logic.
-- `assets/office.js` — app logic: polling /api/office, placing agents, GSAP walking, drawers (agent, department, settings, tasks).
+- `assets/nozoom.js` — blocks browser zoom everywhere (both pages); only the office scene zooms (handled in office.js).
+- `assets/office.js` — app logic: polling /api/office, placing agents, GSAP walking, zoom/pan of the scene (viewBox), drawers (agent, department, settings, tasks).
 - `functions/_lib.js` — sql() over Neon HTTPS, password check, signed session cookie, AES-GCM encrypt/decrypt, json().
 - `functions/_n8n.js` — n8n helpers: instances(), call(), workflow summaries (cached in DB 2 min), classify status.
 - `functions/_middleware.js` — guards /office and /api/* (sets `data.owner`); signed-in users skip sign-in page.

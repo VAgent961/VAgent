@@ -29,6 +29,36 @@
   // ---------- scene ----------
   $('#stage').innerHTML = VScene.svg;
   const svg = $('#scene'), free = $('#layer-free'), walkL = $('#layer-walk');
+  // ---------- zoom + pan (only inside the office) ----------
+  const stage = $('#stage'), VB0 = { x: 20, y: 0, w: 1400, h: 930 }, vb = { ...VB0 }, MAXZ = 3.5;
+  stage.insertAdjacentHTML('beforeend', '<div class="zoom" role="group" aria-label="Zoom the office"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button><button type="button" data-z="reset" aria-label="Fit the whole office" style="font-size:14px">⤢</button></div>');
+  const setVB = () => { svg.setAttribute('viewBox', vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h); };
+  const clampVB = () => { vb.w = Math.min(VB0.w, Math.max(VB0.w / MAXZ, vb.w)); vb.h = vb.w * VB0.h / VB0.w; vb.x = Math.min(VB0.x + VB0.w - vb.w, Math.max(VB0.x, vb.x)); vb.y = Math.min(VB0.y + VB0.h - vb.h, Math.max(VB0.y, vb.y)); };
+  const view = () => { const r = svg.getBoundingClientRect(), s = Math.min(r.width / vb.w, r.height / vb.h); return { s, ox: r.left + (r.width - vb.w * s) / 2, oy: r.top + (r.height - vb.h * s) / 2 }; };
+  const zoomAt = (cx, cy, f, smooth) => {
+    const v = view(), px = vb.x + (cx - v.ox) / v.s, py = vb.y + (cy - v.oy) / v.s, nw = Math.min(VB0.w, Math.max(VB0.w / MAXZ, vb.w / f)), k = nw / vb.w;
+    const to = { x: px - (px - vb.x) * k, y: py - (py - vb.y) * k, w: nw, h: nw * VB0.h / VB0.w };
+    if (smooth && window.gsap) gsap.to(vb, { ...to, duration: 0.35, ease: 'power2.out', onUpdate: () => { clampVB(); setVB(); } }); else { Object.assign(vb, to); clampVB(); setVB(); }
+  };
+  const center = () => { const r = svg.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+  stage.addEventListener('click', (e) => { const b = e.target.closest('[data-z]'); if (!b) return; const z = b.dataset.z;
+    if (z === 'reset') { if (window.gsap) gsap.to(vb, { ...VB0, duration: 0.4, ease: 'power2.out', onUpdate: setVB }); else { Object.assign(vb, VB0); setVB(); } } else zoomAt(...center(), z === 'in' ? 1.5 : 1 / 1.5, true); });
+  stage.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018))); }, { passive: false });
+  svg.addEventListener('dblclick', (e) => { if (!e.target.closest('.agent,.lead,.add-room')) zoomAt(e.clientX, e.clientY, 1.8, true); });
+  const ptrs = new Map(); let pan = null, pinch = null, dragged = false;
+  svg.addEventListener('pointerdown', (e) => {
+    ptrs.set(e.pointerId, [e.clientX, e.clientY]); dragged = false;
+    if (ptrs.size === 1) pan = { x: e.clientX, y: e.clientY, vx: vb.x, vy: vb.y };
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) }; pan = null; }
+  });
+  addEventListener('pointermove', (e) => {
+    if (!ptrs.has(e.pointerId)) return; ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pinch && ptrs.size === 2) { const [a, b] = [...ptrs.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); zoomAt((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, d / pinch.d); pinch.d = d; dragged = true; return; }
+    if (pan) { const dx = e.clientX - pan.x, dy = e.clientY - pan.y; if (!dragged && Math.hypot(dx, dy) < 6) return; dragged = true; stage.classList.add('panning'); const s = view().s; vb.x = pan.vx - dx / s; vb.y = pan.vy - dy / s; clampVB(); setVB(); }
+  });
+  const up = (e) => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; if (!ptrs.size) { pan = null; stage.classList.remove('panning'); } };
+  addEventListener('pointerup', up); addEventListener('pointercancel', up);
+  svg.addEventListener('click', (e) => { if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; } }, true);
   const deskG = (i) => svg.querySelector(`.desk[data-desk="${i}"]`);
   const posOf = (p) => (p.t === 'desk' ? [VScene.desks[p.i][0] + 22, VScene.desks[p.i][1] - 33] : VScene.cafe[p.i]);
   const tr = (x, y) => `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(1.1)`;
