@@ -4,7 +4,7 @@
 - `index.html` — sign-in page (one screen, no scroll). Posts to /api/login.
 - `office.html` — office app: top bar (task, settings), left sidebar (filters, search, agent list, activity), office stage. Needs session.
 - `assets/office.css` — office styles (layout, drawers, mobile).
-- `assets/scene.js` — static isometric SVG, floor 1300x900: 24 desks, 16 café spots, 6 lead rooms, VScene.vb = default view. No logic.
+- `assets/scene.js` — static isometric SVG, floor 1500x1000: 6 big department rooms (3x2, 6 desks each, room i = department i), CEO office, café (16 spots), 4 open desks (no department). VScene: desks, deskRoom, rooms[{lead, desks}], hot, cafe, ceo, vb.
 - `assets/nozoom.js` — blocks browser zoom everywhere (both pages); only the office scene zooms (handled in office.js).
 - `assets/office.js` — app logic: polling /api/office, placing agents, GSAP walking, zoom/pan of the scene (viewBox), drawers (agent, department, settings, tasks), 3-step "Connect your n8n" wizard (openConnect), owner filter, "/" search, failure toasts.
 - `functions/_lib.js` — sql() over Neon HTTPS, password check, signed session cookie, AES-GCM encrypt/decrypt, json().
@@ -27,7 +27,7 @@
 
 ## Agent key + status
 - Agent key = `<instanceId>:<workflowId>`.
-- Status: `working` (running execution) → desk · `idle` (active) → café · `off` (inactive) → café, asleep · `help` (last run failed <24h) → red mark.
+- Status: `working` → a desk in its department room (no department / room full → open desks) · `idle` (active) → café · `off` (inactive) → café, asleep · `help` (last run failed <24h) → red mark.
 - Calls to agent webhooks carry header `X-VAgent-Secret` (secret WEBHOOK_SECRET); protect webhooks in n8n with Header Auth "VAgent office secret".
 - Office Helper (n8n workflow ESroHEmOT74IkcBr on hassan.vagent.online): POST /webhook/office-helper → AI Helper → {output}. Example agent for chat + tasks.
 - Auto run-now hooks: on import, workflows with schedule/manual triggers get a "VAgent: run now" webhook (path vagent-run-<id>, header auth) via ensureHooks() in _n8n.js. Other triggers are never modified.

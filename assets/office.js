@@ -103,6 +103,9 @@
     VScene.rooms.forEach((r, i) => {
       const d = D.departments[i], slot = svg.querySelector(`.lead-slot[data-room="${i}"]`), screen = svg.querySelector(`.room-screen[data-room="${i}"]`);
       screen.style.color = d ? d.color : '#3A3935';
+      const fl = svg.querySelector(`.room-floor[data-room="${i}"]`), nm = svg.querySelector(`.room-name[data-room="${i}"]`);
+      if (fl) { fl.setAttribute("fill", d ? d.color : "#E8E2D4"); fl.setAttribute("opacity", d ? "0.22" : "0.6"); }
+      if (nm) nm.textContent = d ? d.name : "";
       if (d) {
         const label = d.name + ' Lead', w = Math.min(label.length, 24) * 6.5 + 26;
         slot.innerHTML = `<g class="lead" tabindex="0" role="button" data-dept="${d.id}" aria-label="${esc(label)}"><g transform="scale(1.15)"><use href="#lead" style="color:${d.color}"/></g><g class="tag" transform="translate(0 -72)"><rect x="${-w / 2}" y="-12" width="${w}" height="22" rx="11" fill="#FAF9F5" stroke="#D8D5CB"/><text y="3" text-anchor="middle" fill="#141413">${esc(label.slice(0, 24))}</text></g></g>`;
@@ -116,15 +119,11 @@
     const A = D.agents;
     const working = A.filter((a) => a.status === 'working'), cafe = A.filter((a) => a.status === 'idle' || a.status === 'help'), off = A.filter((a) => a.status === 'off');
     const next = {}, used = { desk: new Set(), cafe: new Set() }, over = [];
-    const place = (list, t, n) => {
-      for (const a of list) { const p = places[a.key]; if (p && p.t === t && !used[t].has(p.i)) { next[a.key] = p; used[t].add(p.i); } }
-      for (const a of list) {
-        if (next[a.key]) continue;
-        let i = 0; while (i < n && used[t].has(i)) i++;
-        if (i < n) { next[a.key] = { t, i }; used[t].add(i); } else over.push(a);
-      }
-    };
-    place(working, 'desk', VScene.desks.length); place(cafe, 'cafe', VScene.cafe.length);
+    const roomOf = (a) => { const i = D.departments.findIndex((x) => x.id === a.dept); return i >= 0 && i < VScene.rooms.length ? i : -1; };
+    const pick = (a, t, choices) => { const p = places[a.key]; if (p && p.t === t && choices.includes(p.i) && !used[t].has(p.i)) return p.i; return choices.find((i) => !used[t].has(i)); };
+    for (const a of working) { const r = roomOf(a); let i = pick(a, 'desk', r >= 0 ? VScene.rooms[r].desks : VScene.hot); if (i === undefined) i = pick(a, 'desk', VScene.hot); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'desk', i }; used.desk.add(i); }
+    const allCafe = VScene.cafe.map((c, i) => i);
+    for (const a of cafe) { const i = pick(a, 'cafe', allCafe); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'cafe', i }; used.cafe.add(i); }
     svg.querySelectorAll('.desk-top').forEach((u) => (u.style.color = '#3A3935'));
     for (const a of A) {
       const p = next[a.key]; let g = els[a.key];
