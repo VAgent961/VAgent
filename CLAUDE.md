@@ -11,7 +11,7 @@ Company site for VAgent (owners: Hassan, Fayez, Boudy). Sign-in page + a live is
 
 ## Stack
 - Plain static HTML/CSS/JS (no framework, no build, no npm). GSAP from cdnjs for movement only.
-- Cloudflare Pages project `vagent` + Pages Functions in `functions/` (no npm packages; Neon over HTTPS fetch).
+- Live at https://vagent.online. Cloudflare Pages project `vagent` (Fayez's account) + Pages Functions in `functions/` (no npm packages; Neon over HTTPS fetch).
 - Neon Postgres. Secrets only in Cloudflare: `DATABASE_URL`, `SESSION_SECRET`, `ENC_KEY`, `WEBHOOK_SECRET` (+ optional `GROQ_API_KEY`). Never commit secrets.
 - n8n API keys are stored AES-GCM encrypted (ENC_KEY) and only used server-side.
 

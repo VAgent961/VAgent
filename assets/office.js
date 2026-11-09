@@ -269,7 +269,7 @@
   }
 
   // ---------- connect an n8n: 3 simple steps ----------
-  const TEAM = ['hassan', 'fayez', 'aabdallah'].map((s) => 'https://' + s + '.vagent.online');
+  const TEAM = ['hassan', 'fayez', 'boudy'].map((s) => 'https://' + s + '.vagent.online');
   const myName = () => (D.me || '').split('@')[0].replace(/^./, (c) => c.toUpperCase());
   function openConnect(pre) {
     const taken = new Set(D.instances.map((i) => i.url));

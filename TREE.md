@@ -37,8 +37,10 @@
 
 ## Commands (run in repo root)
 - Migrate: `DATABASE_URL="$(cat ~/agent-tools/.neon-vagent-url)" node scripts/migrate.mjs`
-- Deploy: `./scripts/deploy.sh` → https://vagent.pages.dev
+- Deploy: `./scripts/deploy.sh` → https://vagent.online (Pages project `vagent` in Fayez's Cloudflare account 602f300b…, also vagent-bef.pages.dev). Token: ~/agent-tools/.cf-vagent-token (Pages edit + DNS edit on vagent.online).
+- DNS (zone in Fayez's account): vagent.online + www → Pages. hassan./fayez./boudy.vagent.online → server tunnel (never touch).
+- Domain/secrets setup: `node ~/agent-tools/vagent-cf.js project|domains`
 - Responsive check: `node ~/agent-tools/site-checker/resp-test.js index.html`
-- Secrets: `node ~/agent-tools/cf-pages-secrets.js vagent` (DATABASE_URL, SESSION_SECRET, ENC_KEY, WEBHOOK_SECRET; values kept in ~/agent-tools/.vagent-*)
+- Old secrets script (Hassan account, unused): `node ~/agent-tools/cf-pages-secrets.js vagent` (DATABASE_URL, SESSION_SECRET, ENC_KEY, WEBHOOK_SECRET; values kept in ~/agent-tools/.vagent-*)
 - API test: `~/agent-tools/vagent-api.sh office | head -c 600` (signs in as hassan)
 - Visual test: `node ~/agent-tools/site-checker/office-shot.js` → /tmp/office-desktop.png, /tmp/office-phone.png
