@@ -451,7 +451,12 @@
       <div id="task-out"></div>
       ${isClient ? '' : `<p class="label">Teams</p><div class="teams">${(d.teams || []).map((t) => `<span class="pick" style="display:inline-flex;align-items:center;gap:6px">${esc(t.name)} <small class="muted">${D.agents.filter((a) => a.team === t.id).length}</small><button type="button" class="rename" data-del-team="${t.id}" aria-label="Remove team ${esc(t.name)}">✕</button></span>`).join('')}</div>
       <form id="f-team" class="row" style="flex-wrap:nowrap"><label class="sr" for="tn">New team</label><input class="input" id="tn" name="t" placeholder="New team name" required maxlength="40" style="flex:1"><button class="btn" type="submit">Add team</button></form>
-      <p class="label">Employees</p><div class="items">${team.map(itemAgent).join('') || '<p class="empty">No employees yet.</p>'}</div>`}
+      <p class="label">Employees</p><div class="items">${team.map(itemAgent).join('') || '<p class="empty">No employees yet.</p>'}</div>
+      <details class="more"><summary>Move agents into ${esc(d.name)}</summary>
+      <input class="input" id="pick-q" placeholder="Search agents…" autocomplete="off" aria-label="Search agents to move">
+      ${(d.teams || []).length ? `<div class="field"><label for="pick-team">Put them in team</label><select class="input" id="pick-team"><option value="">No team</option>${d.teams.map((t) => `<option value="${t.id}">${esc(t.name)}</option>`).join('')}</select></div>` : ''}
+      <div class="checks" id="pick-list"></div>
+      <div class="row"><button class="btn primary" type="button" id="move-sel">Move selected here</button><button class="btn" type="button" id="pick-all">Select all shown</button></div></details>`}
       <p class="label">Past tasks</p><div class="items" id="history"><p class="empty">Loading…</p></div>
       ${isClient ? '' : `<p class="label">Edit</p><form id="f-edit" class="field"><input class="input" name="n" value="${esc(d.name)}" aria-label="Department name" required><div class="sw">${DEPT_COLORS.map((c) => `<button type="button" aria-label="Color ${c}" aria-pressed="${c === d.color}" data-c="${c}" style="background:${c}"></button>`).join('')}</div>
       <div class="row"><button class="btn" type="submit">Save</button><button class="btn danger" type="button" id="del-dept">Delete department</button></div></form>`}`, 'dept:' + d.id);
@@ -462,6 +467,28 @@
     };
     if (!isClient) {
       if ($('#f-team')) $('#f-team').onsubmit = async (e) => { e.preventDefault(); try { await api("departments", { body: { deptId: d.id, team: e.target.t.value } }); await load(); openDept(d.id); } catch (x) { toast(x.message); } };
+      // Tick several agents anywhere in the company and move them into this department in one go.
+      if ($('#pick-list')) {
+        const pool = D.agents.filter((a) => a.dept !== d.id);
+        const paintPicks = () => {
+          const s = ($('#pick-q').value || '').trim().toLowerCase();
+          const show = pool.filter((a) => !s || (a.name + ' ' + a.inst).toLowerCase().includes(s));
+          $('#pick-list').innerHTML = show.map((a) => `<label class="check-row"><input type="checkbox" value="${esc(a.key)}"><span>${esc(a.name)} <small class="muted">· ${esc(where(a))}</small></span></label>`).join('')
+            || `<p class="empty">${pool.length ? 'No agents match.' : 'Every agent is already here.'}</p>`;
+        };
+        paintPicks();
+        $('#pick-q').oninput = paintPicks;
+        $('#pick-all').onclick = () => $('#pick-list').querySelectorAll('input[type=checkbox]').forEach((c) => (c.checked = true));
+        $('#move-sel').onclick = async (ev) => {
+          const keys = [...$('#pick-list').querySelectorAll('input:checked')].map((c) => c.value);
+          if (!keys.length) return toast('Tick at least one agent.');
+          const btn = ev.target; btn.disabled = true; btn.textContent = 'Moving…';
+          try {
+            const r = await api('agent', { body: { action: 'assign', keys, deptId: d.id, teamId: ($('#pick-team') || {}).value || null } });
+            toast('Moved ' + r.moved + ' to ' + d.name); await load(); openDept(d.id);
+          } catch (x) { toast(x.message); btn.disabled = false; btn.textContent = 'Move selected here'; }
+        };
+      }
       inner.querySelectorAll("[data-del-team]").forEach((b) => (b.onclick = async () => { if (!confirm("Remove this team? Its employees stay in the department.")) return; await api("departments?teamId=" + b.dataset.delTeam, { method: "DELETE" }); await load(); openDept(d.id); }));
       inner.querySelectorAll('.sw button').forEach((b) => (b.onclick = () => { color = b.dataset.c; inner.querySelectorAll('.sw button').forEach((x) => x.setAttribute('aria-pressed', x === b)); }));
       if ($('#f-edit')) $('#f-edit').onsubmit = async (e) => { e.preventDefault(); try { await api('departments', { body: { id: d.id, name: e.target.n.value, color } }); toast('Saved'); await load(); openDept(d.id); } catch (x) { toast(x.message); } };

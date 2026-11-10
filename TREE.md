@@ -14,7 +14,7 @@
 - `functions/api/me.js` — GET current owner.
 - `functions/api/n8n.js` — GET list / POST connect {url (with or without https), key, label?} with friendly errors / DELETE ?id= (n8n instances).
 - `functions/api/office.js` — GET everything the office needs: agents, departments, activity, instance errors.
-- `functions/api/agent.js` — GET ?key= details (runs, steps) / POST {key, action: run|activate|deactivate|assign|rename, message?, deptId?, name?}.
+- `functions/api/agent.js` — GET ?key= details (runs, steps) / POST {key, action: run|activate|deactivate|assign|rename, message?, deptId?, name?}. `assign` also takes `keys: []` (max 200, one INSERT) so a department drawer can move many agents at once — see its "Move agents into …" picker in office.js.
 - `functions/_brain.js` — think(): calls n8n "VAgent Brain" (Groq first, Gemini backup) via BRAIN_URL + X-VAgent-Secret; parseJSON/plain helpers.
 - `functions/_office.js` — officeData() (whole company) + companyText() (short text for AI prompts). Used by office.js, talk.js, act.js.
 - `functions/api/talk.js` — POST {to: ceo | lead:<id> | agent:<key>, message, history}: AI personas. CEO returns {reply, actions[], prompt (Claude prompt)}. Agents with their own webhook get the message directly.
