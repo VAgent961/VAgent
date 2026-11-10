@@ -5,7 +5,7 @@ import { instances, call, summaries, statusOf } from './_n8n.js';
 export async function officeData(env) {
   const [insts, depts, teams, meta] = await Promise.all([
     instances(env),
-    sql(env, 'SELECT id, name, color, mission, lead_key FROM vagent_departments ORDER BY id'),
+    sql(env, 'SELECT id, name, color, mission, lead_key, last_talk FROM vagent_departments ORDER BY id'),
     sql(env, 'SELECT id, dept_id, name FROM vagent_teams ORDER BY id'),
     sql(env, 'SELECT key, dept_id, team_id, nickname FROM vagent_agent_meta'),
   ]);
@@ -36,6 +36,10 @@ export async function officeData(env) {
   activity.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
   agents.sort((a, b) => a.key.localeCompare(b.key, undefined, { numeric: true }));
   for (const a of agents) a.isLead = departments.some((d) => d.lead_key === a.key);
+  // A department whose lead was spoken to in the last 15 minutes is at its desks; after that the team drifts back to the lounge.
+  const BUSY_MS = 15 * 60 * 1000;
+  const busy = new Set(depts.filter((x) => x.last_talk && Date.now() - Date.parse(x.last_talk) < BUSY_MS).map((x) => x.id));
+  for (const a of agents) if (a.dept != null && busy.has(a.dept) && a.active && a.status === 'idle') a.status = 'working';
   return { agents, departments, activity: activity.slice(0, 25), errors, instances: insts.map((i) => ({ id: i.id, label: i.label, url: i.base_url, owner: i.owner_email })) };
 }
 

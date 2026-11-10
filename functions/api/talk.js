@@ -30,6 +30,12 @@ async function handle({ request, env, data }) {
   const me = data.owner.split('@')[0].replace(/^./, (c) => c.toUpperCase());
   const d = await officeData(env);
 
+  // Talking to a department's lead sends its team to their desks (see _office.js: 15 minutes, then back to the lounge).
+  const talkedDept = to.startsWith('lead:') ? Number(to.slice(5)) || null
+    : to.startsWith('agent:') ? ((d.departments.find((x) => x.lead_key === to.slice(6)) || {}).id ?? null)
+    : null;
+  if (talkedDept) await sql(env, 'UPDATE vagent_departments SET last_talk = now() WHERE id = $1', [talkedDept]);
+
   if (to === 'ceo') {
     const system = `You are the CEO of VAgent, a Lebanese studio that builds websites, AI agents and n8n automations. Owners: Hassan, Fayez, Boudy. You are talking to ${me}, an owner.
 Every employee in the company is an n8n workflow. You see the whole company in COMPANY DATA (live). Answer short, clear and friendly, in the same language the owner writes in (English if unsure). Use only real facts from COMPANY DATA; if you don't know, say so.

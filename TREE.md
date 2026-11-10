@@ -28,6 +28,7 @@
 
 ## Agent key + status
 - Agent key = `<instanceId>:<workflowId>`.
+- Talking to a department's lead (its drawer, or `lead:<id>`) stamps `vagent_departments.last_talk`; for the next 15 minutes every active `idle` employee in that department is reported as `working`, so the team sits at its desks and then drifts back to the lounge. Set in `api/talk.js`, applied in `_office.js`. `off` and `help` are left alone.
 - Status: `working` → a desk in its department room (no department / room full → open desks); `idle` → its department lounge (no department / lounge full → café). Building is dark themed. · `idle` (active) → café · `off` (inactive) → café, asleep · `help` (last run failed <24h) → red mark.
 - Calls to agent webhooks carry header `X-VAgent-Secret` (secret WEBHOOK_SECRET); protect webhooks in n8n with Header Auth "VAgent office secret".
 - Office Helper (n8n workflow ESroHEmOT74IkcBr on hassan.vagent.online): POST /webhook/office-helper → AI Helper → {output}. Example agent for chat + tasks.

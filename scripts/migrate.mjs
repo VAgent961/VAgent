@@ -12,6 +12,7 @@ const steps = [
   "ALTER TABLE vagent_n8n ADD COLUMN IF NOT EXISTS cred_id text",
   "ALTER TABLE vagent_owners ADD COLUMN IF NOT EXISTS last_seen timestamptz",
   "ALTER TABLE vagent_departments ADD COLUMN IF NOT EXISTS lead_key text",
+  "ALTER TABLE vagent_departments ADD COLUMN IF NOT EXISTS last_talk timestamptz",
   "ALTER TABLE vagent_owners ADD COLUMN IF NOT EXISTS role text NOT NULL DEFAULT 'owner'",
   "ALTER TABLE vagent_owners ADD COLUMN IF NOT EXISTS access_dept int REFERENCES vagent_departments(id) ON DELETE SET NULL",
   "ALTER TABLE vagent_owners ADD COLUMN IF NOT EXISTS access_depts text NOT NULL DEFAULT ''",
