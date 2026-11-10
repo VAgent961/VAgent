@@ -34,6 +34,7 @@
 - Auto run-now hooks: on import, workflows with schedule/manual triggers get a "VAgent: run now" webhook (path vagent-run-<id>, header auth) via ensureHooks() in _n8n.js. Other triggers are never modified.
 - n8n "VAgent Brain (office AI)" n9gGqB09jODqaESZ on hassan.vagent.online: POST /webhook/vagent-brain {system,prompt} → {ok,text}.
 - Runnable = has a Webhook trigger with a static path (production URL `<base>/webhook/<path>`). Chat + tasks use it.
+- Tap-button agents: a webhook agent may answer `{reply, buttons:[{label,value}]}`. runWebhook passes `buttons` through, talk.js returns them, office.js paints them as chips under the reply; a tap sends `value` as the next message. Agents are stateless — put the state in `value` (e.g. `district: Chouf` → `Chouf | Gyms`). Runnable agents also get a ▶ Start chip when their drawer opens. Example: Sniper Client Chat (bM8cGfGz9offcGsF) district → business type → top 3 leads.
 
 ## DB tables (Neon)
 - `vagent_owners`, `vagent_login_fails` — auth.

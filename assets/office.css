@@ -135,7 +135,8 @@ textarea.input{min-height:90px;resize:vertical}
 .steps-form{display:flex;flex-direction:column;gap:16px}
 .step{display:flex;gap:12px;align-items:flex-start}
 .step .num{width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--cream);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px}
-.pick{min-height:38px;padding:0 12px;border-radius:999px;border:1px solid var(--line2);background:#fff;font-size:13px;cursor:pointer}.pick[aria-pressed=true]{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.pick{min-height:38px;padding:0 12px;border-radius:999px;border:1px solid var(--line2);background:#fff;font-size:13px;cursor:pointer}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}.chips .pick{min-height:32px;padding:0 10px;font-size:12.5px}.chips .pick:hover{background:var(--cream2,#F3F1EA)}.pick[aria-pressed=true]{background:var(--ink);color:var(--cream);border-color:var(--ink)}
 .chip.hello{display:flex;flex-direction:column;gap:2px;background:var(--ink);color:var(--cream);border:0;padding:12px 14px}.chip.hello span{font-size:12px;color:#D6D4CC}
 .rename{border:0;background:transparent;cursor:pointer;color:var(--muted);font-size:16px;min-width:32px;min-height:32px;vertical-align:middle;border-radius:8px}.rename:hover{background:var(--sand)}
 .runs .see{font-size:12px;text-decoration:none;white-space:nowrap}

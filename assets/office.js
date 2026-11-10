@@ -407,7 +407,9 @@
     inner.innerHTML = head
       + (d.canRun ? `<button class="btn primary" type="button" id="run-now">▶ Run now</button>` : '')
       + leadRow
-      + `<p class="label">Talk to ${esc(d.name)}</p>` + chatUI('agent:' + key, 'Ask it something…') + `<p class="help">${how}</p>`
+      + `<p class="label">Talk to ${esc(d.name)}</p>`
+      + (d.runnable ? `<div class="chips"><button class="pick" type="button" data-say="start">▶ Start</button></div>` : '')
+      + chatUI('agent:' + key, 'Ask it something…') + `<p class="help">${how}</p>`
       + `<div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1"><label for="dept">Department</label><select class="input" id="dept">${opts}</select></div><div class="field" style="flex:1"><label for="team">Team</label><select class="input" id="team">${teamOpts(d.dept)}</select></div></div>`
       + `<details class="more"><summary>What it does (${d.steps.length} steps)</summary><ol class="steps">${steps}</ol></details>`
       + `<details class="more"><summary>Recent runs</summary><ul class="runs">${runs}</ul></details>`
@@ -547,6 +549,7 @@
   const bubble = (m) => {
     if (m.me) return `<div class="msg me">${esc(m.t)}</div>`;
     let h = `<div class="msg it${m.bad ? ' bad' : ''}">${esc(m.t)}</div>`;
+    if (m.buttons && m.buttons.length) h += `<div class="chips">${m.buttons.map((b) => `<button class="pick" type="button" data-say="${esc(b.value)}">${esc(b.label)}</button>`).join('')}</div>`;
     if (m.actions && m.actions.length) h += `<div class="plan" data-plan="${m.id}"><p class="label">The CEO wants to</p><ul>${m.actions.map((a) => `<li>${esc((ACT[a.type] || ((x) => x.type))(a))}</li>`).join('')}</ul>${m.done ? `<div class="result">${esc(m.done)}</div>` : `<div class="row"><button class="btn primary" type="button" data-approve="${m.id}">Approve</button><button class="btn" type="button" data-skip="${m.id}">No thanks</button></div>`}</div>`;
     if (m.project) h += `<div class="plan"><p class="label">Project brief</p><div class="result">${esc(m.project)}</div>${m.done ? `<div class="result" style="margin-top:6px">${esc(m.done)}</div>` : `<div class="row"><button class="btn primary" type="button" data-start="${m.id}">Start with the team</button><button class="btn" type="button" data-skip="${m.id}">Not now</button></div>`}</div>`;
     if (m.prompt) h += `<div class="plan"><p class="label">Prompt for Claude</p><pre class="prompt">${esc(m.prompt)}</pre><button class="btn" type="button" data-copy="${m.id}">Copy prompt</button></div>`;
@@ -562,13 +565,14 @@
       const l = log(); const history = l.slice(-8).map((x) => ({ me: !!x.me, t: x.t })); l.push({ me: 1, t: m }); save(l); paint();
       $('#chat').insertAdjacentHTML('beforeend', `<div class="msg it typing-msg" id="wait">${esc(who)} is typing…</div>`); $('#wait').scrollIntoView({ block: 'nearest' });
       const btn = f.querySelector('button'); btn.disabled = true;
-      try { const r = await api('talk', { body: { to, message: m, history } }); const l2 = log(); l2.push({ id: Date.now(), t: r.reply, actions: r.actions, prompt: r.prompt, project: r.project, bad: r.ok === false }); save(l2); }
+      try { const r = await api('talk', { body: { to, message: m, history } }); const l2 = log(); l2.push({ id: Date.now(), t: r.reply, buttons: r.buttons, actions: r.actions, prompt: r.prompt, project: r.project, bad: r.ok === false }); save(l2); }
       catch (x) { const l2 = log(); l2.push({ id: Date.now(), t: x.message, bad: 1 }); save(l2); }
       btn.disabled = false; paint(); if (to.startsWith('agent:')) load();
     };
     f.onsubmit = (e) => { e.preventDefault(); const m = f.m.value.trim(); if (m) { f.m.value = ''; send(m); } };
-    inner.querySelectorAll('[data-say]').forEach((b) => (b.onclick = () => send(b.dataset.say)));
     inner.onclick = async (e) => {
+      const say = e.target.closest('[data-say]'); // works for chips painted after load too
+      if (say) { e.preventDefault(); return send(say.dataset.say); }
       const ap = e.target.closest('[data-approve],[data-skip],[data-copy],[data-start]'); if (!ap) return;
       const l = log(), m = l.find((x) => String(x.id) === (ap.dataset.approve || ap.dataset.skip || ap.dataset.copy || ap.dataset.start)); if (!m) return;
       if (ap.dataset.start) { ap.disabled = true; ap.textContent = 'The team is working… (up to a minute)'; const depId = Number(to.split(':')[1]); if (!depId) { m.done = 'Pick a department first (open its lead).'; save(l); return paint(); } try { const r = await api('tasks', { body: { deptId: depId, text: m.project } }); m.done = 'Done: ' + r.used + ' of ' + r.team + ' team members worked on it.'; const l2 = log(); l2.push({ id: Date.now(), t: r.final }); save(l2 === l ? l : l2); if (l2 !== l) {} } catch (x) { m.done = 'Could not start: ' + x.message; } save(l); paint(); load(); return; }
