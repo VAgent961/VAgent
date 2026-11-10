@@ -21,6 +21,175 @@
   const sky = (a, b, h0, h1, wall) => { const Q = wall === 'R' ? (t, h) => P(t, 0, h) : (t, h) => P(0, t, h);
     return `<polygon points="${pts(Q(a - 4, h0 - 4), Q(b + 4, h0 - 4), Q(b + 4, h1 + 4), Q(a - 4, h1 + 4))}" fill="#45454C"/><polygon points="${pts(Q(a, h0), Q(b, h0), Q(b, h1), Q(a, h1))}" fill="url(#sky)"/><polyline points="${pts(Q((a + b) / 2, h0), Q((a + b) / 2, h1))}" stroke="#45454C" stroke-width="3"/>`; };
 
+  // Detailed avatar generator (drop-in for the flat symbols). Unscaled coords: feet y=0, head top ~ -150.
+  // Shading uses black/white overlays so it works for every skin / cloth colour. No gradients/ids needed.
+  const char = (o) => {
+    const { s, skin, hair, hairL, jacket, jacketD, pants, kind, iris = '#3A2A20', brow } = o;
+    const eyebrow = brow || hair;
+    const isDark = (kind === 'lead' || kind === 'ceo');
+    const star = (cx, cy, r) => {
+      const p = [];
+      for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; p.push((cx + Math.cos(a) * rr).toFixed(1) + ',' + (cy + Math.sin(a) * rr).toFixed(1)); }
+      return `<polygon points="${p.join(' ')}" fill="#E9C46A" stroke="#B8862B" stroke-width=".5"/>`;
+    };
+  
+    // ── legs + shoes
+    const legs =
+      `<ellipse rx="30" ry="6.5" fill="#141413" opacity=".13"/><ellipse rx="19" ry="4" fill="#141413" opacity=".16"/>` +
+      `<rect x="-12" y="-24" width="10" height="23" rx="2" fill="${pants}"/><rect x="2" y="-24" width="10" height="23" rx="2" fill="${pants}"/>` +
+      `<rect x="-5" y="-24" width="3" height="23" fill="#000" opacity=".18"/><rect x="2" y="-24" width="3" height="23" fill="#000" opacity=".18"/>` +
+      `<rect x="-11" y="-23" width="2" height="19" fill="#fff" opacity=".08"/><rect x="9" y="-23" width="2" height="19" fill="#fff" opacity=".05"/>` +
+      `<path d="M-7 -20 V-7 M7 -20 V-7" stroke="#fff" stroke-width="1" opacity=".12"/>` +
+      // shoes: dark upper, light sole, highlight, laces
+      `<path d="M-15 1 Q-16 -5 -10 -5.5 L-2 -5.5 L-2 1 Z" fill="#1B1B1E"/><path d="M15 1 Q16 -5 10 -5.5 L2 -5.5 L2 1 Z" fill="#1B1B1E"/>` +
+      `<rect x="-16" y="-1.5" width="15" height="3" rx="1.5" fill="#EDEBE3"/><rect x="1" y="-1.5" width="15" height="3" rx="1.5" fill="#EDEBE3"/>` +
+      `<rect x="-12" y="-4.4" width="7" height="1.3" rx=".65" fill="#fff" opacity=".28"/><rect x="5" y="-4.4" width="7" height="1.3" rx=".65" fill="#fff" opacity=".28"/>` +
+      `<path d="M-6 -5.2 v2.2 M-4 -5.2 v2.2 M4 -5.2 v2.2 M6 -5.2 v2.2" stroke="#fff" stroke-width=".7" opacity=".45"/>`;
+  
+    // ── neck (behind torso/head)
+    const neck = `<rect x="-8" y="-74" width="16" height="16" rx="4" fill="${skin}"/><rect x="0" y="-74" width="8" height="16" rx="3" fill="#000" opacity=".1"/><ellipse cx="0" cy="-66" rx="13" ry="5" fill="#000" opacity=".2"/>`;
+  
+    // ── torso (jacket) + shading
+    const torso =
+      `<rect x="-24" y="-62" width="48" height="42" rx="12" fill="${jacket}"/>` +
+      `<path d="M9 -62 H12 Q24 -62 24 -50 V-32 Q24 -20 12 -20 H9 Q17 -40 9 -62 Z" fill="#000" opacity=".13"/>` +
+      `<path d="M-22 -52 Q-23.5 -42 -21.5 -32" stroke="#fff" stroke-width="2" opacity=".13" fill="none" stroke-linecap="round"/>` +
+      `<path d="M-21 -23.5 Q0 -19 21 -23.5" stroke="#000" stroke-width="1.1" opacity=".18" fill="none"/>`;
+  
+    // ── front of the outfit (kind-specific)
+    let front = '';
+    if (kind === 'worker' || kind === 'botlead' || kind === 'msg') {
+      front =
+        `<polygon points="-9,-62 9,-62 0,-40" fill="#FFFFFF"/><polygon points="0,-62 9,-62 0,-40" fill="#000" opacity=".08"/>` +
+        `<path d="M-11 -64 L-1 -60 L-9 -50 L-15 -57 Z" fill="#F4F2EC" stroke="#000" stroke-opacity=".14" stroke-width=".8"/>` +
+        `<path d="M11 -64 L1 -60 L9 -50 L15 -57 Z" fill="#E4E1D8" stroke="#000" stroke-opacity=".14" stroke-width=".8"/>` +
+        // tie: knot, blade, shade, highlight, bar
+        `<polygon points="-4,-60.5 4,-60.5 3,-54 -3,-54" fill="${kind === 'msg' ? '#9FD0D6' : 'currentColor'}"/>` +
+        `<polygon points="-3,-54 3,-54 6,-31 0,-26 -6,-31" fill="${kind === 'msg' ? '#9FD0D6' : 'currentColor'}"/>` +
+        `<polygon points="0,-54 3,-54 6,-31 0,-26" fill="#000" opacity=".22"/><path d="M-1.4 -52 L-3 -33" stroke="#fff" stroke-width="1.2" opacity=".3" stroke-linecap="round"/>` +
+        `<rect x="-4.2" y="-46" width="8.4" height="1.7" rx=".85" fill="#E9C46A"/>`;
+      if (kind !== 'msg') {
+        front +=
+          // ID badge on the left chest, pen in right pocket
+          `<rect x="-21" y="-49" width="9.5" height="12.5" rx="1.6" fill="#FFFFFF" stroke="#000" stroke-opacity=".18" stroke-width=".6"/>` +
+          `<rect x="-21" y="-49" width="9.5" height="3.6" rx="1.2" fill="currentColor"/><circle cx="-16.2" cy="-42" r="2.4" fill="#C9B79C"/><rect x="-19" y="-38.4" width="5.6" height="1" rx=".5" fill="#9A968A"/>` +
+          `<rect x="12" y="-50" width="9" height="1.5" rx=".75" fill="#000" opacity=".22"/><rect x="15.2" y="-55" width="1.7" height="6.5" rx=".85" fill="#E9C46A"/>`;
+      }
+      if (kind === 'botlead') front += star(16, -43, 3.6);
+      if (kind === 'msg') {
+        // satchel strap across the chest
+        front += `<path d="M-17 -62 L25 -33" stroke="#6AA9B1" stroke-width="5" stroke-linecap="round"/><path d="M-17 -62 L25 -33" stroke="#fff" stroke-width="1" opacity=".25" stroke-linecap="round" transform="translate(-1 -1.5)"/>`;
+      }
+    } else if (kind === 'lead') {
+      front =
+        `<polygon points="-9,-62 9,-62 5,-22 -5,-22" fill="#FFFFFF"/><polygon points="0,-62 9,-62 5,-22 0,-22" fill="#000" opacity=".07"/>` +
+        `<polygon points="-9,-62 -23,-61 -21,-42 -10,-30 -3,-24 -4,-44" fill="#323237"/><polygon points="9,-62 23,-61 21,-42 10,-30 3,-24 4,-44" fill="#2A2A2E"/>` +
+        `<path d="M-9 -62 L-4 -44 L-3 -24 M9 -62 L4 -44 L3 -24" stroke="#fff" stroke-opacity=".12" stroke-width="1" fill="none"/>` +
+        `<circle cx="0" cy="-45" r="1.1" fill="#C9C5B8"/><circle cx="0" cy="-37" r="1.1" fill="#C9C5B8"/><circle cx="0" cy="-29" r="1.1" fill="#C9C5B8"/>` +
+        // bow tie
+        `<polygon points="-11.5,-61.5 -1,-57 -11.5,-52" fill="#141413"/><polygon points="11.5,-61.5 1,-57 11.5,-52" fill="#141413"/><rect x="-2.3" y="-59.8" width="4.6" height="5.6" rx="1.2" fill="#2A2A2E"/>` +
+        `<path d="M-9 -59 L-3 -57" stroke="#fff" stroke-opacity=".25" stroke-width=".8"/>` +
+        // coloured pocket square + lapel pin
+        `<polygon points="12,-46.5 13.6,-52.5 16.2,-49.2 18.6,-52.6 20,-46.5" fill="currentColor"/><rect x="11.5" y="-47.2" width="9" height="1.4" rx=".7" fill="#000" opacity=".3"/>` +
+        `<circle cx="-17" cy="-52" r="1.8" fill="#E9C46A"/>`;
+    } else if (kind === 'ceo') {
+      front =
+        `<polygon points="-9,-62 9,-62 5,-22 -5,-22" fill="#FFFFFF"/><polygon points="0,-62 9,-62 5,-22 0,-22" fill="#000" opacity=".07"/>` +
+        `<polygon points="-9,-62 -23,-61 -21,-42 -10,-30 -3,-24 -4,-44" fill="#E8BE45"/><polygon points="9,-62 23,-61 21,-42 10,-30 3,-24 4,-44" fill="#C29523"/>` +
+        `<path d="M-9 -62 L-4 -44 L-3 -24 M9 -62 L4 -44 L3 -24" stroke="#7A5A12" stroke-opacity=".45" stroke-width="1" fill="none"/>` +
+        `<circle cx="0" cy="-45" r="1.1" fill="#C9C5B8"/><circle cx="0" cy="-37" r="1.1" fill="#C9C5B8"/><circle cx="0" cy="-29" r="1.1" fill="#C9C5B8"/>` +
+        `<polygon points="-11.5,-61.5 -1,-57 -11.5,-52" fill="#141413"/><polygon points="11.5,-61.5 1,-57 11.5,-52" fill="#141413"/><rect x="-2.3" y="-59.8" width="4.6" height="5.6" rx="1.2" fill="#2A2A2E"/>` +
+        `<polygon points="12,-46.5 13.6,-52 16.2,-49.5 18.6,-52 20,-46.5" fill="#FFFFFF"/><rect x="11.5" y="-47.2" width="9" height="1.4" rx=".7" fill="#000" opacity=".25"/>` +
+        `<circle cx="-17" cy="-52" r="2" fill="#141413"/><circle cx="-17.5" cy="-52.5" r=".7" fill="#fff" opacity=".7"/>`;
+    }
+  
+    // ── arms: sleeve, shade, cuff, hand with thumb + finger lines
+    const hand = (cx, flip) =>
+      `<circle cx="${cx}" cy="-28" r="4.6" fill="${skin}"/><ellipse cx="${cx + 4.2 * flip}" cy="-29.5" rx="1.9" ry="3.1" fill="${skin}"/>` +
+      `<path d="M${cx - 2.4} -25.6 v2.2 M${cx} -24.9 v2.6 M${cx + 2.4} -25.6 v2.2" stroke="#000" stroke-width=".7" opacity=".28" stroke-linecap="round"/>` +
+      `<path d="M${cx - 3.4} -31.5 Q${cx} -34 ${cx + 3.4} -31.5" stroke="#000" stroke-width=".8" opacity=".15" fill="none"/>`;
+    const watch = o.watch === 'gold' ? ['#D4AF37', '#F2E29B'] : ['#2A2A2E', '#9FD0D6'];
+    const arms =
+      `<rect x="-30" y="-60" width="9" height="30" rx="4.5" fill="${jacket}"/><rect x="21" y="-60" width="9" height="30" rx="4.5" fill="${jacketD}"/>` +
+      `<rect x="24.5" y="-60" width="5.5" height="30" rx="2.8" fill="#000" opacity=".12"/><path d="M-28.5 -54 Q-29.5 -46 -28 -39" stroke="#fff" stroke-width="1.6" opacity=".13" fill="none" stroke-linecap="round"/>` +
+      `<path d="M-29 -45 q4 2.2 8 0" stroke="#000" stroke-width="1" opacity=".16" fill="none"/><path d="M22 -45 q4 2.2 8 0" stroke="#000" stroke-width="1" opacity=".18" fill="none"/>` +
+      `<rect x="-29.6" y="-36" width="8.2" height="4.4" rx="1.6" fill="#FFFFFF"/><rect x="21.4" y="-36" width="8.2" height="4.4" rx="1.6" fill="#E4E1D8"/>` +
+      `<rect x="-30" y="-37.4" width="9" height="3.1" rx="1.1" fill="${watch[0]}"/><rect x="-27.4" y="-37" width="4.2" height="2.3" rx=".7" fill="${watch[1]}"/>` +
+      hand(-25.5, -1) + hand(25.5, 1) + `<circle cx="27" cy="-27" r="3" fill="#000" opacity=".09"/>`;
+  
+    // ── head: ears, face shape, shading, blush
+    const ears = [-1, 1].map((d) => `<ellipse cx="${d * 41}" cy="-104" rx="5.4" ry="9" fill="${skin}"/><ellipse cx="${d * 41.6}" cy="-104" rx="2.4" ry="5" fill="#000" opacity=".14"/>`).join('');
+    const headPath = 'M-40 -116 Q-40 -146 0 -146 Q40 -146 40 -116 L40 -104 Q40 -68 0 -68 Q-40 -68 -40 -104 Z';
+    const face =
+      ears + `<path d="${headPath}" fill="${skin}"/>` +
+      `<path d="M40 -116 L40 -104 Q40 -68 0 -68 Q26 -74 32 -100 Q36 -112 33 -128 Q38 -124 40 -116 Z" fill="#000" opacity=".1"/>` +
+      `<ellipse cx="-22" cy="-97" rx="6" ry="3.6" fill="#fff" opacity=".06"/>` +
+      `<circle cx="-25" cy="-93" r="6.5" fill="#E8776A" opacity=".17"/><circle cx="25" cy="-93" r="6.5" fill="#E8776A" opacity=".17"/>`;
+  
+    // ── eyes (iris group keeps class "eye" for the look-around animation)
+    const eye = (cx) =>
+      `<ellipse cx="${cx}" cy="-106" rx="8" ry="6.6" fill="#FBFAF6"/>` +
+      `<g class="eye"><circle cx="${cx}" cy="-106" r="4.9" fill="${iris}"/><circle cx="${cx}" cy="-106" r="2.5" fill="#0B0B0B"/><circle cx="${cx + 1.7}" cy="-107.8" r="1.5" fill="#fff"/><circle cx="${cx - 1.6}" cy="-104.4" r=".7" fill="#fff" opacity=".7"/></g>` +
+      `<path d="M${cx - 8.6} -107 Q${cx} -114.5 ${cx + 8.6} -107" stroke="#1B1411" stroke-width="2.3" fill="none" stroke-linecap="round"/>` +
+      `<path d="M${cx - 7} -101 Q${cx} -98.5 ${cx + 7} -101" stroke="#000" stroke-width="1" opacity=".16" fill="none"/>`;
+    const brows = `<path d="M-23.5 -118.5 Q-14 -124 -5.5 -120.5" stroke="${eyebrow}" stroke-width="3.3" fill="none" stroke-linecap="round"/><path d="M5.5 -120.5 Q14 -124 23.5 -118.5" stroke="${eyebrow}" stroke-width="3.3" fill="none" stroke-linecap="round"/>`;
+    const nose = `<path d="M-1.6 -103 Q-5.2 -94.5 -2.2 -91.6 Q1.6 -89.8 5.2 -92.6" stroke="#000" stroke-width="1.6" opacity=".26" fill="none" stroke-linecap="round"/><ellipse cx="-.5" cy="-95.5" rx="3" ry="2" fill="#fff" opacity=".14"/><circle cx="-2.6" cy="-91.6" r=".9" fill="#000" opacity=".25"/><circle cx="2.8" cy="-91.8" r=".9" fill="#000" opacity=".25"/>`;
+    const mouth = kind === 'ceo'
+      ? `<path d="M-11 -88 Q0 -76.5 11 -88 Q0 -85.4 -11 -88 Z" fill="#7A2A2A"/><path d="M-9.6 -87.4 Q0 -84.6 9.6 -87.4 L9 -85.8 Q0 -83.4 -9 -85.8 Z" fill="#fff"/><path d="M-12 -89 q-1.4 2.2 .8 4.4 M12 -89 q1.4 2.2 -.8 4.4" stroke="#000" opacity=".2" fill="none" stroke-width="1.2"/>`
+      : `<path d="M-9.5 -87.5 Q0 -80.5 9.5 -87.5" stroke="#5A2420" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M-5 -83.4 Q0 -80.6 5 -83.4" stroke="#C9695E" stroke-width="2.1" opacity=".75" fill="none" stroke-linecap="round"/><path d="M-11.5 -88.5 q-1 2 1 4 M11.5 -88.5 q1 2 -1 4" stroke="#000" opacity=".2" fill="none" stroke-width="1.2"/>`;
+  
+    // ── hair
+    let hairSvg = '';
+    if (o.style === 'short') {
+      hairSvg =
+        `<path d="M-42 -112 Q-47 -141 -26 -151 Q0 -159 26 -151 Q47 -141 42 -112 Q38 -128 22 -134 Q0 -126 -22 -134 Q-38 -128 -42 -112 Z" fill="${hair}"/>` +
+        `<rect x="-42" y="-126" width="5.5" height="17" rx="2.7" fill="${hair}"/><rect x="36.5" y="-126" width="5.5" height="17" rx="2.7" fill="${hair}"/>` +
+        `<path d="M-24 -147 Q-8 -156 12 -151" stroke="${hairL}" stroke-width="3" opacity=".5" fill="none" stroke-linecap="round"/><path d="M-6 -152 Q-14 -142 -26 -137 M6 -153 Q4 -144 -6 -138" stroke="${hairL}" stroke-width="1.4" opacity=".35" fill="none" stroke-linecap="round"/>`;
+    } else if (o.style === 'sweep') {
+      hairSvg =
+        `<path d="M-42 -114 Q-48 -146 -8 -153 L16 -153 Q46 -148 42 -118 Q26 -142 -4 -138 Q-30 -136 -42 -114 Z" fill="${hair}"/>` +
+        `<rect x="-42" y="-126" width="5" height="15" rx="2.5" fill="${hair}"/><rect x="37" y="-126" width="5" height="15" rx="2.5" fill="${hair}"/>` +
+        `<path d="M-30 -145 Q-8 -156 20 -149" stroke="${hairL}" stroke-width="3" opacity=".4" fill="none" stroke-linecap="round"/><path d="M-12 -151 Q-18 -143 -34 -137 M2 -152 Q-6 -144 -20 -139 M14 -151 Q10 -146 2 -142" stroke="${hairL}" stroke-width="1.3" opacity=".3" fill="none" stroke-linecap="round"/>`;
+    } else if (o.style === 'silver') {
+      hairSvg =
+        `<path d="M-42 -114 Q-44 -148 -10 -152 L12 -152 Q44 -148 42 -114 Q39 -131 26 -136 Q0 -128 -26 -136 Q-39 -131 -42 -114 Z" fill="${hair}"/>` +
+        `<rect x="-42" y="-126" width="5" height="16" rx="2.5" fill="${hair}"/><rect x="37" y="-126" width="5" height="16" rx="2.5" fill="${hair}"/>` +
+        `<path d="M-26 -146 Q-6 -155 18 -149" stroke="#fff" stroke-width="3" opacity=".5" fill="none" stroke-linecap="round"/><path d="M-10 -151 Q-14 -144 -26 -139 M8 -152 Q4 -145 -8 -140" stroke="#9A968A" stroke-width="1.3" opacity=".5" fill="none" stroke-linecap="round"/>`;
+    }
+  
+    // ── eyewear
+    let eyewear = '';
+    if (o.glasses === 'round') {
+      eyewear =
+        `<rect x="-25" y="-114" width="22" height="14.5" rx="5.5" fill="#BFE3F0" opacity=".18"/><rect x="3" y="-114" width="22" height="14.5" rx="5.5" fill="#BFE3F0" opacity=".18"/>` +
+        `<rect x="-25" y="-114" width="22" height="14.5" rx="5.5" fill="none" stroke="#141413" stroke-width="2.8"/><rect x="3" y="-114" width="22" height="14.5" rx="5.5" fill="none" stroke="#141413" stroke-width="2.8"/>` +
+        `<rect x="-3.5" y="-109" width="7" height="2.8" fill="#141413"/><path d="M-25 -108.5 L-40.5 -110.5 M25 -108.5 L40.5 -110.5" stroke="#141413" stroke-width="2.2" stroke-linecap="round"/>` +
+        `<path d="M-21 -111 L-13 -111 M7 -111 L15 -111" stroke="#fff" stroke-width="1.6" opacity=".55" stroke-linecap="round"/>`;
+    } else if (o.glasses === 'sun') {
+      eyewear =
+        `<rect x="-27" y="-113.5" width="24" height="13" rx="4.5" fill="#141413" opacity=".9"/><rect x="3" y="-113.5" width="24" height="13" rx="4.5" fill="#141413" opacity=".9"/>` +
+        `<rect x="-27" y="-113.5" width="24" height="13" rx="4.5" fill="none" stroke="#2A2A2E" stroke-width="1.6"/><rect x="3" y="-113.5" width="24" height="13" rx="4.5" fill="none" stroke="#2A2A2E" stroke-width="1.6"/>` +
+        `<rect x="-3.5" y="-110" width="7" height="2.8" fill="#141413"/><path d="M-27 -109.5 L-41 -111 M27 -109.5 L41 -111" stroke="#141413" stroke-width="2.4" stroke-linecap="round"/>` +
+        `<path d="M-23 -111 L-15 -103.5 M-18 -112 L-13 -107.4 M7 -111 L15 -103.5 M12 -112 L17 -107.4" stroke="#fff" stroke-width="1.7" opacity=".5" stroke-linecap="round"/>`;
+    }
+  
+    // ── extra: satchel bag on the hip (messenger)
+    const bag = kind === 'msg'
+      ? `<rect x="20" y="-48" width="20" height="17" rx="3.2" fill="#9FD0D6"/><rect x="20" y="-48" width="20" height="7" rx="3" fill="#7ABAC2"/><path d="M21.5 -41.2 H38.5" stroke="#000" opacity=".16"/><rect x="27" y="-43.5" width="6" height="4.6" rx="1" fill="#E9C46A" stroke="#B8862B" stroke-width=".5"/><rect x="20" y="-32.6" width="20" height="1.6" rx=".8" fill="#000" opacity=".14"/>`
+      : '';
+  
+    return `<g transform="scale(${s})">${legs}${neck}${torso}${front}${arms}${bag}${face}${nose}${eye(-14)}${eye(14)}${brows}${mouth}${hairSvg}${eyewear}</g>`;
+  };
+
+  // Detailed avatars: one generator, five outfits. Same size/anchor as the old flat ones (feet at 0, head top ~ -150).
+  const CH = {
+    bot:     char({ s: 0.44, kind: 'worker',  skin: '#8D5B3E', hair: '#1E1A17', hairL: '#6B5A4E', jacket: '#3E4F7A', jacketD: '#35446A', pants: '#26314A', style: 'short', iris: '#3A2418' }),
+    botlead: char({ s: 0.44, kind: 'botlead', skin: '#F2D3BD', hair: '#1E1A17', hairL: '#6B5A4E', jacket: '#3E4F7A', jacketD: '#35446A', pants: '#26314A', style: 'short', iris: '#4A5A3A' }),
+    lead:    char({ s: 0.42, kind: 'lead',    skin: '#F5D6B8', hair: '#141413', hairL: '#5A5650', jacket: '#232327', jacketD: '#1A1A1D', pants: '#1A1A1D', style: 'sweep', glasses: 'round', iris: '#3A2A20' }),
+    ceo:     char({ s: 0.5,  kind: 'ceo',     skin: '#F5C8A0', hair: '#CFCBC2', hairL: '#FFFFFF', brow: '#A8A49A', jacket: '#D9A92B', jacketD: '#C29523', pants: '#B8862B', style: 'silver', glasses: 'sun', watch: 'gold' }),
+    msgbot:  char({ s: 0.44, kind: 'msg',     skin: '#8D5B3E', hair: '#1E1A17', hairL: '#6B5A4E', jacket: '#3A6A5A', jacketD: '#2E5A4A', pants: '#264A3A', style: 'short', iris: '#3A2418' }),
+  };
+
   const DEFS = `<defs>
   <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22344A"/><stop offset="1" stop-color="#3B5470"/></linearGradient>
   <radialGradient id="glow"><stop offset="0" stop-color="#F7D9A8" stop-opacity="0.75"/><stop offset="1" stop-color="#F7D9A8" stop-opacity="0"/></radialGradient>
@@ -30,18 +199,15 @@
   <symbol id="desk" overflow="visible"><ellipse cx="0" cy="22" rx="50" ry="14" fill="#141413" opacity="0.07"/><polygon points="-44,-22 0,3 0,25 -44,0" fill="#34343A"/><polygon points="44,-22 0,3 0,25 44,0" fill="#18181B"/><polygon points="-40,-20 -4,1 -4,22 -40,1" fill="#2E2E33"/><polygon points="0,-47 44,-22 0,3 -44,-22" fill="#45454C" stroke="#55555C"/><polygon points="-14,-34 -6,-30 -6,-26 -14,-30" fill="#3A3935"/><polygon points="-32,-40 -2,-57 -2,-85 -32,-68" fill="#141413"/><polygon class="screen" points="-29,-44 -5,-58 -5,-81 -29,-67" fill="currentColor" opacity="0.9"/><polygon points="-26,-52 -12,-60 -12,-58 -26,-50" fill="#141413" opacity="0.45"/><polygon points="-26,-58 -9,-68 -9,-66 -26,-56" fill="#141413" opacity="0.45"/><polygon points="-26,-64 -15,-70 -15,-68 -26,-62" fill="#141413" opacity="0.3"/><polygon points="8,-28 26,-18 18,-13 0,-23" fill="#6A6A72" stroke="#5A5A62" stroke-width="0.6"/><circle cx="30" cy="-22" r="2.6" fill="#5A5A62"/><g transform="translate(-24 -20)"><rect x="-3.5" y="-8" width="7" height="8" rx="1.5" fill="#B5532F"/><ellipse cx="0" cy="-8" rx="3.5" ry="1.4" fill="#8F3F22"/></g><g transform="translate(26 -40)"><polygon points="0,0 2,-1 2,-16 0,-15" fill="#3A3935"/><polygon points="-6,-15 8,-20 6,-14 -6,-11" fill="#3A3935"/><ellipse cx="1" cy="-12" rx="4" ry="1.6" fill="#F2C98F"/></g></symbol>
   <symbol id="crown" overflow="visible"><path d="M-10 0 L-12 -12 L-5 -6 L0 -15 L5 -6 L12 -12 L10 0 Z" fill="#E9C46A" stroke="#B8862B" stroke-width="1"/><circle cx="0" cy="-15" r="1.8" fill="#B5532F"/></symbol>
   <symbol id="chair" overflow="visible"><ellipse cx="0" cy="0" rx="13" ry="5" fill="#141413" opacity="0.12"/><path d="M-11 0 L11 0 M0 -5 L0 5" stroke="#3A3935" stroke-width="2.4" stroke-linecap="round"/><rect x="-1.5" y="-15" width="3" height="15" fill="#55534D"/><rect x="-11" y="-44" width="22" height="26" rx="8" fill="#3D3D3A"/><rect x="-8" y="-41" width="16" height="20" rx="6" fill="#4A4945"/><ellipse cx="0" cy="-16" rx="13" ry="6" fill="#55534D"/></symbol>
-  <symbol id="bot" overflow="visible"><g transform="scale(0.44)"><ellipse rx="28" ry="6" fill="#141413" opacity="0.16"/><rect x="-12" y="-22" width="10" height="21" rx="2" fill="#26314A"/><rect x="2" y="-22" width="10" height="21" rx="2" fill="#26314A"/><rect x="-14" y="-4" width="12" height="5" rx="2.5" fill="#141413"/><rect x="2" y="-4" width="12" height="5" rx="2.5" fill="#141413"/><rect x="-24" y="-62" width="48" height="42" rx="12" fill="#3E4F7A"/><rect x="-30" y="-60" width="9" height="30" rx="4.5" fill="#3E4F7A"/><rect x="21" y="-60" width="9" height="30" rx="4.5" fill="#35446A"/><circle cx="-25.5" cy="-28" r="4.5" fill="#8D5B3E"/><circle cx="25.5" cy="-28" r="4.5" fill="#7E5036"/><polygon points="-8,-62 8,-62 0,-44" fill="#FFFFFF"/><rect x="-2.5" y="-60" width="5" height="18" rx="1.5" fill="currentColor"/><rect x="-40" y="-146" width="80" height="78" rx="28" fill="#8D5B3E"/><path d="M-40 -116 L-40 -124 Q-40 -150 -12 -150 L12 -150 Q40 -150 40 -124 L40 -118 Q30 -132 0 -132 Q-28 -132 -40 -116 Z" fill="#1E1A17"/><circle class="eye" cx="-13" cy="-106" r="4.8" fill="#141413"/><circle class="eye" cx="13" cy="-106" r="4.8" fill="#141413"/><circle cx="-11.5" cy="-107.5" r="1.4" fill="#FFFFFF"/><circle cx="14.5" cy="-107.5" r="1.4" fill="#FFFFFF"/><rect x="-7" y="-90" width="14" height="4" rx="2" fill="#141413"/></g></symbol>
+  <symbol id="bot" overflow="visible">${CH.bot}</symbol>
   <!-- White-skin bot variant used when an agent is a department lead -->
-  <symbol id="bot-lead" overflow="visible"><g transform="scale(0.44)"><ellipse rx="28" ry="6" fill="#141413" opacity="0.16"/><rect x="-12" y="-22" width="10" height="21" rx="2" fill="#26314A"/><rect x="2" y="-22" width="10" height="21" rx="2" fill="#26314A"/><rect x="-14" y="-4" width="12" height="5" rx="2.5" fill="#141413"/><rect x="2" y="-4" width="12" height="5" rx="2.5" fill="#141413"/><rect x="-24" y="-62" width="48" height="42" rx="12" fill="#3E4F7A"/><rect x="-30" y="-60" width="9" height="30" rx="4.5" fill="#3E4F7A"/><rect x="21" y="-60" width="9" height="30" rx="4.5" fill="#35446A"/><circle cx="-25.5" cy="-28" r="4.5" fill="#8D5B3E"/><circle cx="25.5" cy="-28" r="4.5" fill="#7E5036"/><polygon points="-8,-62 8,-62 0,-44" fill="#FFFFFF"/><rect x="-2.5" y="-60" width="5" height="18" rx="1.5" fill="currentColor"/><!-- white skin head --><rect x="-40" y="-146" width="80" height="78" rx="28" fill="#F5F3EE"/><path d="M-40 -116 L-40 -124 Q-40 -150 -12 -150 L12 -150 Q40 -150 40 -124 L40 -118 Q30 -132 0 -132 Q-28 -132 -40 -116 Z" fill="#1E1A17"/><circle class="eye" cx="-13" cy="-106" r="4.8" fill="#141413"/><circle class="eye" cx="13" cy="-106" r="4.8" fill="#141413"/><circle cx="-11.5" cy="-107.5" r="1.4" fill="#FFFFFF"/><circle cx="14.5" cy="-107.5" r="1.4" fill="#FFFFFF"/><rect x="-7" y="-90" width="14" height="4" rx="2" fill="#141413"/></g></symbol>
+  <symbol id="bot-lead" overflow="visible">${CH.botlead}</symbol>
 
-  <symbol id="lead" overflow="visible"><g transform="scale(0.42)"><ellipse rx="28" ry="6" fill="#141413" opacity="0.16"/><rect x="-12" y="-22" width="10" height="21" rx="2" fill="#1A1A1D"/><rect x="2" y="-22" width="10" height="21" rx="2" fill="#1A1A1D"/><rect x="-14" y="-4" width="12" height="5" rx="2.5" fill="#000000"/><rect x="2" y="-4" width="12" height="5" rx="2.5" fill="#000000"/><rect x="-24" y="-62" width="48" height="42" rx="12" fill="#232327"/><rect x="-30" y="-60" width="9" height="30" rx="4.5" fill="#232327"/><rect x="21" y="-60" width="9" height="30" rx="4.5" fill="#1A1A1D"/><circle cx="-25.5" cy="-28" r="4.5" fill="#F5D6B8"/><circle cx="25.5" cy="-28" r="4.5" fill="#EBC9A8"/><polygon points="-9,-62 9,-62 5,-22 -5,-22" fill="#FFFFFF"/><polygon points="-10,-60 0,-56 -10,-52" fill="#141413"/><polygon points="10,-60 0,-56 10,-52" fill="#141413"/><rect x="12" y="-50" width="7" height="4" rx="1" fill="currentColor"/><rect x="-40" y="-146" width="80" height="78" rx="28" fill="#F5D6B8"/><path d="M-40 -118 Q-42 -150 -6 -150 L14 -150 Q40 -150 40 -122 Q24 -138 -4 -136 Q-30 -134 -40 -118 Z" fill="#141413"/><rect x="-24" y="-113" width="20" height="13" rx="5" fill="none" stroke="#141413" stroke-width="3"/><rect x="4" y="-113" width="20" height="13" rx="5" fill="none" stroke="#141413" stroke-width="3"/><rect x="-4" y="-108" width="8" height="3" fill="#141413"/><circle cx="-14" cy="-106" r="3.5" fill="#1E1E1C"/><circle cx="14" cy="-106" r="3.5" fill="#1E1E1C"/><path d="M-7 -89 q7 4 14 0" stroke="#1E1E1C" stroke-width="3" fill="none" stroke-linecap="round"/></g></symbol>
-  <symbol id="ceo" overflow="visible"><g transform="scale(0.5)"><ellipse rx="30" ry="6" fill="#141413" opacity="0.16"/><rect x="-12" y="-22" width="10" height="21" rx="2" fill="#B8862B"/><rect x="2" y="-22" width="10" height="21" rx="2" fill="#B8862B"/><rect x="-14" y="-4" width="12" height="5" rx="2.5" fill="#141413"/><rect x="2" y="-4" width="12" height="5" rx="2.5" fill="#141413"/><rect x="-24" y="-62" width="48" height="42" rx="12" fill="#D9A92B"/><rect x="-30" y="-60" width="9" height="30" rx="4.5" fill="#D9A92B"/><rect x="21" y="-60" width="9" height="30" rx="4.5" fill="#C29523"/><circle cx="-25.5" cy="-28" r="4.5" fill="#F5C8A0"/><circle cx="25.5" cy="-28" r="4.5" fill="#F5C8A0"/><polygon points="-9,-62 9,-62 5,-22 -5,-22" fill="#FFFFFF"/><polygon points="-9,-62 -3,-42 -15,-50" fill="#141413"/><polygon points="9,-62 3,-42 15,-50" fill="#141413"/><polygon points="-10,-60 0,-56 -10,-52" fill="#141413"/><polygon points="10,-60 0,-56 10,-52" fill="#141413"/><rect x="-40" y="-146" width="80" height="78" rx="28" fill="#F5C8A0"/><path d="M-40 -118 Q-40 -150 -10 -150 L12 -150 Q40 -150 40 -118 Q38 -132 26 -136 Q0 -128 -26 -136 Q-38 -132 -40 -118 Z" fill="#CFCBC2"/><rect x="-26" y="-112" width="22" height="11" rx="4" fill="#141413"/><rect x="4" y="-112" width="22" height="11" rx="4" fill="#141413"/><rect x="-4" y="-109" width="8" height="3" fill="#141413"/><rect x="-22" y="-110" width="6" height="3" rx="1.5" fill="#FFFFFF" opacity="0.6"/><path d="M-10 -90 q10 9 20 0 Z" fill="#141413"/></g></symbol>
+  <symbol id="lead" overflow="visible">${CH.lead}</symbol>
+  <symbol id="ceo" overflow="visible">${CH.ceo}</symbol>
 
   <!-- Messenger bot: same silhouette as bot but wears a satchel bag -->
-  <symbol id="msgbot" overflow="visible"><g transform="scale(0.44)"><ellipse rx="28" ry="6" fill="#141413" opacity="0.16"/><rect x="-12" y="-22" width="10" height="21" rx="2" fill="#264A3A"/><rect x="2" y="-22" width="10" height="21" rx="2" fill="#264A3A"/><rect x="-14" y="-4" width="12" height="5" rx="2.5" fill="#141413"/><rect x="2" y="-4" width="12" height="5" rx="2.5" fill="#141413"/><rect x="-24" y="-62" width="48" height="42" rx="12" fill="#3A6A5A"/><rect x="-30" y="-60" width="9" height="30" rx="4.5" fill="#3A6A5A"/><rect x="21" y="-60" width="9" height="30" rx="4.5" fill="#2E5A4A"/><circle cx="-25.5" cy="-28" r="4.5" fill="#8D5B3E"/><circle cx="25.5" cy="-28" r="4.5" fill="#7E5036"/><polygon points="-8,-62 8,-62 0,-44" fill="#FFFFFF"/><rect x="-2.5" y="-60" width="5" height="18" rx="1.5" fill="#9FD0D6"/><rect x="-40" y="-146" width="80" height="78" rx="28" fill="#8D5B3E"/><path d="M-40 -116 L-40 -124 Q-40 -150 -12 -150 L12 -150 Q40 -150 40 -124 L40 -118 Q30 -132 0 -132 Q-28 -132 -40 -116 Z" fill="#1E1A17"/><circle class="eye" cx="-13" cy="-106" r="4.8" fill="#141413"/><circle class="eye" cx="13" cy="-106" r="4.8" fill="#141413"/><circle cx="-11.5" cy="-107.5" r="1.4" fill="#FFFFFF"/><circle cx="14.5" cy="-107.5" r="1.4" fill="#FFFFFF"/><rect x="-7" y="-90" width="14" height="4" rx="2" fill="#141413"/>
-  <!-- satchel bag on the side -->
-  <rect x="22" y="-52" width="18" height="16" rx="3" fill="#9FD0D6"/><rect x="22" y="-56" width="6" height="6" rx="1" fill="#7ABAC2"/><rect x="26" y="-46" width="6" height="4" rx="1" fill="#7ABAC2" opacity="0.6"/>
-  </g></symbol>
+  <symbol id="msgbot" overflow="visible">${CH.msgbot}</symbol>
 
   <symbol id="leaddesk" overflow="visible"><ellipse cx="0" cy="14" rx="36" ry="10" fill="#141413" opacity="0.07"/><polygon points="-30,-15 0,2 0,16 -30,-1" fill="#34343A"/><polygon points="30,-15 0,2 0,16 30,-1" fill="#18181B"/><polygon points="0,-32 30,-15 0,2 -30,-15" fill="#45454C" stroke="#55555C"/><polygon points="-20,-27 0,-38 0,-56 -20,-45" fill="#141413"/><polygon points="-18,-30 -2,-39 -2,-53 -18,-44" fill="currentColor" opacity="0.85"/><polygon points="6,-20 18,-13 13,-10 1,-17" fill="#FAF9F5" stroke="#5A5A62" stroke-width="0.6"/></symbol>
   <symbol id="table" overflow="visible"><ellipse cx="0" cy="2" rx="26" ry="9" fill="#141413" opacity="0.08"/><ellipse cx="0" cy="0" rx="12" ry="5" fill="#8A6446"/><rect x="-2" y="-22" width="4" height="22" fill="#8A6446"/><ellipse cx="0" cy="-22" rx="26" ry="12" fill="#B98B64"/><ellipse cx="0" cy="-24" rx="26" ry="12" fill="#CFA47C"/><ellipse cx="-6" cy="-26" rx="10" ry="4" fill="#DDB892" opacity="0.6"/></symbol>
