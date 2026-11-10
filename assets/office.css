@@ -175,3 +175,13 @@ a.btn[aria-disabled]{opacity:.5}
 
 /* sitting on a chair / bean bag */
 .agent[data-prop="book"] .body>use,.agent[data-prop="pad"] .body>use,.agent[data-prop="music"] .body>use,.agent[data-prop="book"] .props,.agent[data-prop="pad"] .props,.agent[data-prop="music"] .props{transform:translateY(8px)}
+
+/* building: pick an apartment (floor) in the tower, then step between floors */
+.fl{cursor:pointer;outline:none}.fl-hi{opacity:0;transition:opacity .15s;pointer-events:none}.fl:hover .fl-hi,.fl:focus-visible .fl-hi{opacity:.14}
+.floornav{position:absolute;left:16px;bottom:16px;z-index:3;display:flex;flex-direction:column;gap:6px;max-height:calc(100% - 32px);overflow:auto;max-width:min(260px,46%)}
+.floornav button{min-height:40px;padding:6px 14px;border-radius:12px;border:1px solid #3A3A40;background:rgba(30,30,33,.92);color:#FAF9F5;cursor:pointer;font:500 13px Inter,sans-serif;text-align:left;box-shadow:0 8px 20px -12px rgba(20,20,19,.3)}
+.floornav button:hover:not(:disabled){background:#2A2A2E}.floornav button:disabled{opacity:.35;cursor:default}
+.floornav small{display:block;color:#B0AEA5;font-weight:400;font-size:11px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fn-title{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#B0AEA5;padding:0 4px}
+.fn-row{display:flex;align-items:center;gap:6px}.fn-row button{width:44px;padding:0;text-align:center;font-size:16px}.fn-lbl{flex:1;text-align:center;font:500 12px Inter,sans-serif;color:#D6D4CC;background:rgba(30,30,33,.8);border-radius:10px;padding:10px 8px;white-space:nowrap}
+@media (max-width:900px){.floornav{left:10px;bottom:10px;gap:4px}.floornav small,.floornav .fx,.fn-title{display:none}.floornav button{min-height:34px;min-width:40px;padding:4px 10px;text-align:center}.fn-row button{width:38px}.fn-lbl{padding:8px 6px}}
