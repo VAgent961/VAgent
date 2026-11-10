@@ -137,7 +137,18 @@
   const SOFA = ['#6A5880', '#55466A', '#483B5A'], WOOD = ['#8A6446', '#6E4F37', '#5A402C'], DARK = ['#2B2B2F', '#202024', '#18181B'];
 
   function build(depts) {
-    const n = depts.length <= 1 ? 1 : depts.length + (depts.length % 2), cols = n === 1 ? 1 : 2, rows = Math.ceil(n / cols);
+    // Keep the whole building square instead of a long strip. A room is far deeper than it is wide,
+    // so a square grid of rooms is still a tall rectangle: pick the column count whose finished
+    // floorplan is closest to as wide as it is deep. Departments fill left to right, then a new row.
+    const n = depts.length <= 1 ? 1 : depts.length + (depts.length % 2);
+    let cols = 1, closest = Infinity;
+    for (let c = 1; c <= n; c++) {
+      const r = Math.ceil(n / c);
+      const ratio = (c * (ROOM_W + GAP) + FAC_W) / Math.max(r * (ROOM_D + GAP) - GAP, 3000);
+      const off = Math.abs(Math.log(ratio)); // log so twice as wide scores the same as half as wide
+      if (off < closest) { closest = off; cols = c; }
+    }
+    const rows = Math.ceil(n / cols);
     const fx = cols * (ROOM_W + GAP), W = fx + FAC_W, D = Math.max(rows * (ROOM_D + GAP) - GAP, 3000);
     const desksF = [], deskRoom = [], spotsF = [], spotProp = [], rooms = [];
     let floor = '', back = '', furn = '';

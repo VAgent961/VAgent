@@ -470,17 +470,21 @@
       // Tick several agents anywhere in the company and move them into this department in one go.
       if ($('#pick-list')) {
         const pool = D.agents.filter((a) => a.dept !== d.id);
+        const chosen = new Set(); // survives re-filtering: searching must never silently drop a tick
+        const shown = () => { const s = ($('#pick-q').value || '').trim().toLowerCase(); return pool.filter((a) => !s || (a.name + ' ' + a.inst).toLowerCase().includes(s)); };
+        const count = () => { $('#move-sel').textContent = chosen.size ? 'Move ' + chosen.size + ' here' : 'Move selected here'; };
         const paintPicks = () => {
-          const s = ($('#pick-q').value || '').trim().toLowerCase();
-          const show = pool.filter((a) => !s || (a.name + ' ' + a.inst).toLowerCase().includes(s));
-          $('#pick-list').innerHTML = show.map((a) => `<label class="check-row"><input type="checkbox" value="${esc(a.key)}"><span>${esc(a.name)} <small class="muted">· ${esc(where(a))}</small></span></label>`).join('')
+          const show = shown();
+          $('#pick-list').innerHTML = show.map((a) => `<label class="check-row"><input type="checkbox" value="${esc(a.key)}"${chosen.has(a.key) ? ' checked' : ''}><span>${esc(a.name)} <small class="muted">· ${esc(where(a))}</small></span></label>`).join('')
             || `<p class="empty">${pool.length ? 'No agents match.' : 'Every agent is already here.'}</p>`;
+          count();
         };
         paintPicks();
         $('#pick-q').oninput = paintPicks;
-        $('#pick-all').onclick = () => $('#pick-list').querySelectorAll('input[type=checkbox]').forEach((c) => (c.checked = true));
+        $('#pick-list').onchange = (ev) => { const c = ev.target; if (c && c.type === 'checkbox') { c.checked ? chosen.add(c.value) : chosen.delete(c.value); count(); } };
+        $('#pick-all').onclick = () => { shown().forEach((a) => chosen.add(a.key)); paintPicks(); };
         $('#move-sel').onclick = async (ev) => {
-          const keys = [...$('#pick-list').querySelectorAll('input:checked')].map((c) => c.value);
+          const keys = [...chosen];
           if (!keys.length) return toast('Tick at least one agent.');
           const btn = ev.target; btn.disabled = true; btn.textContent = 'Moving…';
           try {
