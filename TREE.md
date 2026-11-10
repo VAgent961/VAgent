@@ -28,6 +28,8 @@
 
 ## Agent key + status
 - Agent key = `<instanceId>:<workflowId>`.
+- A department's lead never sits: it stands at the room's lead spot (`leaddesk`) whether working or idle, while the team takes desks.
+- Chats are kept in localStorage per target (`vagent-ceo`, `vagent-chat-<to>`, last 30 messages), so closing the drawer or the tab keeps the thread. A sent message also saves a `pending` bubble that is replaced in place when the reply lands, so reopening mid-answer still shows it working; a pending older than 3 minutes (tab was reloaded, request lost) renders as "that answer never came back".
 - Talking to a department's lead (its drawer, or `lead:<id>`) stamps `vagent_departments.last_talk`; for the next 15 minutes every active `idle` employee in that department is reported as `working`, so the team sits at its desks and then drifts back to the lounge. Set in `api/talk.js`, applied in `_office.js`. `off` and `help` are left alone.
 - Status: `working` → a desk in its department room (no department / room full → open desks); `idle` → its department lounge (no department / lounge full → café). Building is dark themed. · `idle` (active) → café · `off` (inactive) → café, asleep · `help` (last run failed <24h) → red mark.
 - Calls to agent webhooks carry header `X-VAgent-Secret` (secret WEBHOOK_SECRET); protect webhooks in n8n with Header Auth "VAgent office secret".

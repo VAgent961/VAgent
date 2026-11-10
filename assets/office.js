@@ -16,7 +16,7 @@
   const hhmm = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   let D = { agents: [], departments: [], activity: [], errors: [], instances: [] };
-  const els = {}, places = {}, chats = {};
+  const els = {}, places = {};
   let first = true, current = null;
 
   async function api(path, opt = {}) {
@@ -230,7 +230,12 @@
     const pick = (a, t, choices) => { const p = places[a.key]; if (p && p.t === t && choices.includes(p.i) && !used[t].has(p.i)) return p.i; return choices.find((i) => !used[t].has(i)); };
     // leads sit at their lead-desk when idle, not in the lounge
     const leadKeys = new Set(D.departments.map((d) => d.lead_key).filter(Boolean));
-    for (const a of working) { const r = roomOf(a); let i = pick(a, 'desk', r >= 0 ? S.rooms[r].desks : S.hot); if (i === undefined) i = pick(a, 'desk', S.hot); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'desk', i }; used.desk.add(i); }
+    for (const a of working) {
+      const r = roomOf(a);
+      // the lead runs the room: standing at the lead spot, never sitting at a desk
+      if (leadKeys.has(a.key) && r >= 0) { next[a.key] = { t: 'leaddesk', xy: S.rooms[r].lead }; continue; }
+      let i = pick(a, 'desk', r >= 0 ? S.rooms[r].desks : S.hot); if (i === undefined) i = pick(a, 'desk', S.hot); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'desk', i }; used.desk.add(i);
+    }
     for (const a of cafe) {
       if (leadKeys.has(a.key)) { const r = roomOf(a); if (r >= 0) { next[a.key] = { t: 'leaddesk', xy: S.rooms[r].lead }; continue; } }
       const r = roomOf(a); let i = r >= 0 ? pick(a, 'cafe', S.rooms[r].rest) : undefined; if (i === undefined) i = pick(a, 'cafe', S.cafeIdx); if (i === undefined) { over.push(a); continue; } next[a.key] = { t: 'cafe', i }; used.cafe.add(i);
@@ -579,6 +584,10 @@
     set_lead: (a) => (a.agent ? a.agent + ' becomes lead of ' + a.department : 'Clear lead of ' + a.department) };
   const bubble = (m) => {
     if (m.me) return `<div class="msg me">${esc(m.t)}</div>`;
+    // still waiting on a reply — shown again if you reopen the drawer mid-answer
+    if (m.pending) return Date.now() - (m.at || 0) > 18e4
+      ? `<div class="msg it bad">That answer never came back. Send it again.</div>`
+      : `<div class="msg it typing-msg">${esc(m.t)}</div>`;
     let h = `<div class="msg it${m.bad ? ' bad' : ''}">${esc(m.t)}</div>`;
     if (m.buttons && m.buttons.length) h += `<div class="chips">${m.buttons.map((b) => `<button class="pick" type="button" data-say="${esc(b.value)}">${esc(b.label)}</button>`).join('')}</div>`;
     if (m.actions && m.actions.length) h += `<div class="plan" data-plan="${m.id}"><p class="label">The CEO wants to</p><ul>${m.actions.map((a) => `<li>${esc((ACT[a.type] || ((x) => x.type))(a))}</li>`).join('')}</ul>${m.done ? `<div class="result">${esc(m.done)}</div>` : `<div class="row"><button class="btn primary" type="button" data-approve="${m.id}">Approve</button><button class="btn" type="button" data-skip="${m.id}">No thanks</button></div>`}</div>`;
@@ -586,19 +595,27 @@
     if (m.prompt) h += `<div class="plan"><p class="label">Prompt for Claude</p><pre class="prompt">${esc(m.prompt)}</pre><button class="btn" type="button" data-copy="${m.id}">Copy prompt</button></div>`;
     return h;
   };
-  function chatUI(to, hint) { return `<div class="chat" id="chat">${(to === 'ceo' ? store.get('vagent-ceo') : chats[to] || []).map(bubble).join('')}</div>
+  // Every chat is kept in localStorage, so closing the drawer (or the tab) never loses the thread
+  // and a reply that lands while you are away is still there when you come back.
+  const chatKey = (to) => (to === 'ceo' ? 'vagent-ceo' : 'vagent-chat-' + to);
+  function chatUI(to, hint) { return `<div class="chat" id="chat">${store.get(chatKey(to)).map(bubble).join('')}</div>
     <form id="f-chat" class="row" style="flex-wrap:nowrap"><label class="sr" for="cm">Message</label><input class="input" id="cm" name="m" placeholder="${esc(hint)}" required autocomplete="off" style="flex:1"><button class="btn primary" type="submit" style="flex:none">Send</button></form>`; }
   function bindChat(to, who) {
-    const f = $('#f-chat'), log = () => (to === 'ceo' ? store.get('vagent-ceo') : (chats[to] ||= []));
-    const save = (l) => (to === 'ceo' ? store.set('vagent-ceo', l) : (chats[to] = l));
+    const f = $('#f-chat'), log = () => store.get(chatKey(to));
+    const save = (l) => store.set(chatKey(to), l);
     const paint = () => { const c = $('#chat'); if (!c) return; c.innerHTML = log().map(bubble).join(''); c.lastElementChild && c.lastElementChild.scrollIntoView({ block: 'nearest' }); };
+    const settle = (id, entry) => { const l = log(), i = l.findIndex((x) => x.id === id); if (i >= 0) l[i] = entry; else l.push(entry); save(l); paint(); };
     const send = async (m) => {
-      const l = log(); const history = l.slice(-8).map((x) => ({ me: !!x.me, t: x.t })); l.push({ me: 1, t: m }); save(l); paint();
-      $('#chat').insertAdjacentHTML('beforeend', `<div class="msg it typing-msg" id="wait">${esc(who)} is typing…</div>`); $('#wait').scrollIntoView({ block: 'nearest' });
-      const btn = f.querySelector('button'); btn.disabled = true;
-      try { const r = await api('talk', { body: { to, message: m, history } }); const l2 = log(); l2.push({ id: Date.now(), t: r.reply, buttons: r.buttons, actions: r.actions, prompt: r.prompt, project: r.project, bad: r.ok === false }); save(l2); }
-      catch (x) { const l2 = log(); l2.push({ id: Date.now(), t: x.message, bad: 1 }); save(l2); }
-      btn.disabled = false; paint(); if (to.startsWith('agent:')) load();
+      const id = Date.now();
+      const l = log(); const history = l.slice(-8).map((x) => ({ me: !!x.me, t: x.t }));
+      // the pending bubble is saved too, so it is still there if the drawer is closed and reopened
+      l.push({ me: 1, t: m }); l.push({ id, pending: 1, at: id, t: who + ' is working on it…' }); save(l); paint();
+      const btn = f.querySelector('button'); if (btn) btn.disabled = true;
+      try { const r = await api('talk', { body: { to, message: m, history } });
+        settle(id, { id, t: r.reply, buttons: r.buttons, actions: r.actions, prompt: r.prompt, project: r.project, bad: r.ok === false }); }
+      catch (x) { settle(id, { id, t: x.message, bad: 1 }); }
+      if (btn) btn.disabled = false;
+      if (to.startsWith('agent:')) load();
     };
     f.onsubmit = (e) => { e.preventDefault(); const m = f.m.value.trim(); if (m) { f.m.value = ''; send(m); } };
     inner.onclick = async (e) => {
