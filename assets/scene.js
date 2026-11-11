@@ -1,6 +1,7 @@
 // Generates the whole office SVG from an array of department objects {id, name, color}.
 // plus the CEO office, the café, the messenger corner and open desks. Floor coords -> screen: X = 600 + 0.8(x - y), Y = 110 + 0.462(x + y).
 // window.VScene.build(departments) -> { inner, vb, desks, deskRoom, rooms[{desks, rest, lead, box}], hot, cafe, cafeIdx, spotProp, ceo, helper }
+// window.VScene.people = how many different office workers exist as symbols #p0..#p(n-1) (office.js picks one per agent).
 (function () {
   const P = (x, y, h = 0) => [600 + 0.8 * (x - y), 110 + 0.462 * (x + y) - h];
   const f = (n) => n.toFixed(1);
@@ -13,7 +14,7 @@
   const use = (id, x, y, extra = '', h = 0) => { const [X, Y] = P(x, y, h); return `<use href="#${id}" x="${f(X)}" y="${f(Y)}" ${extra}/>`; };
   const glass = (x0, y0, x1, y1, h = 62, gap) => {
     const seg = (a, b) => { const A = [x0 + (x1 - x0) * a, y0 + (y1 - y0) * a], B = [x0 + (x1 - x0) * b, y0 + (y1 - y0) * b];
-      return `<polygon points="${pts(P(...A), P(...B), P(...B, h), P(...A, h))}" fill="#7FA3B3" opacity="0.22" stroke="#4F6B78"/><polyline points="${pts(P(...A, h), P(...B, h))}" stroke="#5F7F8C" stroke-width="2.5" fill="none"/>`; };
+      return `<polygon points="${pts(P(...A), P(...B), P(...B, h), P(...A, h))}" fill="#8FB0BE" opacity="0.16" stroke="#4F6B78"/><polyline points="${pts(P(...A, h), P(...B, h))}" stroke="#6B8A97" stroke-width="2.5" fill="none"/>`; };
     return gap ? seg(0, gap[0]) + seg(gap[1], 1) : seg(0, 1);
   };
   const onWallR = (x, h) => { const [X, Y] = P(x, 0, h); return `matrix(0.866 0.5 0 1 ${f(X)} ${f(Y)})`; };
@@ -21,308 +22,190 @@
   const sky = (a, b, h0, h1, wall) => { const Q = wall === 'R' ? (t, h) => P(t, 0, h) : (t, h) => P(0, t, h);
     return `<polygon points="${pts(Q(a - 4, h0 - 4), Q(b + 4, h0 - 4), Q(b + 4, h1 + 4), Q(a - 4, h1 + 4))}" fill="#45454C"/><polygon points="${pts(Q(a, h0), Q(b, h0), Q(b, h1), Q(a, h1))}" fill="url(#sky)"/><polyline points="${pts(Q((a + b) / 2, h0), Q((a + b) / 2, h1))}" stroke="#45454C" stroke-width="3"/>`; };
 
-  // Detailed avatar generator (drop-in for the flat symbols). Unscaled coords: feet y=0, head top ~ -150.
-  // Shading uses black/white overlays so it works for every skin / cloth colour. No gradients/ids needed.
-  const char = (o) => {
-    const { s, skin, hair, hairL, jacket, jacketD, pants, kind, iris = '#3A2A20', brow } = o;
-    const eyebrow = brow || hair;
-    const isDark = (kind === 'lead' || kind === 'ceo');
-    const star = (cx, cy, r) => {
-      const p = [];
-      for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; p.push((cx + Math.cos(a) * rr).toFixed(1) + ',' + (cy + Math.sin(a) * rr).toFixed(1)); }
-      return `<polygon points="${p.join(' ')}" fill="#E9C46A" stroke="#B8862B" stroke-width=".5"/>`;
-    };
-  
-    // ── legs + shoes
-    const legs =
-      `<ellipse rx="30" ry="6.5" fill="#141413" opacity=".13"/><ellipse rx="19" ry="4" fill="#141413" opacity=".16"/>` +
-      `<rect x="-12" y="-24" width="10" height="23" rx="2" fill="${pants}"/><rect x="2" y="-24" width="10" height="23" rx="2" fill="${pants}"/>` +
-      `<rect x="-5" y="-24" width="3" height="23" fill="#000" opacity=".18"/><rect x="2" y="-24" width="3" height="23" fill="#000" opacity=".18"/>` +
-      `<rect x="-11" y="-23" width="2" height="19" fill="#fff" opacity=".08"/><rect x="9" y="-23" width="2" height="19" fill="#fff" opacity=".05"/>` +
-      `<path d="M-7 -20 V-7 M7 -20 V-7" stroke="#fff" stroke-width="1" opacity=".12"/>` +
-      // shoes: dark upper, light sole, highlight, laces
-      `<path d="M-15 1 Q-16 -5 -10 -5.5 L-2 -5.5 L-2 1 Z" fill="#1B1B1E"/><path d="M15 1 Q16 -5 10 -5.5 L2 -5.5 L2 1 Z" fill="#1B1B1E"/>` +
-      `<rect x="-16" y="-1.5" width="15" height="3" rx="1.5" fill="#EDEBE3"/><rect x="1" y="-1.5" width="15" height="3" rx="1.5" fill="#EDEBE3"/>` +
-      `<rect x="-12" y="-4.4" width="7" height="1.3" rx=".65" fill="#fff" opacity=".28"/><rect x="5" y="-4.4" width="7" height="1.3" rx=".65" fill="#fff" opacity=".28"/>` +
-      `<path d="M-6 -5.2 v2.2 M-4 -5.2 v2.2 M4 -5.2 v2.2 M6 -5.2 v2.2" stroke="#fff" stroke-width=".7" opacity=".45"/>`;
-  
-    // ── neck (behind torso/head)
-    const neck = `<rect x="-8" y="-74" width="16" height="16" rx="4" fill="${skin}"/><rect x="0" y="-74" width="8" height="16" rx="3" fill="#000" opacity=".1"/><ellipse cx="0" cy="-66" rx="13" ry="5" fill="#000" opacity=".2"/>`;
-  
-    // ── torso (jacket) + shading
-    const torso =
-      `<rect x="-24" y="-62" width="48" height="42" rx="12" fill="${jacket}"/>` +
-      `<path d="M9 -62 H12 Q24 -62 24 -50 V-32 Q24 -20 12 -20 H9 Q17 -40 9 -62 Z" fill="#000" opacity=".13"/>` +
-      `<path d="M-22 -52 Q-23.5 -42 -21.5 -32" stroke="#fff" stroke-width="2" opacity=".13" fill="none" stroke-linecap="round"/>` +
-      `<path d="M-21 -23.5 Q0 -19 21 -23.5" stroke="#000" stroke-width="1.1" opacity=".18" fill="none"/>`;
-  
-    // ── front of the outfit (kind-specific)
-    let front = '';
-    if (kind === 'worker' || kind === 'botlead' || kind === 'msg') {
-      front =
-        `<polygon points="-9,-62 9,-62 0,-40" fill="#FFFFFF"/><polygon points="0,-62 9,-62 0,-40" fill="#000" opacity=".08"/>` +
-        `<path d="M-11 -64 L-1 -60 L-9 -50 L-15 -57 Z" fill="#F4F2EC" stroke="#000" stroke-opacity=".14" stroke-width=".8"/>` +
-        `<path d="M11 -64 L1 -60 L9 -50 L15 -57 Z" fill="#E4E1D8" stroke="#000" stroke-opacity=".14" stroke-width=".8"/>` +
-        // tie: knot, blade, shade, highlight, bar
-        `<polygon points="-4,-60.5 4,-60.5 3,-54 -3,-54" fill="${kind === 'msg' ? '#9FD0D6' : 'currentColor'}"/>` +
-        `<polygon points="-3,-54 3,-54 6,-31 0,-26 -6,-31" fill="${kind === 'msg' ? '#9FD0D6' : 'currentColor'}"/>` +
-        `<polygon points="0,-54 3,-54 6,-31 0,-26" fill="#000" opacity=".22"/><path d="M-1.4 -52 L-3 -33" stroke="#fff" stroke-width="1.2" opacity=".3" stroke-linecap="round"/>` +
-        `<rect x="-4.2" y="-46" width="8.4" height="1.7" rx=".85" fill="#E9C46A"/>`;
-      if (kind !== 'msg') {
-        front +=
-          // ID badge on the left chest, pen in right pocket
-          `<rect x="-21" y="-49" width="9.5" height="12.5" rx="1.6" fill="#FFFFFF" stroke="#000" stroke-opacity=".18" stroke-width=".6"/>` +
-          `<rect x="-21" y="-49" width="9.5" height="3.6" rx="1.2" fill="currentColor"/><circle cx="-16.2" cy="-42" r="2.4" fill="#C9B79C"/><rect x="-19" y="-38.4" width="5.6" height="1" rx=".5" fill="#9A968A"/>` +
-          `<rect x="12" y="-50" width="9" height="1.5" rx=".75" fill="#000" opacity=".22"/><rect x="15.2" y="-55" width="1.7" height="6.5" rx=".85" fill="#E9C46A"/>`;
-      }
-      if (kind === 'botlead') front += star(16, -43, 3.6);
-      if (kind === 'msg') {
-        // satchel strap across the chest
-        front += `<path d="M-17 -62 L25 -33" stroke="#6AA9B1" stroke-width="5" stroke-linecap="round"/><path d="M-17 -62 L25 -33" stroke="#fff" stroke-width="1" opacity=".25" stroke-linecap="round" transform="translate(-1 -1.5)"/>`;
-      }
-    } else if (kind === 'lead') {
-      front =
-        `<polygon points="-9,-62 9,-62 5,-22 -5,-22" fill="#FFFFFF"/><polygon points="0,-62 9,-62 5,-22 0,-22" fill="#000" opacity=".07"/>` +
-        `<polygon points="-9,-62 -23,-61 -21,-42 -10,-30 -3,-24 -4,-44" fill="#323237"/><polygon points="9,-62 23,-61 21,-42 10,-30 3,-24 4,-44" fill="#2A2A2E"/>` +
-        `<path d="M-9 -62 L-4 -44 L-3 -24 M9 -62 L4 -44 L3 -24" stroke="#fff" stroke-opacity=".12" stroke-width="1" fill="none"/>` +
-        `<circle cx="0" cy="-45" r="1.1" fill="#C9C5B8"/><circle cx="0" cy="-37" r="1.1" fill="#C9C5B8"/><circle cx="0" cy="-29" r="1.1" fill="#C9C5B8"/>` +
-        // bow tie
-        `<polygon points="-11.5,-61.5 -1,-57 -11.5,-52" fill="#141413"/><polygon points="11.5,-61.5 1,-57 11.5,-52" fill="#141413"/><rect x="-2.3" y="-59.8" width="4.6" height="5.6" rx="1.2" fill="#2A2A2E"/>` +
-        `<path d="M-9 -59 L-3 -57" stroke="#fff" stroke-opacity=".25" stroke-width=".8"/>` +
-        // coloured pocket square + lapel pin
-        `<polygon points="12,-46.5 13.6,-52.5 16.2,-49.2 18.6,-52.6 20,-46.5" fill="currentColor"/><rect x="11.5" y="-47.2" width="9" height="1.4" rx=".7" fill="#000" opacity=".3"/>` +
-        `<circle cx="-17" cy="-52" r="1.8" fill="#E9C46A"/>`;
-    } else if (kind === 'ceo') {
-      front =
-        `<polygon points="-9,-62 9,-62 5,-22 -5,-22" fill="#FFFFFF"/><polygon points="0,-62 9,-62 5,-22 0,-22" fill="#000" opacity=".07"/>` +
-        `<polygon points="-9,-62 -23,-61 -21,-42 -10,-30 -3,-24 -4,-44" fill="#E8BE45"/><polygon points="9,-62 23,-61 21,-42 10,-30 3,-24 4,-44" fill="#C29523"/>` +
-        `<path d="M-9 -62 L-4 -44 L-3 -24 M9 -62 L4 -44 L3 -24" stroke="#7A5A12" stroke-opacity=".45" stroke-width="1" fill="none"/>` +
-        `<circle cx="0" cy="-45" r="1.1" fill="#C9C5B8"/><circle cx="0" cy="-37" r="1.1" fill="#C9C5B8"/><circle cx="0" cy="-29" r="1.1" fill="#C9C5B8"/>` +
-        `<polygon points="-11.5,-61.5 -1,-57 -11.5,-52" fill="#141413"/><polygon points="11.5,-61.5 1,-57 11.5,-52" fill="#141413"/><rect x="-2.3" y="-59.8" width="4.6" height="5.6" rx="1.2" fill="#2A2A2E"/>` +
-        `<polygon points="12,-46.5 13.6,-52 16.2,-49.5 18.6,-52 20,-46.5" fill="#FFFFFF"/><rect x="11.5" y="-47.2" width="9" height="1.4" rx=".7" fill="#000" opacity=".25"/>` +
-        `<circle cx="-17" cy="-52" r="2" fill="#141413"/><circle cx="-17.5" cy="-52.5" r=".7" fill="#fff" opacity=".7"/>`;
+  // ── People ────────────────────────────────────────────────────────────────
+  // Adult proportions (about 6.5 heads tall), drawn front-on. Unscaled: feet at y=0, top of the head at about -150.
+  // The only strong colour is the lanyard badge (currentColor = the agent's colour); clothes stay office-neutral.
+  const SKIN = ['#F1D3B8', '#E3B892', '#C99A72', '#A9764F', '#7A5237'];
+  const HAIR = ['#1F1B18', '#3B2A20', '#5A3E2B', '#8A5A3A', '#B8B2A7', '#C9A66B'];
+  const person = (o) => {
+    const { s = 0.5, skin, hair, style = 'short', kind = 'shirt', top, pants = '#2B2F38', shoes = '#17181B', glasses, bag, tie, accent = 'currentColor' } = o;
+    const sh = (d, op = 0.13) => `<path d="${d}" fill="#000" opacity="${op}"/>`;
+    const shortSleeve = kind === 'polo';
+    const shadow = `<ellipse rx="24" ry="7" fill="#000" opacity=".3"/>`;
+    const legs = `<path d="M-15 -70 H-1 L-3 -5 H-13 Z" fill="${pants}"/><path d="M1 -70 H15 L13 -5 H3 Z" fill="${pants}"/>` + sh('M8 -70 H15 L13 -5 H8 Z', 0.16) +
+      `<rect x="-16" y="-7" width="14" height="7" rx="3" fill="${shoes}"/><rect x="2" y="-7" width="14" height="7" rx="3" fill="${shoes}"/>`;
+    const arm = (d) => { const x = d < 0 ? -28 : 19;
+      return `<rect x="${x}" y="-117" width="9" height="${shortSleeve ? 22 : 50}" rx="4.5" fill="${top}"/>` +
+        (shortSleeve ? `<rect x="${x + 1}" y="-99" width="7" height="33" rx="3.5" fill="${skin}"/>` : '') +
+        `<circle cx="${x + 4.5}" cy="-64" r="4.3" fill="${skin}"/>` + (d > 0 ? `<rect x="${x + 4.5}" y="-117" width="4.5" height="52" rx="2.2" fill="#000" opacity=".12"/>` : ''); };
+    // seated: upper arms down, forearms forward onto the desk (shown only inside a .seat, see office.css)
+    const sitUpper = `<rect x="-28" y="-117" width="9" height="30" rx="4.5" fill="${top}"/><rect x="19" y="-117" width="9" height="30" rx="4.5" fill="${top}"/><rect x="23.5" y="-117" width="4.5" height="30" rx="2.2" fill="#000" opacity=".12"/>`;
+    const fore = shortSleeve ? skin : top;
+    const sitFore = `<path d="M-23.5 -92 L-9 -80 M23.5 -92 L9 -80" stroke="${fore}" stroke-width="8.6" stroke-linecap="round" fill="none"/><path d="M23.5 -92 L9 -80" stroke="#000" stroke-opacity=".12" stroke-width="8.6" stroke-linecap="round" fill="none"/>` +
+      `<circle cx="-8" cy="-79" r="4.4" fill="${skin}"/><circle cx="8" cy="-79" r="4.4" fill="${skin}"/>`;
+    const torso = `<path d="M-9 -121 L-20 -118 Q-23 -117 -23 -112 L-19 -70 Q-19 -65 -14 -65 H14 Q19 -65 19 -70 L23 -112 Q23 -117 20 -118 L9 -121 Z" fill="${top}"/>` +
+      sh('M9 -121 L20 -118 Q23 -117 23 -112 L19 -70 Q19 -65 14 -65 H9 Z');
+    let front;
+    if (kind === 'blazer') {
+      front = `<path d="M-8 -121 H8 L0 -90 Z" fill="#F1EEE7"/>` + (tie ? `<path d="M-2 -119 H2 L3.2 -98 L0 -93 L-3.2 -98 Z" fill="${tie}"/>` : '') +
+        `<path d="M-8 -121 L0 -90 L-5 -99 L-13 -117 Z" fill="#000" opacity=".22"/><path d="M8 -121 L0 -90 L5 -99 L13 -117 Z" fill="#000" opacity=".3"/>` +
+        `<path d="M0 -90 V-65" stroke="#000" stroke-opacity=".25" stroke-width="1"/><circle cx="0" cy="-82" r="1.3" fill="#000" opacity=".4"/>` +
+        `<path d="M10 -103 l6 -1.5 l-.6 4 l-5 1.2 Z" fill="${accent}"/>`;
+    } else {
+      const collar = kind === 'knit'
+        ? `<path d="M-8 -121 Q0 -112 8 -121" fill="none" stroke="#000" stroke-opacity=".28" stroke-width="2.2"/><rect x="-19" y="-70" width="38" height="4" rx="2" fill="#000" opacity=".12"/>`
+        : `<path d="M-8 -121 L0 -111 L8 -121 Z" fill="${skin}"/>` + sh('M-8 -121 L0 -111 L8 -121 Z', 0.12) +
+          `<path d="M-9 -122 L-1 -112 L-6 -109 L-11 -118 Z M9 -122 L1 -112 L6 -109 L11 -118 Z" fill="${top}"/><path d="M-9 -122 L-1 -112 L-6 -109 L-11 -118 Z M9 -122 L1 -112 L6 -109 L11 -118 Z" fill="#fff" opacity=".16"/>` +
+          `<path d="M0 -110 V-66" stroke="#000" stroke-opacity=".16" stroke-width="1"/>`;
+      front = collar + `<path d="M-6 -119 L-1 -97 M6 -119 L1 -97" stroke="${accent}" stroke-width="1.7" fill="none" stroke-linecap="round"/>` +
+        `<rect x="-5" y="-98" width="10" height="12" rx="1.6" fill="#F4F2EC" stroke="${accent}" stroke-width="1.2"/><rect x="-3" y="-95.5" width="6" height="2" rx="1" fill="${accent}"/><rect x="-3" y="-91.5" width="6" height="1.4" rx=".7" fill="#9A968A"/>`;
     }
-  
-    // ── arms: sleeve, shade, cuff, hand with thumb + finger lines
-    const hand = (cx, flip) =>
-      `<circle cx="${cx}" cy="-28" r="4.6" fill="${skin}"/><ellipse cx="${cx + 4.2 * flip}" cy="-29.5" rx="1.9" ry="3.1" fill="${skin}"/>` +
-      `<path d="M${cx - 2.4} -25.6 v2.2 M${cx} -24.9 v2.6 M${cx + 2.4} -25.6 v2.2" stroke="#000" stroke-width=".7" opacity=".28" stroke-linecap="round"/>` +
-      `<path d="M${cx - 3.4} -31.5 Q${cx} -34 ${cx + 3.4} -31.5" stroke="#000" stroke-width=".8" opacity=".15" fill="none"/>`;
-    const watch = o.watch === 'gold' ? ['#D4AF37', '#F2E29B'] : ['#2A2A2E', '#9FD0D6'];
-    const arms =
-      `<rect x="-30" y="-60" width="9" height="30" rx="4.5" fill="${jacket}"/><rect x="21" y="-60" width="9" height="30" rx="4.5" fill="${jacketD}"/>` +
-      `<rect x="24.5" y="-60" width="5.5" height="30" rx="2.8" fill="#000" opacity=".12"/><path d="M-28.5 -54 Q-29.5 -46 -28 -39" stroke="#fff" stroke-width="1.6" opacity=".13" fill="none" stroke-linecap="round"/>` +
-      `<path d="M-29 -45 q4 2.2 8 0" stroke="#000" stroke-width="1" opacity=".16" fill="none"/><path d="M22 -45 q4 2.2 8 0" stroke="#000" stroke-width="1" opacity=".18" fill="none"/>` +
-      `<rect x="-29.6" y="-36" width="8.2" height="4.4" rx="1.6" fill="#FFFFFF"/><rect x="21.4" y="-36" width="8.2" height="4.4" rx="1.6" fill="#E4E1D8"/>` +
-      `<rect x="-30" y="-37.4" width="9" height="3.1" rx="1.1" fill="${watch[0]}"/><rect x="-27.4" y="-37" width="4.2" height="2.3" rx=".7" fill="${watch[1]}"/>` +
-      hand(-25.5, -1) + hand(25.5, 1) + `<circle cx="27" cy="-27" r="3" fill="#000" opacity=".09"/>`;
-  
-    // ── head: ears, face shape, shading, blush
-    const ears = [-1, 1].map((d) => `<ellipse cx="${d * 41}" cy="-104" rx="5.4" ry="9" fill="${skin}"/><ellipse cx="${d * 41.6}" cy="-104" rx="2.4" ry="5" fill="#000" opacity=".14"/>`).join('');
-    const headPath = 'M-40 -116 Q-40 -146 0 -146 Q40 -146 40 -116 L40 -104 Q40 -68 0 -68 Q-40 -68 -40 -104 Z';
-    const face =
-      ears + `<path d="${headPath}" fill="${skin}"/>` +
-      `<path d="M40 -116 L40 -104 Q40 -68 0 -68 Q26 -74 32 -100 Q36 -112 33 -128 Q38 -124 40 -116 Z" fill="#000" opacity=".1"/>` +
-      `<ellipse cx="-22" cy="-97" rx="6" ry="3.6" fill="#fff" opacity=".06"/>` +
-      `<circle cx="-25" cy="-93" r="6.5" fill="#E8776A" opacity=".17"/><circle cx="25" cy="-93" r="6.5" fill="#E8776A" opacity=".17"/>`;
-  
-    // ── eyes (iris group keeps class "eye" for the look-around animation)
-    const eye = (cx) =>
-      `<ellipse cx="${cx}" cy="-106" rx="8" ry="6.6" fill="#FBFAF6"/>` +
-      `<g class="eye"><circle cx="${cx}" cy="-106" r="4.9" fill="${iris}"/><circle cx="${cx}" cy="-106" r="2.5" fill="#0B0B0B"/><circle cx="${cx + 1.7}" cy="-107.8" r="1.5" fill="#fff"/><circle cx="${cx - 1.6}" cy="-104.4" r=".7" fill="#fff" opacity=".7"/></g>` +
-      `<path d="M${cx - 8.6} -107 Q${cx} -114.5 ${cx + 8.6} -107" stroke="#1B1411" stroke-width="2.3" fill="none" stroke-linecap="round"/>` +
-      `<path d="M${cx - 7} -101 Q${cx} -98.5 ${cx + 7} -101" stroke="#000" stroke-width="1" opacity=".16" fill="none"/>`;
-    const brows = `<path d="M-23.5 -118.5 Q-14 -124 -5.5 -120.5" stroke="${eyebrow}" stroke-width="3.3" fill="none" stroke-linecap="round"/><path d="M5.5 -120.5 Q14 -124 23.5 -118.5" stroke="${eyebrow}" stroke-width="3.3" fill="none" stroke-linecap="round"/>`;
-    const nose = `<path d="M-1.6 -103 Q-5.2 -94.5 -2.2 -91.6 Q1.6 -89.8 5.2 -92.6" stroke="#000" stroke-width="1.6" opacity=".26" fill="none" stroke-linecap="round"/><ellipse cx="-.5" cy="-95.5" rx="3" ry="2" fill="#fff" opacity=".14"/><circle cx="-2.6" cy="-91.6" r=".9" fill="#000" opacity=".25"/><circle cx="2.8" cy="-91.8" r=".9" fill="#000" opacity=".25"/>`;
-    const mouth = kind === 'ceo'
-      ? `<path d="M-11 -88 Q0 -76.5 11 -88 Q0 -85.4 -11 -88 Z" fill="#7A2A2A"/><path d="M-9.6 -87.4 Q0 -84.6 9.6 -87.4 L9 -85.8 Q0 -83.4 -9 -85.8 Z" fill="#fff"/><path d="M-12 -89 q-1.4 2.2 .8 4.4 M12 -89 q1.4 2.2 -.8 4.4" stroke="#000" opacity=".2" fill="none" stroke-width="1.2"/>`
-      : `<path d="M-9.5 -87.5 Q0 -80.5 9.5 -87.5" stroke="#5A2420" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M-5 -83.4 Q0 -80.6 5 -83.4" stroke="#C9695E" stroke-width="2.1" opacity=".75" fill="none" stroke-linecap="round"/><path d="M-11.5 -88.5 q-1 2 1 4 M11.5 -88.5 q1 2 -1 4" stroke="#000" opacity=".2" fill="none" stroke-width="1.2"/>`;
-  
-    // ── hair
-    let hairSvg = '';
-    if (o.style === 'short') {
-      hairSvg =
-        `<path d="M-42 -112 Q-47 -141 -26 -151 Q0 -159 26 -151 Q47 -141 42 -112 Q38 -128 22 -134 Q0 -126 -22 -134 Q-38 -128 -42 -112 Z" fill="${hair}"/>` +
-        `<rect x="-42" y="-126" width="5.5" height="17" rx="2.7" fill="${hair}"/><rect x="36.5" y="-126" width="5.5" height="17" rx="2.7" fill="${hair}"/>` +
-        `<path d="M-24 -147 Q-8 -156 12 -151" stroke="${hairL}" stroke-width="3" opacity=".5" fill="none" stroke-linecap="round"/><path d="M-6 -152 Q-14 -142 -26 -137 M6 -153 Q4 -144 -6 -138" stroke="${hairL}" stroke-width="1.4" opacity=".35" fill="none" stroke-linecap="round"/>`;
-    } else if (o.style === 'sweep') {
-      hairSvg =
-        `<path d="M-42 -114 Q-48 -146 -8 -153 L16 -153 Q46 -148 42 -118 Q26 -142 -4 -138 Q-30 -136 -42 -114 Z" fill="${hair}"/>` +
-        `<rect x="-42" y="-126" width="5" height="15" rx="2.5" fill="${hair}"/><rect x="37" y="-126" width="5" height="15" rx="2.5" fill="${hair}"/>` +
-        `<path d="M-30 -145 Q-8 -156 20 -149" stroke="${hairL}" stroke-width="3" opacity=".4" fill="none" stroke-linecap="round"/><path d="M-12 -151 Q-18 -143 -34 -137 M2 -152 Q-6 -144 -20 -139 M14 -151 Q10 -146 2 -142" stroke="${hairL}" stroke-width="1.3" opacity=".3" fill="none" stroke-linecap="round"/>`;
-    } else if (o.style === 'silver') {
-      hairSvg =
-        `<path d="M-42 -114 Q-44 -148 -10 -152 L12 -152 Q44 -148 42 -114 Q39 -131 26 -136 Q0 -128 -26 -136 Q-39 -131 -42 -114 Z" fill="${hair}"/>` +
-        `<rect x="-42" y="-126" width="5" height="16" rx="2.5" fill="${hair}"/><rect x="37" y="-126" width="5" height="16" rx="2.5" fill="${hair}"/>` +
-        `<path d="M-26 -146 Q-6 -155 18 -149" stroke="#fff" stroke-width="3" opacity=".5" fill="none" stroke-linecap="round"/><path d="M-10 -151 Q-14 -144 -26 -139 M8 -152 Q4 -145 -8 -140" stroke="#9A968A" stroke-width="1.3" opacity=".5" fill="none" stroke-linecap="round"/>`;
-    }
-  
-    // ── eyewear
-    let eyewear = '';
-    if (o.glasses === 'round') {
-      eyewear =
-        `<rect x="-25" y="-114" width="22" height="14.5" rx="5.5" fill="#BFE3F0" opacity=".18"/><rect x="3" y="-114" width="22" height="14.5" rx="5.5" fill="#BFE3F0" opacity=".18"/>` +
-        `<rect x="-25" y="-114" width="22" height="14.5" rx="5.5" fill="none" stroke="#141413" stroke-width="2.8"/><rect x="3" y="-114" width="22" height="14.5" rx="5.5" fill="none" stroke="#141413" stroke-width="2.8"/>` +
-        `<rect x="-3.5" y="-109" width="7" height="2.8" fill="#141413"/><path d="M-25 -108.5 L-40.5 -110.5 M25 -108.5 L40.5 -110.5" stroke="#141413" stroke-width="2.2" stroke-linecap="round"/>` +
-        `<path d="M-21 -111 L-13 -111 M7 -111 L15 -111" stroke="#fff" stroke-width="1.6" opacity=".55" stroke-linecap="round"/>`;
-    } else if (o.glasses === 'sun') {
-      eyewear =
-        `<rect x="-27" y="-113.5" width="24" height="13" rx="4.5" fill="#141413" opacity=".9"/><rect x="3" y="-113.5" width="24" height="13" rx="4.5" fill="#141413" opacity=".9"/>` +
-        `<rect x="-27" y="-113.5" width="24" height="13" rx="4.5" fill="none" stroke="#2A2A2E" stroke-width="1.6"/><rect x="3" y="-113.5" width="24" height="13" rx="4.5" fill="none" stroke="#2A2A2E" stroke-width="1.6"/>` +
-        `<rect x="-3.5" y="-110" width="7" height="2.8" fill="#141413"/><path d="M-27 -109.5 L-41 -111 M27 -109.5 L41 -111" stroke="#141413" stroke-width="2.4" stroke-linecap="round"/>` +
-        `<path d="M-23 -111 L-15 -103.5 M-18 -112 L-13 -107.4 M7 -111 L15 -103.5 M12 -112 L17 -107.4" stroke="#fff" stroke-width="1.7" opacity=".5" stroke-linecap="round"/>`;
-    }
-  
-    // ── extra: satchel bag on the hip (messenger)
-    const bag = kind === 'msg'
-      ? `<rect x="20" y="-48" width="20" height="17" rx="3.2" fill="#9FD0D6"/><rect x="20" y="-48" width="20" height="7" rx="3" fill="#7ABAC2"/><path d="M21.5 -41.2 H38.5" stroke="#000" opacity=".16"/><rect x="27" y="-43.5" width="6" height="4.6" rx="1" fill="#E9C46A" stroke="#B8862B" stroke-width=".5"/><rect x="20" y="-32.6" width="20" height="1.6" rx=".8" fill="#000" opacity=".14"/>`
-      : '';
-  
-    return `<g transform="scale(${s})">${legs}${neck}${torso}${front}${arms}${bag}${face}${nose}${eye(-14)}${eye(14)}${brows}${mouth}${hairSvg}${eyewear}</g>`;
+    const strap = bag ? `<path d="M-18 -118 L21 -80" stroke="#2A2B2F" stroke-width="3.4" stroke-linecap="round"/>` : '';
+    const satchel = bag ? `<rect x="14" y="-86" width="18" height="16" rx="2.6" fill="#3A3C42"/><rect x="14" y="-86" width="18" height="6" rx="2.6" fill="#2A2B2F"/><rect x="21" y="-82" width="4" height="3.2" rx=".8" fill="${accent}"/>` : '';
+    const neck = `<rect x="-4.8" y="-130" width="9.6" height="12" rx="3" fill="${skin}"/><rect x="-4.8" y="-126" width="9.6" height="4" fill="#000" opacity=".14"/>`;
+    const brow = hair === HAIR[4] || hair === HAIR[5] ? '#7A6A55' : hair;
+    const head = `<ellipse cx="-11" cy="-136" rx="2.2" ry="3.4" fill="${skin}"/><ellipse cx="11" cy="-136" rx="2.2" ry="3.4" fill="${skin}"/><ellipse cx="0" cy="-137" rx="10.8" ry="13" fill="${skin}"/>` +
+      sh('M4 -149.6 Q10.8 -146 10.8 -137 Q10.8 -127 3 -124.2 Q8 -130 8 -138 Q8 -145 4 -149.6 Z', 0.1) +
+      `<g class="eye"><circle cx="-4.1" cy="-136.5" r="1.3" fill="#1B1512"/><circle cx="4.1" cy="-136.5" r="1.3" fill="#1B1512"/></g>` +
+      `<path d="M-6.4 -139.8 h4.4 M2 -139.8 h4.4" stroke="${brow}" stroke-width="1" stroke-linecap="round" opacity=".8"/>` +
+      `<path d="M0 -135 l-1.1 3.4 h1.9" fill="none" stroke="#000" stroke-opacity=".22" stroke-width=".9" stroke-linecap="round"/>` +
+      `<path d="M-3 -129.2 q3 1.7 6 0" fill="none" stroke="#6E2F28" stroke-opacity=".65" stroke-width="1.1" stroke-linecap="round"/>`;
+    const cap = (d) => `<path d="${d}" fill="${hair}"/>`;
+    const fringe = 'M-11.4 -138 Q-13 -152.6 0 -152.6 Q13 -152.6 11.4 -138 Q9 -146 2 -147 Q-5 -145.5 -9.6 -147 Q-10.8 -143 -11.4 -138 Z';
+    let hairBack = '', hairTop = '';
+    if (style === 'short') hairTop = cap(fringe);
+    else if (style === 'side') hairTop = cap('M-11.6 -137.5 Q-14 -153.5 1 -153.5 Q13.4 -153 11.6 -139 Q10.4 -146.6 3 -148 Q-4.5 -143.6 -10 -145.4 Q-11 -141.5 -11.6 -137.5 Z');
+    else if (style === 'buzz') hairTop = `<path d="M-10.9 -140 Q-11.4 -150.8 0 -150.8 Q11.4 -150.8 10.9 -140 Q8.4 -147 0 -147 Q-8.4 -147 -10.9 -140 Z" fill="${hair}" opacity=".9"/>`;
+    else if (style === 'curly') hairTop = [[-8.4, -146.4, 5.6], [0, -150, 6.6], [8.4, -146.4, 5.6], [-11.6, -140.6, 3.7], [11.6, -140.6, 3.7], [-4, -148, 5], [4, -148, 5]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${hair}"/>`).join('');
+    else if (style === 'bun') hairTop = `<circle cx="0" cy="-154.5" r="4.8" fill="${hair}"/>` + cap(fringe);
+    else if (style === 'long') { hairBack = cap('M-12.8 -140 Q-14.4 -153.4 0 -153.4 Q14.4 -153.4 12.8 -140 L14 -114 Q9.5 -109.5 5.5 -115 V-128 H-5.5 V-115 Q-9.5 -109.5 -14 -114 Z'); hairTop = cap('M-11.6 -137 Q-13.4 -153 0 -153 Q13.4 -153 11.6 -137 Q8.6 -146.6 0 -147.4 Q-7 -145.6 -11.6 -137 Z'); }
+    else if (style === 'bob') { hairBack = cap('M-13.2 -140 Q-14.6 -153.4 0 -153.4 Q14.6 -153.4 13.2 -140 V-126.5 Q10 -122.5 6.6 -126 V-131 H-6.6 V-126 Q-10 -122.5 -13.2 -126.5 Z'); hairTop = cap('M-11.8 -136 Q-13.6 -153 0 -153 Q13.6 -153 11.8 -136 Q9.6 -146 3.4 -147.4 Q-6.4 -144 -11.8 -136 Z'); }
+    const shine = `<path d="M-7 -149 Q-1 -152.2 5 -150.4" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="1.4" stroke-linecap="round"/>`;
+    const specs = glasses ? `<g fill="none" stroke="#1B1512" stroke-width="1"><rect x="-7.6" y="-139.4" width="6.4" height="5.2" rx="1.8"/><rect x="1.2" y="-139.4" width="6.4" height="5.2" rx="1.8"/><path d="M-1.2 -137.2 h2.4 M-7.6 -137.6 L-10.6 -138.4 M7.6 -137.6 L10.6 -138.4"/></g>` : '';
+    return `<g transform="scale(${s})">${shadow}${legs}<g style="display:var(--stand,inline)">${arm(-1)}${arm(1)}</g><g style="display:var(--sit,none)">${sitUpper}</g>${torso}${front}${strap}<g style="display:var(--sit,none)">${sitFore}</g>${hairBack}${neck}${head}${hairTop}${shine}${specs}${satchel}</g>`;
   };
-
-  // Detailed avatars: one generator, five outfits. Same size/anchor as the old flat ones (feet at 0, head top ~ -150).
+  // Ten colleagues. skin/hair are indexes into SKIN/HAIR.
+  const PEOPLE = [
+    { skin: 2, hair: 0, style: 'short', kind: 'shirt',  top: '#5B7A9C', pants: '#2C3340' },
+    { skin: 0, hair: 3, style: 'long',  kind: 'knit',   top: '#B9A58C', pants: '#2B2B30' },
+    { skin: 3, hair: 0, style: 'curly', kind: 'blazer', top: '#39424E', pants: '#2A2E36' },
+    { skin: 1, hair: 1, style: 'side',  kind: 'shirt',  top: '#E4E1D8', pants: '#3A3F4A', glasses: true },
+    { skin: 4, hair: 0, style: 'buzz',  kind: 'knit',   top: '#3F5A52', pants: '#26282C' },
+    { skin: 1, hair: 0, style: 'bob',   kind: 'blazer', top: '#6B5B4B', pants: '#2B2B30' },
+    { skin: 0, hair: 5, style: 'side',  kind: 'polo',   top: '#35506E', pants: '#8A7B66' },
+    { skin: 3, hair: 0, style: 'bun',   kind: 'shirt',  top: '#C9D3DD', pants: '#2C3340' },
+    { skin: 2, hair: 4, style: 'short', kind: 'knit',   top: '#55585F', pants: '#2A2E36', glasses: true },
+    { skin: 4, hair: 0, style: 'long',  kind: 'shirt',  top: '#A7B8A0', pants: '#2B2B30' },
+  ].map((v) => person({ ...v, skin: SKIN[v.skin], hair: HAIR[v.hair] }));
   const CH = {
-    bot:     char({ s: 0.44, kind: 'worker',  skin: '#8D5B3E', hair: '#1E1A17', hairL: '#6B5A4E', jacket: '#3E4F7A', jacketD: '#35446A', pants: '#26314A', style: 'short', iris: '#3A2418' }),
-    botlead: char({ s: 0.44, kind: 'botlead', skin: '#F2D3BD', hair: '#1E1A17', hairL: '#6B5A4E', jacket: '#3E4F7A', jacketD: '#35446A', pants: '#26314A', style: 'short', iris: '#4A5A3A' }),
-    lead:    char({ s: 0.42, kind: 'lead',    skin: '#F5D6B8', hair: '#141413', hairL: '#5A5650', jacket: '#232327', jacketD: '#1A1A1D', pants: '#1A1A1D', style: 'sweep', glasses: 'round', iris: '#3A2A20' }),
-    ceo:     char({ s: 0.5,  kind: 'ceo',     skin: '#F5C8A0', hair: '#CFCBC2', hairL: '#FFFFFF', brow: '#A8A49A', jacket: '#D9A92B', jacketD: '#C29523', pants: '#B8862B', style: 'silver', glasses: 'sun', watch: 'gold' }),
-    msgbot:  char({ s: 0.44, kind: 'msg',     skin: '#8D5B3E', hair: '#1E1A17', hairL: '#6B5A4E', jacket: '#3A6A5A', jacketD: '#2E5A4A', pants: '#264A3A', style: 'short', iris: '#3A2418' }),
+    lead:   person({ skin: SKIN[1], hair: HAIR[1], style: 'side',  kind: 'blazer', top: '#2F343C', pants: '#23262C' }),
+    ceo:    person({ s: 0.54, skin: SKIN[1], hair: HAIR[4], style: 'side', kind: 'blazer', top: '#23262C', pants: '#1C1E23', tie: '#B5532F', glasses: true, accent: '#F1EEE7' }),
+    msgbot: person({ skin: SKIN[2], hair: HAIR[0], style: 'short', kind: 'polo', top: '#3E7C86', pants: '#2B2F38', bag: true, accent: '#9FD0D6' }),
   };
 
   const DEFS = `<defs>
   <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22344A"/><stop offset="1" stop-color="#3B5470"/></linearGradient>
-  <radialGradient id="glow"><stop offset="0" stop-color="#F7D9A8" stop-opacity="0.75"/><stop offset="1" stop-color="#F7D9A8" stop-opacity="0"/></radialGradient>
+  <radialGradient id="glow"><stop offset="0" stop-color="#F7D9A8" stop-opacity="0.55"/><stop offset="1" stop-color="#F7D9A8" stop-opacity="0"/></radialGradient>
   <pattern id="tiles" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0V50H0" fill="none" stroke="#26262A" stroke-width="1.4"/></pattern>
-  <pattern id="carpet" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#3A2F48"/><circle cx="6" cy="6" r="1.6" fill="#4C3E5E"/><circle cx="18" cy="18" r="1.6" fill="#4C3E5E"/></pattern>
+  <pattern id="carpet" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60 0V60H0" fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.2"/></pattern>
+  <pattern id="timber" width="120" height="26" patternUnits="userSpaceOnUse"><path d="M0 13H120M0 26H120M30 0V13M90 13V26" fill="none" stroke="#000" stroke-opacity=".22" stroke-width="1.3"/></pattern>
   <pattern id="planks" width="1000" height="33" patternUnits="userSpaceOnUse"><path d="M0 33H1000" stroke="#46342A" stroke-width="2"/></pattern>
-  <symbol id="desk" overflow="visible"><ellipse cx="0" cy="22" rx="50" ry="14" fill="#141413" opacity="0.07"/><polygon points="-44,-22 0,3 0,25 -44,0" fill="#34343A"/><polygon points="44,-22 0,3 0,25 44,0" fill="#18181B"/><polygon points="-40,-20 -4,1 -4,22 -40,1" fill="#2E2E33"/><polygon points="0,-47 44,-22 0,3 -44,-22" fill="#45454C" stroke="#55555C"/><polygon points="-14,-34 -6,-30 -6,-26 -14,-30" fill="#3A3935"/><polygon points="-32,-40 -2,-57 -2,-85 -32,-68" fill="#141413"/><polygon class="screen" points="-29,-44 -5,-58 -5,-81 -29,-67" fill="currentColor" opacity="0.9"/><polygon points="-26,-52 -12,-60 -12,-58 -26,-50" fill="#141413" opacity="0.45"/><polygon points="-26,-58 -9,-68 -9,-66 -26,-56" fill="#141413" opacity="0.45"/><polygon points="-26,-64 -15,-70 -15,-68 -26,-62" fill="#141413" opacity="0.3"/><polygon points="8,-28 26,-18 18,-13 0,-23" fill="#6A6A72" stroke="#5A5A62" stroke-width="0.6"/><circle cx="30" cy="-22" r="2.6" fill="#5A5A62"/><g transform="translate(-24 -20)"><rect x="-3.5" y="-8" width="7" height="8" rx="1.5" fill="#B5532F"/><ellipse cx="0" cy="-8" rx="3.5" ry="1.4" fill="#8F3F22"/></g><g transform="translate(26 -40)"><polygon points="0,0 2,-1 2,-16 0,-15" fill="#3A3935"/><polygon points="-6,-15 8,-20 6,-14 -6,-11" fill="#3A3935"/><ellipse cx="1" cy="-12" rx="4" ry="1.6" fill="#F2C98F"/></g></symbol>
-  <symbol id="crown" overflow="visible"><path d="M-10 0 L-12 -12 L-5 -6 L0 -15 L5 -6 L12 -12 L10 0 Z" fill="#E9C46A" stroke="#B8862B" stroke-width="1"/><circle cx="0" cy="-15" r="1.8" fill="#B5532F"/></symbol>
-  <symbol id="chair" overflow="visible"><ellipse cx="0" cy="0" rx="13" ry="5" fill="#141413" opacity="0.12"/><path d="M-11 0 L11 0 M0 -5 L0 5" stroke="#3A3935" stroke-width="2.4" stroke-linecap="round"/><rect x="-1.5" y="-15" width="3" height="15" fill="#55534D"/><rect x="-11" y="-44" width="22" height="26" rx="8" fill="#3D3D3A"/><rect x="-8" y="-41" width="16" height="20" rx="6" fill="#4A4945"/><ellipse cx="0" cy="-16" rx="13" ry="6" fill="#55534D"/></symbol>
-  <symbol id="bot" overflow="visible">${CH.bot}</symbol>
-  <!-- White-skin bot variant used when an agent is a department lead -->
-  <symbol id="bot-lead" overflow="visible">${CH.botlead}</symbol>
-
+  <symbol id="desk" overflow="visible"><ellipse cx="0" cy="24" rx="52" ry="14" fill="#000" opacity=".28"/>
+    <polygon points="-44,-30 0,-5 0,25 -44,0" fill="#3B3F47"/><polygon points="44,-30 0,-5 0,25 44,0" fill="#2B2E35"/><polygon points="-40,-24 -4,-3.5 -4,19 -40,-1.5" fill="#000" opacity=".14"/>
+    <polygon points="-44,-30 0,-5 0,-1.5 -44,-26.5" fill="#8F7558"/><polygon points="44,-30 0,-5 0,-1.5 44,-26.5" fill="#745E47"/><polygon points="0,-55 44,-30 0,-5 -44,-30" fill="#B8A083"/>
+    <polygon points="0,-55 44,-30 40,-30 0,-52.7 -40,-30 -44,-30" fill="#fff" opacity=".14"/>
+    <ellipse cx="-18" cy="-41" rx="8" ry="3.4" fill="#2A2B2F"/><rect x="-19.2" y="-56" width="2.4" height="15" fill="#3A3B40"/>
+    <polygon points="-31.5,-50.5 -4.5,-66 -4.5,-85.5 -31.5,-70" fill="#141518"/><polygon class="screen" points="-30,-52 -6,-66 -6,-83 -30,-69" fill="#1E2630"/>
+    <polygon points="-30,-66.4 -6,-80.4 -6,-83 -30,-69" fill="currentColor" opacity=".95"/>
+    <polygon points="-27.5,-62 -14,-69.9 -14,-68.4 -27.5,-60.5" fill="#DDE3EA" opacity=".5"/><polygon points="-27.5,-58.6 -17,-64.7 -17,-63.2 -27.5,-57.1" fill="#DDE3EA" opacity=".32"/><polygon points="-27.5,-55.2 -20,-59.6 -20,-58.1 -27.5,-53.7" fill="#DDE3EA" opacity=".32"/>
+    <polygon points="-12,-62.5 -8,-64.8 -8,-71 -12,-68.7" fill="currentColor" opacity=".7"/>
+    <polygon points="3,-32 21,-21.8 14.5,-18 -3.5,-28.2" fill="#E6E3DC" stroke="#A9A69D" stroke-width=".6"/><ellipse cx="27.5" cy="-23.5" rx="3" ry="2" fill="#E6E3DC" stroke="#A9A69D" stroke-width=".5"/>
+    <g transform="translate(-27 -27)"><rect x="-3" y="-7" width="6" height="7" rx="1.4" fill="#F1EEE7"/><ellipse cx="0" cy="-7" rx="3" ry="1.2" fill="#3B2A20"/></g></symbol>
+  <symbol id="chair" overflow="visible"><ellipse cx="0" cy="1" rx="14" ry="5" fill="#000" opacity=".25"/><path d="M-11 1 L11 1 M-6 -3 L6 5 M6 -3 L-6 5" stroke="#2A2B2F" stroke-width="2" stroke-linecap="round"/><rect x="-1.3" y="-16" width="2.6" height="16" fill="#4A4C52"/>
+    <rect x="-16" y="-62" width="32" height="42" rx="8" fill="#262930"/><rect x="-13" y="-59" width="26" height="34" rx="6" fill="#343840"/><ellipse cx="0" cy="-17" rx="13.5" ry="5.5" fill="#2E3138"/><ellipse cx="-2" cy="-18" rx="8" ry="2.6" fill="#fff" opacity=".06"/>
+    <rect x="-18.5" y="-30" width="3" height="11" rx="1.5" fill="#1F2126"/><rect x="15.5" y="-30" width="3" height="11" rx="1.5" fill="#1F2126"/></symbol>
+  ${PEOPLE.map((p, i) => `<symbol id="p${i}" overflow="visible">${p}</symbol>`).join('\n  ')}
+  <symbol id="bot" overflow="visible">${PEOPLE[0]}</symbol>
+  <symbol id="bot-lead" overflow="visible">${PEOPLE[2]}</symbol>
   <symbol id="lead" overflow="visible">${CH.lead}</symbol>
   <symbol id="ceo" overflow="visible">${CH.ceo}</symbol>
-
-  <!-- Messenger bot: same silhouette as bot but wears a satchel bag -->
   <symbol id="msgbot" overflow="visible">${CH.msgbot}</symbol>
-
-  <symbol id="leaddesk" overflow="visible"><ellipse cx="0" cy="14" rx="36" ry="10" fill="#141413" opacity="0.07"/><polygon points="-30,-15 0,2 0,16 -30,-1" fill="#34343A"/><polygon points="30,-15 0,2 0,16 30,-1" fill="#18181B"/><polygon points="0,-32 30,-15 0,2 -30,-15" fill="#45454C" stroke="#55555C"/><polygon points="-20,-27 0,-38 0,-56 -20,-45" fill="#141413"/><polygon points="-18,-30 -2,-39 -2,-53 -18,-44" fill="currentColor" opacity="0.85"/><polygon points="6,-20 18,-13 13,-10 1,-17" fill="#FAF9F5" stroke="#5A5A62" stroke-width="0.6"/></symbol>
-  <symbol id="table" overflow="visible"><ellipse cx="0" cy="2" rx="26" ry="9" fill="#141413" opacity="0.08"/><ellipse cx="0" cy="0" rx="12" ry="5" fill="#8A6446"/><rect x="-2" y="-22" width="4" height="22" fill="#8A6446"/><ellipse cx="0" cy="-22" rx="26" ry="12" fill="#B98B64"/><ellipse cx="0" cy="-24" rx="26" ry="12" fill="#CFA47C"/><ellipse cx="-6" cy="-26" rx="10" ry="4" fill="#DDB892" opacity="0.6"/></symbol>
-  <symbol id="stool" overflow="visible"><ellipse cx="0" cy="0" rx="7" ry="2.5" fill="#141413" opacity="0.1"/><rect x="-1.5" y="-14" width="3" height="14" fill="#8A6446"/><ellipse cx="0" cy="-14" rx="9" ry="4.5" fill="#3D3D3A"/><ellipse cx="-2" cy="-15" rx="5" ry="2" fill="#55534D"/></symbol>
-  <symbol id="cup" overflow="visible"><rect x="-4" y="-9" width="8" height="9" rx="2" fill="#FAF9F5"/><path d="M4 -7 q4 0 4 3 q0 3 -4 3" fill="none" stroke="#FAF9F5" stroke-width="1.6"/><path class="steam" d="M-1 -12 q2 -3 0 -6 q-2 -3 0 -6" fill="none" stroke="#B0AEA5" stroke-width="1.2" stroke-linecap="round"/></symbol>
-  <symbol id="plant" overflow="visible"><ellipse cx="0" cy="0" rx="12" ry="4" fill="#141413" opacity="0.1"/><circle cx="-8" cy="-22" r="9" fill="#6E9668"/><circle cx="8" cy="-24" r="9" fill="#5B7F57"/><circle cx="0" cy="-32" r="11" fill="#6E9668"/><circle cx="-3" cy="-36" r="4" fill="#86AE7F"/><polygon points="-10,-14 10,-14 7,0 -7,0" fill="#B5532F"/><polygon points="2,-14 10,-14 7,0 1,0" fill="#9C4527"/></symbol>
-  <symbol id="tallplant" overflow="visible"><ellipse cx="0" cy="0" rx="13" ry="4.5" fill="#141413" opacity="0.1"/><path d="M0 -18 C-2 -40 -14 -52 -18 -70 M0 -18 C3 -45 12 -58 16 -78 M0 -18 C0 -50 -2 -70 2 -92" stroke="#5B7F57" stroke-width="2" fill="none"/><ellipse cx="-18" cy="-70" rx="9" ry="5" fill="#6E9668" transform="rotate(-30 -18 -70)"/><ellipse cx="-10" cy="-50" rx="9" ry="4.5" fill="#5B7F57" transform="rotate(-20 -10 -50)"/><ellipse cx="16" cy="-78" rx="9" ry="5" fill="#86AE7F" transform="rotate(30 16 -78)"/><ellipse cx="9" cy="-56" rx="9" ry="4.5" fill="#6E9668" transform="rotate(25 9 -56)"/><ellipse cx="2" cy="-92" rx="7" ry="4.5" fill="#6E9668"/><ellipse cx="-4" cy="-36" rx="8" ry="4" fill="#86AE7F" transform="rotate(-15 -4 -36)"/><polygon points="-11,-20 11,-20 8,0 -8,0" fill="#45454C" stroke="#18181B"/></symbol>
+  <symbol id="leaddesk" overflow="visible"><ellipse cx="0" cy="16" rx="38" ry="10" fill="#000" opacity=".28"/>
+    <path d="M-27 -33 V1 M27 -33 V1 M0 -17 V17" stroke="#2A2B2F" stroke-width="3" stroke-linecap="round"/>
+    <polygon points="-30,-34 0,-17 0,-13.5 -30,-30.5" fill="#8F7558"/><polygon points="30,-34 0,-17 0,-13.5 30,-30.5" fill="#745E47"/><polygon points="0,-51 30,-34 0,-17 -30,-34" fill="#B8A083"/>
+    <ellipse cx="-9" cy="-37" rx="6" ry="2.6" fill="#2A2B2F"/><rect x="-10" y="-49" width="2" height="12" fill="#3A3B40"/>
+    <polygon points="-21,-44.5 3,-58.5 3,-77 -21,-63" fill="#141518"/><polygon points="-19.6,-46 1.6,-58.4 1.6,-75 -19.6,-62.6" fill="#1E2630"/><polygon points="-19.6,-60 1.6,-72.4 1.6,-75 -19.6,-62.6" fill="currentColor"/>
+    <polygon points="-17.5,-55.5 -6,-62.2 -6,-60.8 -17.5,-54.1" fill="#DDE3EA" opacity=".45"/><polygon points="-17.5,-52 -9,-57 -9,-55.6 -17.5,-50.6" fill="#DDE3EA" opacity=".3"/>
+    <polygon points="8,-36 19,-29.6 14.5,-27 3.5,-33.4" fill="#F1EEE7" stroke="#A9A69D" stroke-width=".6"/></symbol>
+  <symbol id="table" overflow="visible"><ellipse cx="0" cy="2" rx="26" ry="9" fill="#000" opacity=".25"/><ellipse cx="0" cy="0" rx="11" ry="4.5" fill="#2A2B2F"/><rect x="-1.6" y="-23" width="3.2" height="23" fill="#3A3B40"/><ellipse cx="0" cy="-22" rx="26" ry="12" fill="#8F7558"/><ellipse cx="0" cy="-24.5" rx="26" ry="12" fill="#B8A083"/><ellipse cx="-6" cy="-26.5" rx="10" ry="4" fill="#fff" opacity=".12"/></symbol>
+  <symbol id="stool" overflow="visible"><ellipse cx="0" cy="0" rx="7" ry="2.5" fill="#000" opacity=".25"/><rect x="-1.3" y="-15" width="2.6" height="15" fill="#3A3B40"/><ellipse cx="0" cy="-15" rx="9" ry="4.5" fill="#2E3138"/><ellipse cx="-2" cy="-16" rx="5" ry="2" fill="#fff" opacity=".08"/></symbol>
+  <symbol id="cup" overflow="visible"><rect x="-3.4" y="-8" width="6.8" height="8" rx="1.6" fill="#F1EEE7"/><path d="M3.4 -6.4 q3.4 0 3.4 2.6 q0 2.6 -3.4 2.6" fill="none" stroke="#F1EEE7" stroke-width="1.4"/></symbol>
+  <symbol id="plant" overflow="visible"><ellipse cx="0" cy="0" rx="12" ry="4" fill="#000" opacity=".25"/><circle cx="-8" cy="-24" r="9" fill="#5F8560"/><circle cx="8" cy="-26" r="9" fill="#4E7150"/><circle cx="0" cy="-34" r="11" fill="#5F8560"/><circle cx="-3" cy="-38" r="4" fill="#79A077"/><polygon points="-9,-16 9,-16 7,0 -7,0" fill="#C9C4B8"/><polygon points="2,-16 9,-16 7,0 1,0" fill="#000" opacity=".14"/></symbol>
+  <symbol id="tallplant" overflow="visible"><ellipse cx="0" cy="0" rx="13" ry="4.5" fill="#000" opacity=".25"/><path d="M0 -18 C-2 -40 -14 -52 -18 -70 M0 -18 C3 -45 12 -58 16 -78 M0 -18 C0 -50 -2 -70 2 -92" stroke="#4E7150" stroke-width="2" fill="none"/><ellipse cx="-18" cy="-70" rx="9" ry="5" fill="#5F8560" transform="rotate(-30 -18 -70)"/><ellipse cx="-10" cy="-50" rx="9" ry="4.5" fill="#4E7150" transform="rotate(-20 -10 -50)"/><ellipse cx="16" cy="-78" rx="9" ry="5" fill="#79A077" transform="rotate(30 16 -78)"/><ellipse cx="9" cy="-56" rx="9" ry="4.5" fill="#5F8560" transform="rotate(25 9 -56)"/><ellipse cx="2" cy="-92" rx="7" ry="4.5" fill="#5F8560"/><ellipse cx="-4" cy="-36" rx="8" ry="4" fill="#79A077" transform="rotate(-15 -4 -36)"/><polygon points="-11,-20 11,-20 8,0 -8,0" fill="#3B3F47" stroke="#24262C"/></symbol>
   <symbol id="lamp" overflow="visible"><line x1="0" y1="-130" x2="0" y2="-34" stroke="#55534D" stroke-width="1.2"/><ellipse cx="0" cy="0" rx="34" ry="13" fill="url(#glow)"/><path d="M-12 -20 L-7 -34 L7 -34 L12 -20 Z" fill="#141413"/><ellipse cx="0" cy="-19" rx="12" ry="3" fill="#F2C98F"/></symbol>
-  <symbol id="cooler" overflow="visible"><ellipse cx="0" cy="0" rx="12" ry="4" fill="#141413" opacity="0.1"/><rect x="-10" y="-38" width="20" height="38" rx="3" fill="#6A6A72"/><rect x="0" y="-38" width="10" height="38" rx="2" fill="#5A5A62"/><rect x="-4" y="-26" width="8" height="5" rx="1" fill="#3A3935"/><path d="M-8 -38 C-8 -56 8 -56 8 -38 Z" fill="#A8C9DA" opacity="0.85"/><ellipse cx="-2" cy="-48" rx="2" ry="5" fill="#FFFFFF" opacity="0.5"/></symbol>
-  <symbol id="tv" overflow="visible"><!-- wall-mounted TV / PlayStation setup -->
-    <ellipse cx="0" cy="4" rx="50" ry="8" fill="#141413" opacity="0.15"/>
-    <rect x="-2" y="-46" width="4" height="46" fill="#3A3935"/>
-    <rect x="-46" y="-80" width="92" height="56" rx="4" fill="#141413"/>
-    <rect x="-42" y="-76" width="84" height="48" rx="2" fill="#1A2B3C"/>
-    <rect x="-38" y="-72" width="76" height="40" rx="1" fill="#0D1821"/>
-    <!-- screen glow: game colours -->
-    <rect x="-34" y="-68" width="30" height="32" fill="#1A3A6A" opacity="0.9"/>
-    <rect x="-2" y="-68" width="30" height="32" fill="#6A1A2A" opacity="0.9"/>
-    <circle cx="-10" cy="-52" r="6" fill="#3A6EA5" opacity="0.6"/>
-    <circle cx="10" cy="-52" r="6" fill="#B5532F" opacity="0.6"/>
-    <!-- controller on floor -->
-    <rect x="-14" y="-14" width="28" height="12" rx="4" fill="#2A2A2F"/>
-    <circle cx="-6" cy="-9" r="2" fill="#B5532F"/><circle cx="0" cy="-6" r="2" fill="#3A6EA5"/><circle cx="6" cy="-9" r="2" fill="#3F7D4E"/>
-  </symbol>
-  <symbol id="pingpong" overflow="visible"><!-- ping pong / foosball table -->
-    <ellipse cx="0" cy="10" rx="62" ry="14" fill="#141413" opacity="0.1"/>
-    <polygon points="-58,-10 58,-10 58,10 -58,10" fill="#3F7D4E"/>
-    <polygon points="-58,-14 58,-14 58,-10 -58,-10" fill="#2D6040"/>
-    <line x1="0" y1="-14" x2="0" y2="10" stroke="#FAF9F5" stroke-width="1.5" opacity="0.5"/>
-    <line x1="-58" y1="-2" x2="58" y2="-2" stroke="#FAF9F5" stroke-width="1" opacity="0.3"/>
-    <circle cx="-22" cy="-4" r="4" fill="#FAF9F5" opacity="0.9"/>
-    <!-- net -->
-    <rect x="-2" y="-20" width="4" height="10" fill="#FAF9F5" opacity="0.7"/>
-    <!-- paddles -->
-    <ellipse cx="-46" cy="-4" rx="6" ry="8" fill="#B5532F" opacity="0.9"/>
-    <ellipse cx="46" cy="-4" rx="6" ry="8" fill="#3A6EA5" opacity="0.9"/>
-    <!-- legs -->
-    <rect x="-52" y="10" width="6" height="12" fill="#5A402C"/>
-    <rect x="46" y="10" width="6" height="12" fill="#5A402C"/>
-  </symbol>
-  <symbol id="bookshelf" overflow="visible">
-    <ellipse cx="0" cy="4" rx="30" ry="6" fill="#141413" opacity="0.1"/>
-    <rect x="-28" y="-80" width="56" height="84" rx="2" fill="#4A3828"/>
-    <rect x="-24" y="-76" width="48" height="6" fill="#6A5240"/>
-    <rect x="-24" y="-66" width="48" height="6" fill="#6A5240"/>
-    <rect x="-24" y="-56" width="48" height="6" fill="#6A5240"/>
-    <rect x="-24" y="-46" width="48" height="6" fill="#6A5240"/>
-    <!-- books row 1 -->
-    <rect x="-22" y="-75" width="6" height="8" fill="#B5532F"/><rect x="-15" y="-75" width="5" height="8" fill="#3A6EA5"/><rect x="-9" y="-75" width="7" height="8" fill="#D9C27A"/><rect x="-1" y="-75" width="5" height="8" fill="#8FC79D"/><rect x="5" y="-75" width="6" height="8" fill="#E59A7A"/><rect x="12" y="-75" width="8" height="8" fill="#A8B8E8"/>
-    <!-- books row 2 -->
-    <rect x="-22" y="-65" width="7" height="8" fill="#D9C27A"/><rect x="-14" y="-65" width="5" height="8" fill="#B5532F"/><rect x="-8" y="-65" width="8" height="8" fill="#9FD0D6"/><rect x="1" y="-65" width="6" height="8" fill="#C8A8E0"/><rect x="8" y="-65" width="7" height="8" fill="#8FC79D"/>
-    <!-- books row 3 -->
-    <rect x="-22" y="-55" width="5" height="8" fill="#A8B8E8"/><rect x="-16" y="-55" width="8" height="8" fill="#B5532F"/><rect x="-7" y="-55" width="6" height="8" fill="#D9C27A"/><rect x="0" y="-55" width="7" height="8" fill="#3A6EA5"/><rect x="8" y="-55" width="6" height="8" fill="#8FC79D"/>
-    <rect x="-10" y="-28" width="20" height="6" rx="1" fill="#FAF9F5" opacity="0.3"/>
-  </symbol>
-  <symbol id="coffeestation" overflow="visible">
-    <ellipse cx="0" cy="4" rx="34" ry="7" fill="#141413" opacity="0.1"/>
-    <!-- counter -->
-    <polygon points="-32,-10 32,-10 32,4 -32,4" fill="#6A5240"/>
-    <polygon points="-32,-14 32,-14 32,-10 -32,-10" fill="#8A6446"/>
-    <polygon points="-32,-14 32,-14 32,-14 -32,-14" fill="#CFA47C"/>
-    <!-- espresso machine -->
-    <rect x="-28" y="-38" width="22" height="24" rx="3" fill="#2A2A2F"/>
-    <rect x="-26" y="-36" width="18" height="16" rx="2" fill="#141413"/>
-    <circle cx="-17" cy="-28" r="5" fill="#3A3935" stroke="#55534D" stroke-width="1"/>
-    <circle cx="-17" cy="-28" r="2" fill="#B5532F"/>
-    <rect x="-22" y="-16" width="12" height="3" rx="1" fill="#55534D"/>
-    <!-- cups on counter -->
-    <rect x="2" y="-22" width="7" height="8" rx="2" fill="#FAF9F5"/><path d="M9 -20 q3 0 0 4" stroke="#FAF9F5" stroke-width="1.2" fill="none"/>
-    <rect x="12" y="-24" width="7" height="8" rx="2" fill="#FAF9F5"/><path d="M19 -22 q3 0 0 4" stroke="#FAF9F5" stroke-width="1.2" fill="none"/>
-    <!-- steam -->
-    <path d="M-14 -40 q2-3 0-5 q-2-3 0-5" fill="none" stroke="#B0AEA5" stroke-width="1" stroke-linecap="round" class="steam"/>
-  </symbol>
-  <symbol id="beanbag" overflow="visible"><ellipse cx="0" cy="2" rx="18" ry="6" fill="#000" opacity="0.25"/><path d="M-17 0 C-19 -12 -8 -20 0 -20 C10 -20 19 -12 17 0 Q0 6 -17 0 Z" fill="currentColor"/><path d="M-10 -14 Q-2 -19 6 -16" stroke="#fff" stroke-width="2" opacity="0.25" fill="none" stroke-linecap="round"/></symbol>
-  <symbol id="armchair" overflow="visible"><ellipse cx="0" cy="2" rx="18" ry="6" fill="#000" opacity="0.25"/><rect x="-16" y="-34" width="32" height="24" rx="8" fill="#55466A"/><rect x="-18" y="-14" width="36" height="14" rx="6" fill="#6A5880"/><rect x="-21" y="-22" width="7" height="20" rx="3.5" fill="#483B5A"/><rect x="14" y="-22" width="7" height="20" rx="3.5" fill="#483B5A"/></symbol>
-  <symbol id="floorlamp" overflow="visible"><ellipse cx="0" cy="0" rx="30" ry="11" fill="url(#glow)"/><line x1="0" y1="0" x2="0" y2="-62" stroke="#55555C" stroke-width="2"/><path d="M-9 -60 L-6 -74 L6 -74 L9 -60 Z" fill="#F2C98F"/></symbol>
-
-  <!-- Messenger small desk: a rounded corner table with a letter tray and name plate -->
-  <symbol id="msgdesk" overflow="visible">
-    <ellipse cx="0" cy="12" rx="28" ry="8" fill="#141413" opacity="0.07"/>
-    <polygon points="-24,-12 0,2 0,14 -24,2" fill="#4A3828"/>
-    <polygon points="24,-12 0,2 0,14 24,2" fill="#2E2018"/>
-    <polygon points="0,-26 24,-12 0,2 -24,-12" fill="#6A5240" stroke="#7A6250"/>
-    <!-- letter tray -->
-    <polygon points="-14,-20 2,-28 2,-20 -14,-12" fill="#141413" opacity="0.5"/>
-    <polygon points="-14,-14 2,-22 2,-14 -14,-6" fill="#9FD0D6" opacity="0.8"/>
-    <!-- name plate -->
-    <polygon points="4,-16 16,-10 14,-7 2,-13" fill="#D9C27A" opacity="0.9"/>
-  </symbol>
+  <symbol id="cooler" overflow="visible"><ellipse cx="0" cy="0" rx="12" ry="4" fill="#000" opacity=".25"/><rect x="-10" y="-38" width="20" height="38" rx="3" fill="#8D939B"/><rect x="0" y="-38" width="10" height="38" rx="2" fill="#757B84"/><rect x="-4" y="-26" width="8" height="5" rx="1" fill="#3A3935"/><path d="M-8 -38 C-8 -56 8 -56 8 -38 Z" fill="#A8C9DA" opacity="0.85"/><ellipse cx="-2" cy="-48" rx="2" ry="5" fill="#FFFFFF" opacity="0.5"/></symbol>
+  <symbol id="floorlamp" overflow="visible"><ellipse cx="0" cy="0" rx="30" ry="11" fill="url(#glow)"/><ellipse cx="0" cy="0" rx="6" ry="2.2" fill="#2A2B2F"/><line x1="0" y1="0" x2="0" y2="-66" stroke="#55555C" stroke-width="1.8"/><path d="M-9 -64 L-6 -78 L6 -78 L9 -64 Z" fill="#E9DCC3"/></symbol>
+  <symbol id="msgdesk" overflow="visible"><ellipse cx="0" cy="12" rx="28" ry="8" fill="#000" opacity=".25"/>
+    <polygon points="-24,-12 0,2 0,14 -24,2" fill="#3B3F47"/><polygon points="24,-12 0,2 0,14 24,2" fill="#2B2E35"/><polygon points="0,-26 24,-12 0,2 -24,-12" fill="#B8A083"/>
+    <polygon points="-14,-20 2,-28 2,-20 -14,-12" fill="#141413" opacity="0.5"/><polygon points="-14,-14 2,-22 2,-14 -14,-6" fill="#9FD0D6" opacity="0.8"/><polygon points="4,-16 16,-10 14,-7 2,-13" fill="#F1EEE7" opacity="0.9"/></symbol>
   </defs>`;
 
-  const ROOM_W = 1040, ROOM_D = 2600, GAP = 40, FAC_W = 440, WORK_D = 740;
-  const SOFA = ['#6A5880', '#55466A', '#483B5A'], WOOD = ['#8A6446', '#6E4F37', '#5A402C'], DARK = ['#2B2B2F', '#202024', '#18181B'];
+  // Room: a work floor (WORK_D deep) then a lounge. Kept compact so a floor reads as one office, not a long hall.
+  const ROOM_W = 1040, ROOM_D = 1900, GAP = 40, FAC_W = 440, WORK_D = 740, MIN_D = 2200;
+  const OAK = ['#B8A083', '#8F7558', '#745E47'], GRAPH = ['#3B3F47', '#2B2E35', '#24262C'], WOOD = ['#8A6446', '#6E4F37', '#5A402C'];
+  const SOFA = ['#5E6672', '#4B525D', '#3E444E'], SEAT = ['#6B7380', '#565D69', '#474D58'];
+
+  // ── Furniture, drawn as true isometric boxes (never flat, front-on shapes) ──
+  // A sofa / armchair faces +y (towards the viewer's left). Order matters: far pieces first.
+  const sofa = (x, y, len) => box(x, y, x + len, y + 14, 40, SOFA) + box(x - 12, y, x, y + 52, 28, SOFA) + box(x, y + 14, x + len, y + 52, 18, SEAT) + box(x + len, y, x + len + 12, y + 52, 28, SOFA);
+  const armchair = (x, y) => box(x, y, x + 46, y + 12, 36, SOFA) + box(x - 9, y, x, y + 46, 24, SOFA) + box(x, y + 12, x + 46, y + 46, 16, SEAT) + box(x + 46, y, x + 55, y + 46, 24, SOFA);
+  const lowTable = (x, y, w = 90, d = 46) => box(x + 5, y + 5, x + w - 5, y + d - 5, 14, GRAPH) + box(x, y, x + w, y + d, 3, OAK, 14);
+  const meeting = (x, y, len) => { // long oak table, chairs on both long sides
+    const n = Math.max(2, Math.floor((len - 40) / 70)); let back = '', frontRow = '';
+    for (let k = 0; k < n; k++) { const cx = x + 40 + k * ((len - 80) / Math.max(1, n - 1)); back += use('chair', cx, y - 18); frontRow += use('chair', cx, y + 84); }
+    return back + box(x + 14, y + 10, x + 24, y + 56, 30, GRAPH) + box(x + len - 24, y + 10, x + len - 14, y + 56, 30, GRAPH) + box(x, y, x + len, y + 66, 4, OAK, 30) + frontRow;
+  };
+  const shelf = (x, y, len) => { // bookcase: carcass + rows of muted spines on its front face
+    const w = len * 0.9238, cols = ['#8C7B6B', '#5E6A75', '#B5A58F', '#6F7F74', '#444A54', '#A9A39A'];
+    let g = `<rect x="3" y="4" width="${f(w - 6)}" height="84" fill="#1D1F23"/>`;
+    for (let r = 0; r < 4; r++) { let bx = 6, k = r * 3 + Math.round(x); const by = 6 + r * 21;
+      while (bx < w - 12) { const bw = 4 + ((k * 7) % 5), bh = 11 + ((k * 5) % 7); if (k % 6 !== 4) g += `<rect x="${f(bx)}" y="${by + 18 - bh}" width="${bw}" height="${bh}" fill="${cols[k % cols.length]}"/>`; bx += bw + 1.2; k++; }
+      g += `<rect x="3" y="${by + 18}" width="${f(w - 6)}" height="2.4" fill="#4A4E57"/>`; }
+    return box(x, y, x + len, y + 26, 92, ['#3B3F47', '#30333A', '#26292F']) + `<g transform="${onPlaneY(x, y + 26, 92)}">${g}</g>`;
+  };
+  const display = (x, y, len) => { // wall panel with a screen showing a plain dashboard, sideboard in front
+    const w = len * 0.9238, sx = w * 0.16, sw = w * 0.68;
+    const bars = [18, 26, 15, 31, 22, 35].map((h, i) => `<rect x="${f(sx + 8 + i * 9)}" y="${f(58 - h)}" width="5.5" height="${h}" fill="${i === 5 ? '#E7B38F' : '#6F8FAF'}" opacity=".9"/>`).join('');
+    return box(x, y, x + len, y + 12, 100, ['#3B3F47', '#2F3239', '#26292F']) +
+      `<g transform="${onPlaneY(x, y + 12, 100)}"><rect x="${f(sx)}" y="10" width="${f(sw)}" height="56" rx="2" fill="#111215"/><rect x="${f(sx + 2.5)}" y="12.5" width="${f(sw - 5)}" height="51" fill="#1E2630"/>${bars}
+        <polyline points="${f(sx + sw * 0.5)},50 ${f(sx + sw * 0.62)},40 ${f(sx + sw * 0.74)},44 ${f(sx + sw * 0.9)},26" fill="none" stroke="#DDE3EA" stroke-width="1.6" opacity=".8"/>
+        <rect x="${f(sx + sw * 0.5)}" y="18" width="${f(sw * 0.3)}" height="2.4" fill="#DDE3EA" opacity=".55"/><rect x="${f(sx + sw * 0.5)}" y="23" width="${f(sw * 0.2)}" height="2" fill="#DDE3EA" opacity=".3"/></g>` +
+      box(x + 24, y + 12, x + len - 24, y + 34, 20, GRAPH) + box(x + 20, y + 12, x + len - 20, y + 36, 3, OAK, 20);
+  };
+  const counter = (x, y, len) => // coffee point: cabinets, oak worktop, machine, cups
+    box(x, y, x + len, y + 38, 38, GRAPH) + box(x - 3, y - 3, x + len + 3, y + 41, 3, OAK, 38) +
+    box(x + 16, y + 6, x + 48, y + 30, 26, ['#2A2B2F', '#1D1E22', '#141518'], 41) +
+    use('cup', x + 70, y + 20, '', 41) + use('cup', x + 86, y + 14, '', 41) + use('cup', x + len - 30, y + 20, '', 41);
 
   function build(depts) {
-    // Keep the whole building square instead of a long strip. A room is far deeper than it is wide,
-    // so a square grid of rooms is still a tall rectangle: pick the column count whose finished
-    // floorplan is closest to as wide as it is deep. Departments fill left to right, then a new row.
+    // Pick the grid: as close to a square floorplan as possible, but never at the cost of holes in the grid
+    // (four rooms are a 2x2, not three in a row plus a gap). Departments fill left to right, then a new row.
     const n = depts.length <= 1 ? 1 : depts.length + (depts.length % 2);
     let cols = 1, closest = Infinity;
     for (let c = 1; c <= n; c++) {
       const r = Math.ceil(n / c);
-      const ratio = (c * (ROOM_W + GAP) + FAC_W) / Math.max(r * (ROOM_D + GAP) - GAP, 3000);
-      const off = Math.abs(Math.log(ratio)); // log so twice as wide scores the same as half as wide
+      const ratio = (c * (ROOM_W + GAP) + FAC_W) / Math.max(r * (ROOM_D + GAP) - GAP, MIN_D);
+      const off = Math.abs(Math.log(ratio)) + (c * r - n) / n; // log: twice as wide scores like half as wide; empty cells cost a lot
       if (off < closest) { closest = off; cols = c; }
     }
     const rows = Math.ceil(n / cols);
-    const fx = cols * (ROOM_W + GAP), W = fx + FAC_W, D = Math.max(rows * (ROOM_D + GAP) - GAP, 3000);
+    const fx = cols * (ROOM_W + GAP), W = fx + FAC_W, D = Math.max(rows * (ROOM_D + GAP) - GAP, MIN_D);
     const desksF = [], deskRoom = [], spotsF = [], spotProp = [], rooms = [];
     let floor = '', back = '', furn = '';
-    // café spots first (indexes 0..499) so they never move — 5 cols × 100 rows = 500 spots
-    const CAFE_COLS = [fx+26,fx+68,fx+110,fx+152,fx+200,fx+248,fx+292,fx+336,fx+378,fx+418];
-    const CAFE_PROP_CYCLE = ['mug','music','rest','mug','mug','rest','music','mug','rest','mug','mug','music','rest','mug','mug','rest','music','mug','rest','mug'];
-    // café spots: 10 cols × 20 rows = 200 spots, floor ~square on screen
-    for (let ri = 0; ri < 20; ri++) {
+    // café spots first so their indexes never move: 10 across, 12 rows
+    const CAFE_COLS = [fx + 26, fx + 68, fx + 110, fx + 152, fx + 200, fx + 248, fx + 292, fx + 336, fx + 378, fx + 418];
+    const CAFE_PROP_CYCLE = ['mug', 'phone', 'rest', 'mug', 'book', 'rest', 'pad', 'mug', 'rest', 'mug', 'phone', 'music'];
+    for (let ri = 0; ri < 12; ri++) {
       const y = 666 + ri * 68, stagger = (ri % 2) * 22;
       for (const x of CAFE_COLS) { spotsF.push([x + stagger, y]); spotProp.push(CAFE_PROP_CYCLE[ri % CAFE_PROP_CYCLE.length]); }
     }
@@ -337,98 +220,69 @@
         furn += `<g class="add-room ghost" tabindex="0" role="button" aria-label="Add a department" transform="translate(${f(c[0])} ${f(c[1])}) scale(2.4)"><rect x="-130" y="-24" width="260" height="48" rx="24" fill="#B5532F"/><text y="7" text-anchor="middle" fill="#fff" font-size="19" font-weight="600">+ Add a department</text></g>`;
         rooms.push(room); continue;
       }
-      floor += `<rect x="${x0}" y="${y0}" width="${ROOM_W}" height="${WORK_D}" fill="#222226"/><rect class="room-floor" data-room="${i}" x="${x0 + 10}" y="${y0 + 10}" width="${ROOM_W - 20}" height="${WORK_D - 20}" rx="22" fill="#2A2A2E" opacity="0.6"/>
-        <rect x="${x0}" y="${y0 + WORK_D + 20}" width="${ROOM_W}" height="${ROOM_D - WORK_D - 20}" fill="#2D243A"/><rect x="${x0 + 14}" y="${y0 + WORK_D + 34}" width="${ROOM_W - 28}" height="${ROOM_D - WORK_D - 48}" rx="26" fill="#201C2C"/>
-        <text class="room-name" data-room="${i}" x="${x0 + 40}" y="${y0 + 175}" font-family="Newsreader, Georgia, serif" font-size="64" fill="#FAF9F5" opacity="0.32"></text>
-        <text x="${x0 + 40}" y="${y0 + WORK_D + 50}" font-size="24" font-weight="700" letter-spacing="8" fill="#E7B38F" opacity="0.35">REST AREA · LOUNGE</text>`;
+      const lt = y0 + WORK_D + 20, lh = ROOM_D - WORK_D - 20, ly = y0 + WORK_D + 60;
+      const gy = ly + 230, cy = ly + 520, dy = ly + 800;
+      // floors: carpet tiles where people work, timber in the lounge, rugs under the seating groups
+      floor += `<rect x="${x0}" y="${y0}" width="${ROOM_W}" height="${WORK_D}" fill="#24262B"/><rect x="${x0}" y="${y0}" width="${ROOM_W}" height="${WORK_D}" fill="url(#carpet)"/><rect class="room-floor" data-room="${i}" x="${x0 + 10}" y="${y0 + 10}" width="${ROOM_W - 20}" height="${WORK_D - 20}" rx="22" fill="#2A2A2E" opacity="0.6"/>
+        <rect x="${x0}" y="${lt}" width="${ROOM_W}" height="${lh}" fill="#2B2622"/><rect x="${x0}" y="${lt}" width="${ROOM_W}" height="${lh}" fill="url(#timber)"/>
+        <rect x="${x0 + 70}" y="${gy - 26}" width="420" height="190" rx="16" fill="#343942"/><rect x="${x0 + 100}" y="${dy - 30}" width="800" height="200" rx="16" fill="#343942"/>
+        <rect class="room-accent" data-room="${i}" x="${x0 + 40}" y="${y0 + WORK_D - 62}" width="10" height="46" rx="3" fill="#55555C"/><text class="room-name" data-room="${i}" x="${x0 + 66}" y="${y0 + WORK_D - 22}" font-family="Newsreader, Georgia, serif" font-size="52" fill="#FAF9F5" opacity="0.72"></text>
+        <text x="${x0 + 40}" y="${lt + 40}" font-size="22" font-weight="600" letter-spacing="7" fill="#FAF9F5" opacity="0.2">LOUNGE</text>`;
       furn += `<use href="#leaddesk" x="${f(room.lead[0] - 25)}" y="${f(room.lead[1] + 20)}" class="room-screen" data-room="${i}" style="color:#3A3935"/><g class="lead-slot" data-room="${i}" transform="translate(${f(room.lead[0])} ${f(room.lead[1])})"></g>`;
-      furn += use('tallplant', x1 - 40, y0 + 40) + use('plant', x0 + 30, y0 + WORK_D - 30);
-      // 35 desks: 7 x 5
-      if (d) for (let rr = 0; rr < 5; rr++) for (let cc = 0; cc < 10; cc++) { room.desks.push(desksF.length); desksF.push([x0 + 80 + cc * 95, y0 + 200 + rr * 110]); deskRoom.push(i); }
+      furn += use('tallplant', x1 - 40, y0 + 40) + use('plant', x1 - 40, y0 + WORK_D - 30);
+      // 50 desks: 10 x 5
+      for (let rr = 0; rr < 5; rr++) for (let cc = 0; cc < 10; cc++) { room.desks.push(desksF.length); desksF.push([x0 + 80 + cc * 95, y0 + 200 + rr * 110]); deskRoom.push(i); }
       furn += glass(x0, y0 + WORK_D + 10, x1, y0 + WORK_D + 10, 54, [0.4, 0.62]);
-      furn += `<g transform="${onPlaneY(x0 + 430, y0 + WORK_D + 10, 78)}"><rect x="0" y="-16" width="150" height="26" rx="6" fill="#141413" stroke="#E7B38F" stroke-width="1.5"/><text x="75" y="2" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="2" fill="#E7B38F">REST AREA</text></g>`;
+      furn += `<g transform="${onPlaneY(x0 + 430, y0 + WORK_D + 10, 78)}"><rect x="0" y="-16" width="150" height="26" rx="6" fill="#141413" stroke="#55555C" stroke-width="1.2"/><text x="75" y="2" text-anchor="middle" font-size="12" font-weight="600" letter-spacing="3" fill="#D6D4CC">LOUNGE</text></g>`;
       furn += glass(x1, y0, x1, y1, 66, [0.3, 0.42]);
       if (y1 < D - 5) furn += glass(x0, y1, x1, y1, 66, [0.45, 0.58]);
-      // Lounge: 200 spots on a 10-col × 20-row grid filling ROOM_D - WORK_D
-      const ly = y0 + WORK_D + 60;
-      const LCOLS = 10, LROWS = 20, LXSTEP = Math.floor((ROOM_W - 80) / LCOLS), LYSTEP = Math.floor((ROOM_D - WORK_D - 100) / LROWS);
-      const LPROPS = ['pad','mug','rest','book','music','phone','mug','pad','rest','music'];
-      if (d) for (let lr = 0; lr < LROWS; lr++) for (let lc = 0; lc < LCOLS; lc++) {
-        const sx = x0 + 50 + lc * LXSTEP + (lr % 2) * 18, sy = ly + lr * LYSTEP;
-        room.rest.push(spotsF.length); spotsF.push([sx, sy]); spotProp.push(LPROPS[(lr + lc) % LPROPS.length]);
+
+      // ── Lounge: four zones, back to front. `blocked` = floor nobody may stand on (furniture, and just behind tall pieces).
+      const blocked = [];
+      // A: coffee point + two standing tables
+      furn += counter(x0 + 150, ly + 40, 300);
+      for (let k = 0; k < 4; k++) furn += use('stool', x0 + 190 + k * 70, ly + 108);
+      furn += use('plant', x0 + 50, ly + 70) + use('tallplant', x1 - 60, ly + 50);
+      furn += use('table', x0 + 660, ly + 70) + use('cup', x0 + 654, ly + 66, '', 25) + use('stool', x0 + 620, ly + 96) + use('table', x0 + 820, ly + 70) + use('stool', x0 + 862, ly + 92);
+      blocked.push([x0 + 120, ly - 30, x0 + 470, ly + 125], [x0 + 600, ly + 30, x0 + 880, ly + 110]);
+      // B: sofa group on a rug; meeting table in front of a wall display
+      furn += use('floorlamp', x0 + 80, gy + 16) + sofa(x0 + 110, gy, 240) + armchair(x0 + 396, gy + 6) + lowTable(x0 + 180, gy + 84, 100, 46) + use('cup', x0 + 214, gy + 100, '', 17) + use('plant', x0 + 500, gy + 10);
+      furn += display(x0 + 600, gy - 30, 300) + meeting(x0 + 610, gy + 70, 280);
+      blocked.push([x0 + 70, gy - 12, x0 + 470, gy + 140], [x0 + 580, gy - 110, x0 + 920, gy + 186]);
+      // C: bookcases with a reading pair; a second pair by the window side
+      furn += shelf(x0 + 70, cy, 160) + shelf(x0 + 240, cy, 160) + use('floorlamp', x0 + 430, cy + 50);
+      furn += armchair(x0 + 110, cy + 96) + use('table', x0 + 205, cy + 124) + armchair(x0 + 250, cy + 96);
+      furn += armchair(x0 + 620, cy + 40) + use('table', x0 + 716, cy + 70) + use('cup', x0 + 710, cy + 66, '', 25) + armchair(x0 + 762, cy + 40) + use('plant', x0 + 900, cy + 40);
+      blocked.push([x0 + 60, cy - 80, x0 + 410, cy + 150], [x0 + 600, cy + 30, x0 + 830, cy + 96]);
+      // D: two facing sofa groups on a long rug
+      furn += use('floorlamp', x0 + 110, dy + 16) + sofa(x0 + 150, dy, 220) + lowTable(x0 + 210, dy + 84, 100, 46) + use('plant', x0 + 500, dy + 20);
+      furn += sofa(x0 + 620, dy, 220) + lowTable(x0 + 680, dy + 84, 100, 46) + use('cup', x0 + 716, dy + 100, '', 17) + use('floorlamp', x0 + 880, dy + 16);
+      furn += use('plant', x0 + 50, dy + 190) + use('tallplant', x1 - 60, dy + 170);
+      blocked.push([x0 + 130, dy - 12, x0 + 390, dy + 140], [x0 + 600, dy - 12, x0 + 860, dy + 140]);
+
+      const clear = (sx, sy) => !blocked.some(([a, b, a2, b2]) => sx > a - 16 && sx < a2 + 16 && sy > b - 16 && sy < b2 + 16);
+      const LPROPS = ['mug', 'phone', 'rest', 'book', 'pad', 'rest', 'mug', 'music', 'rest', 'phone'];
+      for (let lr = 0; lr < 13; lr++) for (let lc = 0; lc < 10; lc++) {
+        const sx = x0 + 60 + lc * 98 + (lr % 2) * 30, sy = ly - 5 + lr * 84;
+        if (sx > x1 - 40 || !clear(sx, sy)) continue;
+        room.rest.push(spotsF.length); spotsF.push([sx, sy]); spotProp.push(LPROPS[(lr * 3 + lc) % LPROPS.length]);
       }
-      // ── Lounge furniture zones ──────────────────────────────────────────
-      // Zone A (top): coffee station + cooler + stools bar (y = ly+30..ly+120)
-      furn += use('coffeestation', x0 + 160, ly + 60);
-      furn += use('cooler', x0 + 240, ly + 50);
-      furn += use('cooler', x0 + 270, ly + 50);
-      for (let sc = 0; sc < 5; sc++) furn += use('stool', x0 + 320 + sc * 60, ly + 80);
-      furn += box(x0 + 300, ly + 60, x0 + 620, ly + 90, 10, WOOD);  // bar counter
-      furn += use('cup', x0 + 380, ly + 68, '', 10) + use('cup', x0 + 460, ly + 68, '', 10) + use('cup', x0 + 540, ly + 68, '', 10);
-      furn += use('tallplant', x0 + 60, ly + 50) + use('tallplant', x1 - 60, ly + 50);
-
-      // Zone B (second band): sofa cluster + TV / gaming corner
-      const gy = ly + 230;
-      furn += use('tv', x0 + 130, gy + 20);
-      furn += box(x0 + 60, gy + 80, x0 + 300, gy + 110, 14, SOFA);   // sofa facing TV
-      furn += box(x0 + 60, gy + 80, x0 + 300, gy + 92, 32, SOFA);
-      furn += box(x0 + 110, gy + 150, x0 + 190, gy + 190, 10, WOOD); // coffee table
-      furn += use('cup', x0 + 140, gy + 162, '', 10);
-      // gaming beanbags in front of TV
-      const gc = ['#B5532F','#3A6EA5','#D9C27A','#8FC79D'];
-      for (let bi = 0; bi < 4; bi++) furn += use('beanbag', x0 + 80 + bi * 60, gy + 220, `style="color:${gc[bi]}"`);
-      furn += use('floorlamp', x0 + 320, gy + 100);
-
-      // Another sofa set on the right side of the same band
-      furn += box(x0 + 580, gy + 60, x0 + 820, gy + 90, 14, SOFA);
-      furn += box(x0 + 580, gy + 60, x0 + 820, gy + 72, 32, SOFA);
-      furn += box(x0 + 630, gy + 130, x0 + 710, gy + 170, 10, WOOD);
-      furn += use('cup', x0 + 660, gy + 142, '', 10);
-      furn += use('plant', x0 + 840, gy + 60) + use('plant', x0 + 550, gy + 60);
-      furn += use('floorlamp', x0 + 820, gy + 150);
-
-      // Zone C: ping pong table + open space
-      const ppy = ly + 580;
-      furn += use('pingpong', x0 + 300, ppy);
-      furn += use('plant', x0 + 60, ppy) + use('plant', x1 - 60, ppy);
-      furn += use('floorlamp', x0 + 580, ppy + 60);
-
-      // Zone D: reading nook — bookshelves + armchairs
-      const ry2 = ly + 820;
-      furn += use('bookshelf', x0 + 80, ry2);
-      furn += use('bookshelf', x0 + 170, ry2);
-      furn += use('bookshelf', x0 + 260, ry2);
-      for (let ai = 0; ai < 4; ai++) furn += use('armchair', x0 + 380 + ai * 120, ry2 + 60);
-      furn += box(x0 + 490, ry2 + 120, x0 + 570, ry2 + 160, 8, WOOD); // reading table
-      furn += use('cup', x0 + 520, ry2 + 128, '', 8);
-      furn += use('floorlamp', x0 + 340, ry2 + 80) + use('floorlamp', x0 + 720, ry2 + 80);
-      furn += use('tallplant', x1 - 80, ry2) + use('plant', x0 + 820, ry2 + 80);
-
-      // Zone E: bean bag lounge near the bottom
-      const by2 = ly + 1180;
-      const bagcols = ['#E59A7A','#A8B8E8','#C8A8E0','#9FD0D6','#D9C27A','#8FC79D','#B5532F','#3A6EA5'];
-      for (let bi = 0; bi < 8; bi++) furn += use('beanbag', x0 + 100 + (bi % 4) * 200, by2 + Math.floor(bi / 4) * 120, `style="color:${bagcols[bi]}"`);
-      furn += use('table', x0 + 500, by2 + 60) + use('cup', x0 + 492, by2 + 48, '', 24);
-      furn += use('plant', x0 + 60, by2) + use('tallplant', x1 - 60, by2) + use('plant', x0 + 950, by2 + 100);
-      furn += use('floorlamp', x0 + 300, by2 + 60) + use('floorlamp', x0 + 700, by2 + 60);
       rooms.push(room);
     }
 
     // ── FACILITY COLUMN ──────────────────────────────────────────────────────
-    // CEO office (y 0–425), Messenger corner (y 435–555), Café (y 565–1660), Open desks (y 1670+)
-    floor += `<rect x="${fx}" width="${FAC_W}" height="425" fill="#2A2519"/><rect x="${fx + 24}" y="24" width="${FAC_W - 48}" height="377" rx="18" fill="#D9C27A" opacity="0.14"/>
-      <rect x="${fx}" y="435" width="${FAC_W}" height="120" fill="#252520"/><rect x="${fx + 16}" y="445" width="${FAC_W - 32}" height="100" rx="12" fill="#3A3020" opacity="0.7"/>
-      <rect x="${fx}" y="565" width="${FAC_W}" height="1430" fill="#3A2B22"/><rect x="${fx}" y="565" width="${FAC_W}" height="1430" fill="url(#planks)"/>
-      <ellipse cx="${fx + 220}" cy="950" rx="170" ry="180" fill="#C9714F" opacity="0.10"/>
+    // CEO office (y 0–425), Messenger corner (y 435–555), Café (y 565–1490), Open desks (y 1500+)
+    floor += `<rect x="${fx}" width="${FAC_W}" height="425" fill="#26282C"/><rect x="${fx + 24}" y="24" width="${FAC_W - 48}" height="377" rx="18" fill="#3A342B"/>
+      <rect x="${fx}" y="435" width="${FAC_W}" height="120" fill="#24262B"/><rect x="${fx + 16}" y="445" width="${FAC_W - 32}" height="100" rx="12" fill="#2F3239"/>
+      <rect x="${fx}" y="565" width="${FAC_W}" height="925" fill="#3A2B22"/><rect x="${fx}" y="565" width="${FAC_W}" height="925" fill="url(#planks)"/>
       <text x="${fx + 30}" y="636" font-family="Newsreader, Georgia, serif" font-size="52" fill="#E7B38F" opacity="0.28">Café</text>
-      <rect x="${fx}" y="2000" width="${FAC_W}" height="${D - 2000}" fill="#202024"/><text x="${fx + 30}" y="${D - 24}" font-size="26" font-weight="700" letter-spacing="6" fill="#FAF9F5" opacity="0.22">OPEN DESKS</text>`;
+      <rect x="${fx}" y="1500" width="${FAC_W}" height="${D - 1500}" fill="#24262B"/><rect x="${fx}" y="1500" width="${FAC_W}" height="${D - 1500}" fill="url(#carpet)"/><text x="${fx + 30}" y="${D - 24}" font-size="24" font-weight="600" letter-spacing="6" fill="#FAF9F5" opacity="0.2">OPEN DESKS</text>`;
 
-    // CEO furniture + glass
+    // CEO: glass office, oak executive desk
     furn += glass(fx, 0, fx, 425, 74, [0.55, 0.8]) + glass(fx, 425, W, 425, 74) +
-      box(fx + 160, 110, fx + 300, 180, 34, ['#3D3D3A', '#2B2B29', '#232320']) +
-      box(fx + 160, 110, fx + 300, 180, 3, ['#55534D', '#3A3935', '#2B2B29'], 34) +
-      use('tallplant', fx + 400, 40) + use('plant', fx + 40, 380);
-    furn += `<g transform="${onPlaneY(fx + 140, 425, 66)}"><rect x="0" y="-14" width="140" height="22" rx="4" fill="#141413"/><text x="70" y="2" text-anchor="middle" font-size="11" font-weight="700" letter-spacing="2" fill="#D9C27A">CEO OFFICE</text></g>`;
+      use('chair', fx + 230, 96) + box(fx + 164, 114, fx + 296, 176, 30, GRAPH) + box(fx + 156, 106, fx + 304, 184, 4, OAK, 30) +
+      use('tallplant', fx + 400, 40) + use('plant', fx + 40, 380) + armchair(fx + 90, 270) + armchair(fx + 250, 270);
+    furn += `<g transform="${onPlaneY(fx + 140, 425, 66)}"><rect x="0" y="-14" width="140" height="22" rx="4" fill="#141413" stroke="#55555C" stroke-width="1"/><text x="70" y="2" text-anchor="middle" font-size="11" font-weight="600" letter-spacing="2" fill="#D6D4CC">CEO OFFICE</text></g>`;
 
     // Messenger corner (y 435–555): small desk, sign, partition glass
     const helperX = fx + 220, helperY = 495;
@@ -436,18 +290,18 @@
     furn += glass(fx, 555, W, 555, 32, [0.22, 0.68]);
     furn += use('msgdesk', helperX, helperY);
     furn += use('plant', fx + 40, 500);
-    furn += `<g transform="${onPlaneY(fx + 110, 435, 48)}"><rect x="0" y="-12" width="190" height="20" rx="4" fill="#141413" stroke="#9FD0D6" stroke-width="1.2"/><text x="95" y="2" text-anchor="middle" font-size="10" font-weight="700" letter-spacing="2.5" fill="#9FD0D6">MESSENGER</text></g>`;
+    furn += `<g transform="${onPlaneY(fx + 110, 435, 48)}"><rect x="0" y="-12" width="190" height="20" rx="4" fill="#141413" stroke="#55555C" stroke-width="1"/><text x="95" y="2" text-anchor="middle" font-size="10" font-weight="600" letter-spacing="2.5" fill="#9FD0D6">MESSENGER</text></g>`;
 
-    // Café bar + tables (narrow column — bar + scattered small tables)
+    // Café bar + tables
     furn += box(fx + 40, 580, fx + 400, 612, 36, WOOD) + box(fx + 40, 580, fx + 400, 612, 3, ['#C9A984', '#A9744C', '#8A5E3C'], 34) +
       box(fx + 60, 585, fx + 90, 605, 26, ['#55534D', '#3A3935', '#232320'], 37) + use('cup', fx + 300, 594, '', 37);
-    for (const [x, y] of [[fx+90,710],[fx+310,720],[fx+180,800],[fx+90,900],[fx+310,900],[fx+200,1000],[fx+90,1120],[fx+310,1120]])
-      furn += use('table', x, y) + use('cup', x - 6, y, '', 24);
-    furn += use('lamp', fx + 90, 710) + use('lamp', fx + 310, 720) + use('lamp', fx + 200, 800);
-    furn += use('tallplant', fx + 390, 1920) + use('plant', fx + 30, 1900);
-    furn += glass(fx, 1980, W, 1980, 40, [0.4, 0.6]);
+    for (const [x, y] of [[fx + 90, 710], [fx + 310, 720], [fx + 180, 800], [fx + 90, 900], [fx + 310, 900], [fx + 200, 1000], [fx + 90, 1120], [fx + 310, 1120], [fx + 200, 1240], [fx + 90, 1360], [fx + 310, 1360]])
+      furn += use('table', x, y) + use('cup', x - 6, y, '', 25);
+    furn += use('lamp', fx + 90, 710) + use('lamp', fx + 310, 720) + use('lamp', fx + 180, 800);
+    furn += use('tallplant', fx + 392, 1440) + use('plant', fx + 30, 1440);
+    furn += glass(fx, 1490, W, 1490, 40, [0.4, 0.6]);
     const hot = [], hotXY = [];
-    for (let y = 2060; y < D - 60; y += 140) hotXY.push([fx + 130, y], [fx + 310, y]);
+    for (let y = 1570; y < D - 60; y += 140) hotXY.push([fx + 130, y], [fx + 310, y]);
     for (const [x, y] of hotXY) { hot.push(desksF.length); desksF.push([x, y]); deskRoom.push(-1); }
 
     // walls, windows, clock, task board
@@ -465,7 +319,8 @@
 
     const desks = desksF.map(([x, y]) => P(x, y)), cafe = spotsF.map(([x, y]) => P(x, y));
     const order = desks.map((d, i) => i).sort((a, b) => desks[a][1] - desks[b][1]);
-    const deskSvg = order.map((i) => `<g class="desk" data-desk="${i}" transform="translate(${f(desks[i][0])} ${f(desks[i][1])}) scale(1.1)"><use href="#chair" x="22" y="-26"/><g class="seat" transform="translate(20 -30)"></g><use class="desk-top" href="#desk" style="color:#3A3935"/></g>`).join('');
+    // chair, then the person (in .seat, low enough to read as sitting), then the desk in front of both
+    const deskSvg = order.map((i) => `<g class="desk" data-desk="${i}" transform="translate(${f(desks[i][0])} ${f(desks[i][1])}) scale(1.1)"><use href="#chair" x="24" y="-20"/><g class="seat" transform="translate(24 -14)"></g><use class="desk-top" href="#desk" style="color:#3A3935"/></g>`).join('');
     const ceo = P(fx + 230, 80);
     const helper = P(helperX, helperY);
     const minX = P(0, D)[0], maxX = P(W, 0)[0], maxY = P(W, D)[1] + 30;
@@ -473,5 +328,5 @@
     const inner = `${DEFS}<g id="layer-back">${back}${furn}<g id="ceo-slot" transform="translate(${f(ceo[0])} ${f(ceo[1])})"></g><g id="helper-slot" transform="translate(${f(helper[0])} ${f(helper[1])})"></g></g><g id="layer-desks">${deskSvg}</g><g id="layer-free"></g><g id="layer-walk"></g>`;
     return { inner, vb, desks, deskRoom, rooms, hot, cafe, cafeIdx, spotProp, ceo, helper };
   }
-  window.VScene = { build };
+  window.VScene = { build, people: PEOPLE.length };
 })();

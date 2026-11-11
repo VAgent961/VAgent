@@ -73,21 +73,23 @@
   // ── detect the Office Helper (messenger) by name ─────────────────────────
   const isHelper = (a) => /office.?helper/i.test((a.name || '').replace(/\s+/g, '.'));
 
+  // Each agent is one of the office's people (always the same one: picked from its key), or the messenger.
+  const personRef = (a) => isHelper(a) ? '#msgbot' : '#p' + (hash(a.key) % ((window.VScene && window.VScene.people) || 1));
   function makeAgent(a) {
     const g = document.createElementNS(NS, 'g');
     g.setAttribute('class', 'agent'); g.setAttribute('tabindex', '0'); g.setAttribute('role', 'button'); g.dataset.key = a.key;
-    const botRef = isHelper(a) ? '#msgbot' : a.isLead ? '#bot-lead' : '#bot';
-    g.innerHTML = `<circle class="ring" cy="-30" r="34" fill="none" stroke="${isHelper(a) ? '#9FD0D6' : a.isLead ? '#E9C46A' : '#B5532F'}" stroke-width="3"/><g class="body"><use href="${botRef}" style="color:${colorOf(a.key)}"/></g>
-      <g class="props"><g class="p p-book" transform="translate(0 -15)"><rect x="-10" y="-6" width="20" height="13" rx="1.5" fill="#B5532F"/><rect x="-8" y="-4" width="7" height="9" fill="#FAF9F5"/><rect x="1" y="-4" width="7" height="9" fill="#FAF9F5"/></g><g class="p p-pad" transform="translate(0 -14)"><rect x="-11" y="-5" width="22" height="10" rx="5" fill="#F5F5F7" stroke="#141413" stroke-width="1"/><circle cx="-5" cy="0" r="1.8" fill="#3A6EA5"/><circle cx="5" cy="0" r="1.8" fill="#B5532F"/></g><g class="p p-phone" transform="translate(6 -16)"><rect x="-4" y="-7" width="8" height="13" rx="2" fill="#141413"/><rect x="-3" y="-5.5" width="6" height="9" rx="1" fill="#7FB0E0"/></g><g class="p p-mug" transform="translate(9 -16)"><rect x="-4" y="-5" width="8" height="9" rx="2" fill="#FAF9F5"/><path d="M4 -3 q4 1 0 5" stroke="#FAF9F5" stroke-width="1.6" fill="none"/></g><g class="p p-music"><path d="M-18 -46 Q0 -78 18 -46" stroke="#141413" stroke-width="3.5" fill="none"/><rect x="-22" y="-52" width="7" height="12" rx="3" fill="#B5532F"/><rect x="15" y="-52" width="7" height="12" rx="3" fill="#B5532F"/><text class="note" x="20" y="-62" font-size="14" fill="#E7B38F">♪</text></g><g class="p p-rest"><text class="zz" x="16" y="-62" font-size="13" font-weight="700" fill="#A8B8E8">z z</text></g></g><g class="bubble typing" transform="translate(27 -52)"><rect x="-15" y="-10" width="30" height="18" rx="9" fill="#FAF9F5" stroke="#E3E0D5"/><circle cx="-6" cy="-1" r="2.2" fill="#B5532F"/><circle cx="0" cy="-1" r="2.2" fill="#B5532F"/><circle cx="6" cy="-1" r="2.2" fill="#B5532F"/></g>
-      <g class="bubble alert" transform="translate(18 -66)"><circle r="8" fill="#B3261E"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">!</text></g>
-      <g class="tag" transform="translate(0 -86)"><rect y="-12" height="22" rx="11"/><circle class="tdot" cy="-1" r="3.5"/><text y="3" text-anchor="middle"></text></g>`;
+    g.innerHTML = `<circle class="ring" cy="-38" r="40" fill="none" stroke="${isHelper(a) ? '#9FD0D6' : a.isLead ? '#E9C46A' : '#B5532F'}" stroke-width="3"/><g class="body"><use href="${personRef(a)}" style="color:${colorOf(a.key)}"/></g>
+      <g class="props"><g class="p p-book" transform="translate(-12 -36)"><rect x="-3.5" y="-6" width="7" height="11" rx="1" fill="#D8D3C6"/><rect x="-3.5" y="-6" width="1.6" height="11" fill="#9A968A"/></g><g class="p p-pad" transform="translate(12 -37)"><rect x="-4" y="-6" width="8" height="11" rx="1.4" fill="#2A2B2F"/><rect x="-3" y="-5" width="6" height="9" rx=".8" fill="#9DB7CE"/></g><g class="p p-phone" transform="translate(12 -36)"><rect x="-2.6" y="-5" width="5.2" height="9" rx="1.3" fill="#17181B"/><rect x="-1.9" y="-4" width="3.8" height="6.6" rx=".6" fill="#7FB0E0"/></g><g class="p p-mug" transform="translate(12 -35)"><rect x="-3" y="-4" width="6" height="7" rx="1.4" fill="#F1EEE7"/><path d="M3 -2.6 q3 .6 0 3.8" stroke="#F1EEE7" stroke-width="1.3" fill="none"/></g><g class="p p-music" transform="translate(-12 -37)"><rect x="-5" y="-4" width="10" height="7" rx="1" fill="#B9BDC4"/><rect x="-5" y="2" width="10" height="1.4" fill="#8D939B"/></g><g class="p p-rest"></g></g>
+      <g class="bubble typing" transform="translate(17 -80)"><rect x="-11" y="-7" width="22" height="13" rx="6.5" fill="#FAF9F5" stroke="#E3E0D5"/><circle cx="-4.5" cy="-.5" r="1.7" fill="#B5532F"/><circle cx="0" cy="-.5" r="1.7" fill="#B5532F"/><circle cx="4.5" cy="-.5" r="1.7" fill="#B5532F"/></g>
+      <g class="bubble alert" transform="translate(15 -82)"><circle r="8" fill="#B3261E"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">!</text></g>
+      <g class="tag" transform="translate(0 -98)"><rect y="-12" height="22" rx="11"/><circle class="tdot" cy="-1" r="3.5"/><text y="3" text-anchor="middle"></text></g>`;
     return g;
   }
   function updateAgent(g, a) {
     g.setAttribute('class', 'agent ' + a.status);
     g.setAttribute('aria-label', a.name + ', ' + (STATUS[a.status] || a.status));
     // swap skin + ring colour live when lead status changes
-    const wantRef = isHelper(a) ? '#msgbot' : a.isLead ? '#bot-lead' : '#bot';
+    const wantRef = personRef(a);
     const bodyUse = g.querySelector('.body use'); if (bodyUse && bodyUse.getAttribute('href') !== wantRef) bodyUse.setAttribute('href', wantRef);
     const ring = g.querySelector('.ring'); if (ring) ring.setAttribute('stroke', isHelper(a) ? '#9FD0D6' : a.isLead ? '#E9C46A' : '#B5532F');
     const name = a.name.length > 22 ? a.name.slice(0, 21) + '…' : a.name, w = name.length * 6.5 + 38;
@@ -186,13 +188,14 @@
       const fl = svg.querySelector(`.room-floor[data-room="${i}"]`), nm = svg.querySelector(`.room-name[data-room="${i}"]`);
       if (fl) { fl.setAttribute("fill", d ? d.color : "#2A2A2E"); fl.setAttribute("opacity", d ? "0.16" : "0.6"); }
       if (nm) nm.textContent = d ? d.name : "";
+      const ac = svg.querySelector(`.room-accent[data-room="${i}"]`); if (ac) ac.setAttribute('fill', d ? d.color : '#55555C');
       if (d) {
         const leadA = d.lead_key ? D.agents.find((a) => a.key === d.lead_key) : null;
         const label = leadA ? (leadA.name.length > 22 ? leadA.name.slice(0, 21) + '…' : leadA.name) : d.name + ' Lead';
         const w = Math.min(label.length, 24) * 6.5 + 26;
         const body = leadA
-          ? `<g transform="scale(1.15)"><use href="#bot" style="color:${colorOf(leadA.key)}"/></g><g class="tag" transform="translate(0 -100)"><rect x="${-w / 2}" y="-12" width="${w}" height="22" rx="11" fill="${d.color}" stroke="${d.color}"/><text y="3" text-anchor="middle" fill="#141413" font-weight="600">${esc(label)}</text></g>`
-          : `<g transform="scale(1.15)" opacity="0.35"><use href="#lead" style="color:${d.color}"/></g><g class="tag" transform="translate(0 -84)"><rect x="-62" y="-12" width="124" height="22" rx="11" fill="#FAF9F5" stroke="#B5532F" stroke-dasharray="4 3"/><text y="3" text-anchor="middle" fill="#B5532F">⭐ Set a lead</text></g>`;
+          ? `${leadA.status === 'off' ? `<g transform="scale(1.1)" opacity="0.4"><use href="${personRef(leadA)}" style="color:${colorOf(leadA.key)}"/></g>` : ''}<g class="tag" transform="translate(0 -110)"><rect x="${-w / 2}" y="-12" width="${w}" height="22" rx="11" fill="${d.color}" stroke="${d.color}"/><text y="3" text-anchor="middle" fill="#141413" font-weight="600">${esc(label)}</text></g>`
+          : `<g transform="scale(1.15)" opacity="0.35"><use href="#lead" style="color:${d.color}"/></g><g class="tag" transform="translate(0 -102)"><rect x="-62" y="-12" width="124" height="22" rx="11" fill="#FAF9F5" stroke="#B5532F" stroke-dasharray="4 3"/><text y="3" text-anchor="middle" fill="#B5532F">⭐ Set a lead</text></g>`;
         slot.innerHTML = `<g class="lead" tabindex="0" role="button" data-dept="${d.id}" aria-label="${d.lead_key ? esc(label) : 'Set a lead for ' + esc(d.name)}">${body}</g>`;
       } else {
         slot.innerHTML = `<g class="add-room" tabindex="0" role="button" aria-label="Add a department"><g class="tag" transform="translate(0 -24)"><rect x="-56" y="-12" width="112" height="22" rx="11" fill="#FAF9F5" stroke="#B0AEA5" stroke-dasharray="4 3"/><text y="3" text-anchor="middle" fill="#5E5D59">+ Department</text></g></g>`;
@@ -289,7 +292,8 @@
   function renderDepts() {
     const box = $('#depts'); if (!box) return;
     const count = (id) => D.agents.filter((a) => a.dept === id).length;
-    box.innerHTML = '<span class="depts-h">Departments</span>' + ((floor === null ? D.departments : V.departments).map((d, i) => `<button type="button" class="dept-btn" data-room-i="${i}" data-dept="${d.id}"><span class="dd" style="background:${d.color}"></span><span class="dn">${esc(d.name)}</span><span class="dc">${count(d.id)}/35</span></button>`).join('') || '<p class="empty">No departments yet.</p>') + '<button type="button" class="dept-btn add" id="dept-add">+ New department</button>';
+    const busy = (id) => D.agents.filter((a) => a.dept === id && a.status === 'working').length;
+    box.innerHTML = '<span class="depts-h">Departments</span>' + ((floor === null ? D.departments : V.departments).map((d, i) => `<button type="button" class="dept-btn" data-room-i="${i}" data-dept="${d.id}"><span class="dd" style="background:${d.color}"></span><span class="dn">${esc(d.name)}</span><span class="dc">${count(d.id)}${busy(d.id) ? ' · ' + busy(d.id) + ' working' : ''}</span></button>`).join('') || '<p class="empty">No departments yet.</p>') + '<button type="button" class="dept-btn add" id="dept-add">+ New department</button>';
   }
 
   function render() {
@@ -307,7 +311,9 @@
 
     const next = {}, used = { desk: new Set(), cafe: new Set() }, over = [];
     const roomOf = (a) => { const i = V.departments.findIndex((x) => x.id === a.dept); return i >= 0 && i < S.rooms.length ? i : -1; };
-    const pick = (a, t, choices) => { const p = places[a.key]; if (p && p.t === t && choices.includes(p.i) && !used[t].has(p.i)) return p.i; return choices.find((i) => !used[t].has(i)); };
+    const pick = (a, t, choices) => { const p = places[a.key]; if (p && p.t === t && choices.includes(p.i) && !used[t].has(p.i)) return p.i;
+      if (t === 'cafe' && choices.length) { const s0 = hash(a.key) % choices.length; for (let k = 0; k < choices.length; k++) { const i = choices[(s0 + k * 7) % choices.length]; if (!used[t].has(i)) return i; } }
+      return choices.find((i) => !used[t].has(i)); };
     // leads sit at their lead-desk when idle, not in the lounge
     const leadKeys = new Set(D.departments.map((d) => d.lead_key).filter(Boolean));
     for (const a of working) {
@@ -377,7 +383,7 @@
     const help = A.filter((a) => a.status === 'help').length;
     $('#n-working').textContent = working.length; $('#n-idle').textContent = cafe.length - help; $('#n-help').textContent = help;
     svg.querySelector('#board-bar1')?.setAttribute('opacity', working.length ? 1 : 0.35); svg.querySelector('#board-bar2')?.setAttribute('opacity', cafe.length ? 1 : 0.35);
-    const bl = $('#board-line'); if (bl) bl.textContent = A.length ? working.length + ' working · ' + cafe.length + ' in café' : 'Connect n8n to start';
+    const bl = $('#board-line'); if (bl) bl.textContent = A.length ? working.length + ' working · ' + cafe.length + ' resting' : 'Connect n8n to start';
     $('#n-all').textContent = A.length; $('#n-off').textContent = off.length;
     const notes = [];
     if (!D.instances.some((i) => i.owner === D.me)) notes.push('<button class="chip hello" type="button" data-open="connect"><b>Bring your agents in</b><span>Connect your n8n in 3 quick steps →</span></button>');
@@ -470,15 +476,15 @@
   const drawer = $('#drawer'), inner = $('#drawer-in'), scrim = $('#scrim');
   function open(html, name) { current = name; inner.innerHTML = html; drawer.classList.add('open'); drawer.setAttribute('aria-hidden', 'false'); scrim.hidden = false; inner.scrollTop = 0; setTimeout(() => (inner.querySelector('[autofocus]') || $('#drawer-close')).focus(), 50); }
   function close() { current = null; drawer.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true'); scrim.hidden = true; }
-  const botSvg = (c, s = 40) => `<svg aria-hidden="true" width="${s}" height="${s}" viewBox="-22 -72 44 76"><use href="#bot" style="color:${c}"/></svg>`;
-  const leadSvg = (c, s = 40) => `<svg aria-hidden="true" width="${s}" height="${s}" viewBox="-30 -66 60 70"><use href="#lead" style="color:${c}"/></svg>`;
+  const botSvg = (c, s = 40, ref = '#bot') => `<svg aria-hidden="true" width="${s}" height="${s}" viewBox="-17 -79 34 34"><use href="${ref}" style="color:${c}"/></svg>`;
+  const leadSvg = (c, s = 40) => `<svg aria-hidden="true" width="${s}" height="${s}" viewBox="-17 -79 34 34"><use href="#lead" style="color:${c}"/></svg>`;
   const deptName = (id) => (D.departments.find((d) => d.id === id) || {}).name;
 
   async function openAgent(key) {
     const a = D.agents.find((x) => x.key === key); if (!a) return;
     const avatarSvg = isHelper(a)
-      ? `<svg aria-hidden="true" width="40" height="40" viewBox="-22 -72 44 76"><use href="#msgbot" style="color:${colorOf(key)}"/></svg>`
-      : botSvg(colorOf(key));
+      ? `<svg aria-hidden="true" width="40" height="40" viewBox="-17 -79 34 34"><use href="#msgbot" style="color:${colorOf(key)}"/></svg>`
+      : botSvg(colorOf(key), 40, personRef(a));
     const head = `<div class="d-head"><span class="avatar">${avatarSvg}</span><div><h2 class="d-title">${esc(a.name)} <button class="rename" type="button" id="rename" aria-label="Rename" title="Rename">✎</button></h2><div class="status ${a.status}">● ${esc(STATUS[a.status])}${a.status === 'working' && a.startedAt ? ' · for ' + dur(Date.now() - Date.parse(a.startedAt)) : ''}</div><div class="d-sub">${esc(TRIG[a.trigger] || a.trigger)} · ${esc(a.inst)} · ${a.runs24} runs today</div></div></div>`;
     open(head + '<p class="empty">Loading its work…</p>', 'agent:' + key);
     let d; try { d = await api('agent?key=' + encodeURIComponent(key)); } catch (e) { inner.innerHTML = head + `<p class="empty">${esc(e.message)}</p>`; return; }
@@ -530,7 +536,7 @@
     const d = D.departments.find((x) => x.id === Number(id)); if (!d) return;
     const team = D.agents.filter((a) => a.dept === d.id), can = team.filter((a) => a.runnable).length;
     const leadAgent = d.lead_key ? D.agents.find((a) => a.key === d.lead_key) : null;
-    const leadAvatarSvg = leadAgent ? botSvg(colorOf(leadAgent.key)) : leadSvg(d.color);
+    const leadAvatarSvg = leadAgent ? botSvg(colorOf(leadAgent.key), 40, personRef(leadAgent)) : leadSvg(d.color);
     const leadTitle = leadAgent ? esc(leadAgent.name) + ' <small class="muted">(lead)</small>' : esc(d.name) + ' Lead';
     const isClient = D.role === 'client';
     const leadPickOpts = '<option value="">— no lead —</option>' + team.map((a) => `<option value="${esc(a.key)}" ${a.key === d.lead_key ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
@@ -786,7 +792,7 @@
   }
 
   function openCEO() {
-    open(`<div class="d-head"><span class="avatar" style="background:#2B2416"><svg aria-hidden="true" width="44" height="44" viewBox="-26 -78 52 82"><use href="#ceo"/></svg></span><div><h2 class="d-title">The CEO</h2><div class="d-sub">Sees the whole company live. Ask anything, or ask for a change.</div></div></div>
+    open(`<div class="d-head"><span class="avatar" style="background:#2B2416"><svg aria-hidden="true" width="44" height="44" viewBox="-19 -86 38 38"><use href="#ceo"/></svg></span><div><h2 class="d-title">The CEO</h2><div class="d-sub">Sees the whole company live. Ask anything, or ask for a change.</div></div></div>
       <div class="row">${['How is the company doing today?', 'Organize everyone into the right departments and teams', 'Which agents failed recently and why?', 'Give a task to ', 'Create a new department for ', 'Write a Claude prompt to add a feature: '].map((s) => `<button class="pick" type="button" ${s.endsWith(' ') ? `data-fill="${esc(s)}"` : `data-say="${esc(s)}"`}>${esc(s.trim())}</button>`).join('')}</div>
       ${chatUI('ceo', 'Ask the CEO anything…')}
       <p class="help">Changes only happen after you press Approve. For new website features he writes a prompt you paste into Claude.</p>

@@ -185,3 +185,20 @@ a.btn[aria-disabled]{opacity:.5}
 .fn-title{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#B0AEA5;padding:0 4px}
 .fn-row{display:flex;align-items:center;gap:6px}.fn-row button{width:44px;padding:0;text-align:center;font-size:16px}.fn-lbl{flex:1;text-align:center;font:500 12px Inter,sans-serif;color:#D6D4CC;background:rgba(30,30,33,.8);border-radius:10px;padding:10px 8px;white-space:nowrap}
 @media (max-width:900px){.floornav{left:10px;bottom:10px;gap:4px}.floornav small,.floornav .fx,.fn-title{display:none}.floornav button{min-height:34px;min-width:40px;padding:4px 10px;text-align:center}.fn-row button{width:38px}.fn-lbl{padding:8px 6px}}
+
+/* office look: names appear on hover / keyboard focus / search instead of piling up over the desks */
+.agent .tag{opacity:0;transition:opacity .15s;pointer-events:none}
+.agent:hover .tag,.agent:focus .tag,.agent.found .tag{opacity:1}
+.agent .tag rect,.agent.idle .tag rect,.agent.help .tag rect{fill:#141413;stroke:#55555C}
+.agent .tag text,.agent.idle .tag text{fill:#FAF9F5}
+.agent:hover .tag rect,.agent:focus .tag rect,.agent.found .tag rect{fill:#141413;stroke:#B5532F;stroke-width:1.5}
+.agent:hover .body,.agent:focus .body{filter:brightness(1.12)}
+/* people stand naturally with what they hold: no crouch, no wiggle */
+.agent[data-prop] .body>use,.agent[data-prop] .props{transform:none}
+.agent[data-prop="pad"] .p-pad{animation:none}
+.agent.idle .body{animation-duration:4.6s}
+@keyframes breathe{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.012)}}
+/* at a desk the person sits: arms forward on the desk (the figures read these two variables, see scene.js) */
+.seat .agent{--stand:none;--sit:inline}
+/* phones: the header keeps its title readable; sign-out shrinks to its icon */
+@media (max-width:560px){.top .logo{min-width:0;flex:1}.top .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.top .actions{flex:none;gap:6px}.top .actions a.btn{padding:0 12px;font-size:0!important;gap:0!important}.top .actions .btn.icon{min-width:40px}.top .actions a.btn svg{margin:0}}
