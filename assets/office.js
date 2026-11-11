@@ -102,7 +102,7 @@
   // Each resting bot gets a looping micro-walk around its home spot.
   // Cancelled whenever the bot gets a new assignment (status/position change).
   const rng = (a, b) => a + Math.random() * (b - a);
-  function stopWander(g) { if (g._wanderKill) { g._wanderKill(); g._wanderKill = null; } }
+  function stopWander(g) { if (g._wanderKill) { g._wanderKill(); g._wanderKill = null; } g.dataset.pose = ''; }
   function startWander(g, hx, hy) {
     if (!window.gsap || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     stopWander(g);
@@ -151,6 +151,42 @@
     gsap.delayedCall(delay, loop);
   }
 
+  // ── a resting person's day ─────────────────────────────────────────────────
+  // Seated spots (prop 'read') read a book; standing spots hold a phone, a tablet or a mug and take a few steps.
+  // Every so often anyone gets up, walks to a free place at the coffee counter, drinks, and walks back.
+  const coffeeBusy = new Map(); // "room:point" -> time taken (stale claims expire, so a rebuilt floor never jams the counter)
+  function startLife(g, spot, hx, hy) {
+    if (!window.gsap || matchMedia('(prefers-reduced-motion: reduce)').matches) { g.dataset.pose = S.spotProp[spot] === 'read' ? 'read' : ''; return; }
+    stopWander(g);
+    let alive = true, held = null; const tw = [];
+    g._wanderKill = () => { alive = false; tw.forEach((t) => t.kill()); if (held) coffeeBusy.delete(held); held = null; };
+    const reading = S.spotProp[spot] === 'read', room = S.spotRoom ? S.spotRoom[spot] : -1;
+    const counter = (room >= 0 && S.rooms[room] && S.rooms[room].coffee) || [];
+    const body = g.querySelector('.body');
+    const home = () => { g._pos = [hx, hy]; g.dataset.pose = reading ? 'read' : ''; g.dataset.prop = reading ? '' : (S.spotProp[spot] || ''); };
+    const later = (sec, fn) => tw.push(gsap.delayedCall(sec, () => { if (alive && g.isConnected) fn(); }));
+    const go = (tx, ty, done) => {
+      g.dataset.pose = ''; g.dataset.prop = ''; free.appendChild(g);
+      const p0 = { x: g._pos ? g._pos[0] : hx, y: g._pos ? g._pos[1] : hy };
+      const bob = gsap.fromTo(body, { y: 0 }, { y: -3, duration: 0.22, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+      tw.push(bob, gsap.to(p0, { x: tx, y: ty, duration: Math.max(0.6, Math.hypot(tx - p0.x, ty - p0.y) / 60), ease: 'none',
+        onUpdate: () => { if (alive) { g.setAttribute('transform', tr(p0.x, p0.y)); g._pos = [p0.x, p0.y]; } },
+        onComplete: () => { bob.kill(); gsap.set(body, { y: 0 }); if (alive) done(); } }));
+    };
+    const loop = () => {
+      const now = Date.now(), open = counter.map((c, k) => k).filter((k) => !(now - (coffeeBusy.get(room + ':' + k) || 0) < 60000));
+      if (open.length && Math.random() < (reading ? 0.55 : 0.4)) {
+        const k = open[Math.floor(Math.random() * open.length)]; held = room + ':' + k; coffeeBusy.set(held, now);
+        go(counter[k][0], counter[k][1], () => { g.dataset.pose = 'mug';
+          later(rng(8, 18), () => go(hx, hy, () => { coffeeBusy.delete(held); held = null; home(); later(rng(30, 80), loop); })); });
+      } else if (!reading) {
+        go(hx + rng(-26, 26), hy + rng(-14, 14), () => later(rng(4, 12), () => go(hx, hy, () => { home(); later(rng(12, 35), loop); })));
+      } else later(rng(20, 50), loop);
+    };
+    home();
+    later(rng(reading ? 12 : 4, reading ? 70 : 30), loop);
+  }
+
   function attach(g, p) {
     stopWander(g);
     if (p.t === 'desk') { deskG(p.i).querySelector('.seat').appendChild(g); g.setAttribute('transform', ''); }
@@ -160,8 +196,8 @@
     else { const [x, y] = posOf(p); free.appendChild(g); g.setAttribute('transform', tr(x, y)); }
     g.dataset.prop = p.t === 'cafe' ? (S.spotProp[p.i] || 'rest') : '';
     const [bx, by] = posOf(p); g._pos = [bx, by]; g._home = [bx, by];
-    // start wandering for resting bots
-    if (p.t === 'cafe') startWander(g, bx, by);
+    // resting people live their day: read on a sofa, get up for a coffee, come back
+    if (p.t === 'cafe') startLife(g, p.i, bx, by);
   }
 
   function walk(g, from, to) {
@@ -169,7 +205,7 @@
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!window.gsap || reduce || !from) return attach(g, to);
     const s = { x: g._pos ? g._pos[0] : posOf(from)[0], y: g._pos ? g._pos[1] : posOf(from)[1] }, [tx, ty] = posOf(to);
-    walkL.appendChild(g); g.dataset.prop = ''; g.setAttribute('transform', tr(s.x, s.y));
+    walkL.appendChild(g); g.dataset.prop = ''; g.dataset.pose = ''; g.setAttribute('transform', tr(s.x, s.y));
     const body = g.querySelector('.body');
     const bob = gsap.fromTo(body, { y: 0 }, { y: -4, duration: 0.18, yoyo: true, repeat: -1, ease: 'sine.inOut' });
     gsap.to(s, { x: tx, y: ty, duration: Math.min(3.2, Math.max(1.2, Math.hypot(tx - s.x, ty - s.y) / 230)), ease: 'power1.inOut',
@@ -312,7 +348,10 @@
     const next = {}, used = { desk: new Set(), cafe: new Set() }, over = [];
     const roomOf = (a) => { const i = V.departments.findIndex((x) => x.id === a.dept); return i >= 0 && i < S.rooms.length ? i : -1; };
     const pick = (a, t, choices) => { const p = places[a.key]; if (p && p.t === t && choices.includes(p.i) && !used[t].has(p.i)) return p.i;
-      if (t === 'cafe' && choices.length) { const s0 = hash(a.key) % choices.length; for (let k = 0; k < choices.length; k++) { const i = choices[(s0 + k * 7) % choices.length]; if (!used[t].has(i)) return i; } }
+      // about half of the resting people take a sofa/armchair seat and read; the rest spread over the lounge floor
+      const h = Math.imul(hash(a.key) ^ 0x9e3779b9, 2654435761) >>> 0;
+      if (t === 'cafe' && h % 2 === 0) { const seats = choices.filter((i) => S.spotProp[i] === 'read' && !used[t].has(i)); if (seats.length) return seats[(h >>> 3) % seats.length]; }
+      if (t === 'cafe' && choices.length) { const s0 = (h >>> 1) % choices.length; for (let k = 0; k < choices.length; k++) { const i = choices[(s0 + k * 7) % choices.length]; if (!used[t].has(i)) return i; } }
       return choices.find((i) => !used[t].has(i)); };
     // leads sit at their lead-desk when idle, not in the lounge
     const leadKeys = new Set(D.departments.map((d) => d.lead_key).filter(Boolean));

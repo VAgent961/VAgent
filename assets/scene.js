@@ -23,87 +23,138 @@
     return `<polygon points="${pts(Q(a - 4, h0 - 4), Q(b + 4, h0 - 4), Q(b + 4, h1 + 4), Q(a - 4, h1 + 4))}" fill="#45454C"/><polygon points="${pts(Q(a, h0), Q(b, h0), Q(b, h1), Q(a, h1))}" fill="url(#sky)"/><polyline points="${pts(Q((a + b) / 2, h0), Q((a + b) / 2, h1))}" stroke="#45454C" stroke-width="3"/>`; };
 
   // ── People ────────────────────────────────────────────────────────────────
-  // Adult proportions (about 6.5 heads tall), drawn front-on. Unscaled: feet at y=0, top of the head at about -150.
-  // The only strong colour is the lanyard badge (currentColor = the agent's colour); clothes stay office-neutral.
+  // Realistic build (feet at y=0). Every figure carries every pose; inherited CSS variables choose what shows (office.css):
+  //   --as standing arms · --ad at the desk, typing · --ar reading a book · --am coffee in hand ·
+  //   --ls / --lsit standing or seated legs · --hs headset · --sitk 1 lowers the upper body onto a seat.
+  const LOOKS = { realistic: 'Realistic' };
+  const LOOK = 'realistic';
   const SKIN = ['#F1D3B8', '#E3B892', '#C99A72', '#A9764F', '#7A5237'];
   const HAIR = ['#1F1B18', '#3B2A20', '#5A3E2B', '#8A5A3A', '#B8B2A7', '#C9A66B'];
-  const person = (o) => {
-    const { s = 0.5, skin, hair, style = 'short', kind = 'shirt', top, pants = '#2B2F38', shoes = '#17181B', glasses, bag, tie, accent = 'currentColor' } = o;
-    const sh = (d, op = 0.13) => `<path d="${d}" fill="#000" opacity="${op}"/>`;
-    const shortSleeve = kind === 'polo';
-    const shadow = `<ellipse rx="24" ry="7" fill="#000" opacity=".3"/>`;
-    const legs = `<path d="M-15 -70 H-1 L-3 -5 H-13 Z" fill="${pants}"/><path d="M1 -70 H15 L13 -5 H3 Z" fill="${pants}"/>` + sh('M8 -70 H15 L13 -5 H8 Z', 0.16) +
-      `<rect x="-16" y="-7" width="14" height="7" rx="3" fill="${shoes}"/><rect x="2" y="-7" width="14" height="7" rx="3" fill="${shoes}"/>`;
-    const arm = (d) => { const x = d < 0 ? -28 : 19;
-      return `<rect x="${x}" y="-117" width="9" height="${shortSleeve ? 22 : 50}" rx="4.5" fill="${top}"/>` +
-        (shortSleeve ? `<rect x="${x + 1}" y="-99" width="7" height="33" rx="3.5" fill="${skin}"/>` : '') +
-        `<circle cx="${x + 4.5}" cy="-64" r="4.3" fill="${skin}"/>` + (d > 0 ? `<rect x="${x + 4.5}" y="-117" width="4.5" height="52" rx="2.2" fill="#000" opacity=".12"/>` : ''); };
-    // seated: upper arms down, forearms forward onto the desk (shown only inside a .seat, see office.css)
-    const sitUpper = `<rect x="-28" y="-117" width="9" height="30" rx="4.5" fill="${top}"/><rect x="19" y="-117" width="9" height="30" rx="4.5" fill="${top}"/><rect x="23.5" y="-117" width="4.5" height="30" rx="2.2" fill="#000" opacity=".12"/>`;
-    const fore = shortSleeve ? skin : top;
-    const sitFore = `<path d="M-23.5 -92 L-9 -80 M23.5 -92 L9 -80" stroke="${fore}" stroke-width="8.6" stroke-linecap="round" fill="none"/><path d="M23.5 -92 L9 -80" stroke="#000" stroke-opacity=".12" stroke-width="8.6" stroke-linecap="round" fill="none"/>` +
-      `<circle cx="-8" cy="-79" r="4.4" fill="${skin}"/><circle cx="8" cy="-79" r="4.4" fill="${skin}"/>`;
-    const torso = `<path d="M-9 -121 L-20 -118 Q-23 -117 -23 -112 L-19 -70 Q-19 -65 -14 -65 H14 Q19 -65 19 -70 L23 -112 Q23 -117 20 -118 L9 -121 Z" fill="${top}"/>` +
-      sh('M9 -121 L20 -118 Q23 -117 23 -112 L19 -70 Q19 -65 14 -65 H9 Z');
-    let front;
-    if (kind === 'blazer') {
-      front = `<path d="M-8 -121 H8 L0 -90 Z" fill="#F1EEE7"/>` + (tie ? `<path d="M-2 -119 H2 L3.2 -98 L0 -93 L-3.2 -98 Z" fill="${tie}"/>` : '') +
-        `<path d="M-8 -121 L0 -90 L-5 -99 L-13 -117 Z" fill="#000" opacity=".22"/><path d="M8 -121 L0 -90 L5 -99 L13 -117 Z" fill="#000" opacity=".3"/>` +
-        `<path d="M0 -90 V-65" stroke="#000" stroke-opacity=".25" stroke-width="1"/><circle cx="0" cy="-82" r="1.3" fill="#000" opacity=".4"/>` +
-        `<path d="M10 -103 l6 -1.5 l-.6 4 l-5 1.2 Z" fill="${accent}"/>`;
-    } else {
-      const collar = kind === 'knit'
-        ? `<path d="M-8 -121 Q0 -112 8 -121" fill="none" stroke="#000" stroke-opacity=".28" stroke-width="2.2"/><rect x="-19" y="-70" width="38" height="4" rx="2" fill="#000" opacity=".12"/>`
-        : `<path d="M-8 -121 L0 -111 L8 -121 Z" fill="${skin}"/>` + sh('M-8 -121 L0 -111 L8 -121 Z', 0.12) +
-          `<path d="M-9 -122 L-1 -112 L-6 -109 L-11 -118 Z M9 -122 L1 -112 L6 -109 L11 -118 Z" fill="${top}"/><path d="M-9 -122 L-1 -112 L-6 -109 L-11 -118 Z M9 -122 L1 -112 L6 -109 L11 -118 Z" fill="#fff" opacity=".16"/>` +
-          `<path d="M0 -110 V-66" stroke="#000" stroke-opacity=".16" stroke-width="1"/>`;
-      front = collar + `<path d="M-6 -119 L-1 -97 M6 -119 L1 -97" stroke="${accent}" stroke-width="1.7" fill="none" stroke-linecap="round"/>` +
-        `<rect x="-5" y="-98" width="10" height="12" rx="1.6" fill="#F4F2EC" stroke="${accent}" stroke-width="1.2"/><rect x="-3" y="-95.5" width="6" height="2" rx="1" fill="${accent}"/><rect x="-3" y="-91.5" width="6" height="1.4" rx=".7" fill="#9A968A"/>`;
-    }
-    const strap = bag ? `<path d="M-18 -118 L21 -80" stroke="#2A2B2F" stroke-width="3.4" stroke-linecap="round"/>` : '';
-    const satchel = bag ? `<rect x="14" y="-86" width="18" height="16" rx="2.6" fill="#3A3C42"/><rect x="14" y="-86" width="18" height="6" rx="2.6" fill="#2A2B2F"/><rect x="21" y="-82" width="4" height="3.2" rx=".8" fill="${accent}"/>` : '';
-    const neck = `<rect x="-4.8" y="-130" width="9.6" height="12" rx="3" fill="${skin}"/><rect x="-4.8" y="-126" width="9.6" height="4" fill="#000" opacity=".14"/>`;
-    const brow = hair === HAIR[4] || hair === HAIR[5] ? '#7A6A55' : hair;
-    const head = `<ellipse cx="-11" cy="-136" rx="2.2" ry="3.4" fill="${skin}"/><ellipse cx="11" cy="-136" rx="2.2" ry="3.4" fill="${skin}"/><ellipse cx="0" cy="-137" rx="10.8" ry="13" fill="${skin}"/>` +
-      sh('M4 -149.6 Q10.8 -146 10.8 -137 Q10.8 -127 3 -124.2 Q8 -130 8 -138 Q8 -145 4 -149.6 Z', 0.1) +
-      `<g class="eye"><circle cx="-4.1" cy="-136.5" r="1.3" fill="#1B1512"/><circle cx="4.1" cy="-136.5" r="1.3" fill="#1B1512"/></g>` +
-      `<path d="M-6.4 -139.8 h4.4 M2 -139.8 h4.4" stroke="${brow}" stroke-width="1" stroke-linecap="round" opacity=".8"/>` +
-      `<path d="M0 -135 l-1.1 3.4 h1.9" fill="none" stroke="#000" stroke-opacity=".22" stroke-width=".9" stroke-linecap="round"/>` +
-      `<path d="M-3 -129.2 q3 1.7 6 0" fill="none" stroke="#6E2F28" stroke-opacity=".65" stroke-width="1.1" stroke-linecap="round"/>`;
-    const cap = (d) => `<path d="${d}" fill="${hair}"/>`;
-    const fringe = 'M-11.4 -138 Q-13 -152.6 0 -152.6 Q13 -152.6 11.4 -138 Q9 -146 2 -147 Q-5 -145.5 -9.6 -147 Q-10.8 -143 -11.4 -138 Z';
-    let hairBack = '', hairTop = '';
-    if (style === 'short') hairTop = cap(fringe);
-    else if (style === 'side') hairTop = cap('M-11.6 -137.5 Q-14 -153.5 1 -153.5 Q13.4 -153 11.6 -139 Q10.4 -146.6 3 -148 Q-4.5 -143.6 -10 -145.4 Q-11 -141.5 -11.6 -137.5 Z');
-    else if (style === 'buzz') hairTop = `<path d="M-10.9 -140 Q-11.4 -150.8 0 -150.8 Q11.4 -150.8 10.9 -140 Q8.4 -147 0 -147 Q-8.4 -147 -10.9 -140 Z" fill="${hair}" opacity=".9"/>`;
-    else if (style === 'curly') hairTop = [[-8.4, -146.4, 5.6], [0, -150, 6.6], [8.4, -146.4, 5.6], [-11.6, -140.6, 3.7], [11.6, -140.6, 3.7], [-4, -148, 5], [4, -148, 5]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${hair}"/>`).join('');
-    else if (style === 'bun') hairTop = `<circle cx="0" cy="-154.5" r="4.8" fill="${hair}"/>` + cap(fringe);
-    else if (style === 'long') { hairBack = cap('M-12.8 -140 Q-14.4 -153.4 0 -153.4 Q14.4 -153.4 12.8 -140 L14 -114 Q9.5 -109.5 5.5 -115 V-128 H-5.5 V-115 Q-9.5 -109.5 -14 -114 Z'); hairTop = cap('M-11.6 -137 Q-13.4 -153 0 -153 Q13.4 -153 11.6 -137 Q8.6 -146.6 0 -147.4 Q-7 -145.6 -11.6 -137 Z'); }
-    else if (style === 'bob') { hairBack = cap('M-13.2 -140 Q-14.6 -153.4 0 -153.4 Q14.6 -153.4 13.2 -140 V-126.5 Q10 -122.5 6.6 -126 V-131 H-6.6 V-126 Q-10 -122.5 -13.2 -126.5 Z'); hairTop = cap('M-11.8 -136 Q-13.6 -153 0 -153 Q13.6 -153 11.8 -136 Q9.6 -146 3.4 -147.4 Q-6.4 -144 -11.8 -136 Z'); }
-    const shine = `<path d="M-7 -149 Q-1 -152.2 5 -150.4" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="1.4" stroke-linecap="round"/>`;
-    const specs = glasses ? `<g fill="none" stroke="#1B1512" stroke-width="1"><rect x="-7.6" y="-139.4" width="6.4" height="5.2" rx="1.8"/><rect x="1.2" y="-139.4" width="6.4" height="5.2" rx="1.8"/><path d="M-1.2 -137.2 h2.4 M-7.6 -137.6 L-10.6 -138.4 M7.6 -137.6 L10.6 -138.4"/></g>` : '';
-    return `<g transform="scale(${s})">${shadow}${legs}<g style="display:var(--stand,inline)">${arm(-1)}${arm(1)}</g><g style="display:var(--sit,none)">${sitUpper}</g>${torso}${front}${strap}<g style="display:var(--sit,none)">${sitFore}</g>${hairBack}${neck}${head}${hairTop}${shine}${specs}${satchel}</g>`;
+  const hx = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const mix = (a, b, t) => '#' + hx(a).map((v, i) => Math.round(v + (hx(b)[i] - v) * t).toString(16).padStart(2, '0')).join('');
+  // hr/hry head radii, hy head centre, sy shoulder line, sw/ww shoulder and waist half-widths, ty hip line,
+  // lw leg width, aw arm width, al arm length, rr corner rounding
+  const STY = {
+    minimal:   { name: 'Modern minimal', hr: 12.5, hry: 13, hy: -138, sy: -113, sw: 19, ww: 17, ty: -60, lw: 11.5, aw: 10.5, al: 42, rr: 10, face: 'dots', ears: false, badge: 'pin', shade: 0.07, tint: ['#FFFFFF', 0.1] },
+    realistic: { name: 'Realistic', hr: 10, hry: 12.4, hy: -143, sy: -127, sw: 20.5, ww: 15, ty: -71, lw: 10.5, aw: 8, al: 52, rr: 4, face: 'detail', ears: true, badge: 'lanyard', shade: 0.16, crease: true },
+    architect: { name: 'Architect', hr: 8, hry: 10, hy: -151, sy: -136, sw: 18.5, ww: 12.5, ty: -76, lw: 9, aw: 7, al: 57, rr: 3, face: 'none', ears: false, badge: 'pin', shade: 0.1, mute: true },
   };
-  // Ten colleagues. skin/hair are indexes into SKIN/HAIR.
-  const PEOPLE = [
-    { skin: 2, hair: 0, style: 'short', kind: 'shirt',  top: '#5B7A9C', pants: '#2C3340' },
-    { skin: 0, hair: 3, style: 'long',  kind: 'knit',   top: '#B9A58C', pants: '#2B2B30' },
-    { skin: 3, hair: 0, style: 'curly', kind: 'blazer', top: '#39424E', pants: '#2A2E36' },
-    { skin: 1, hair: 1, style: 'side',  kind: 'shirt',  top: '#E4E1D8', pants: '#3A3F4A', glasses: true },
-    { skin: 4, hair: 0, style: 'buzz',  kind: 'knit',   top: '#3F5A52', pants: '#26282C' },
-    { skin: 1, hair: 0, style: 'bob',   kind: 'blazer', top: '#6B5B4B', pants: '#2B2B30' },
-    { skin: 0, hair: 5, style: 'side',  kind: 'polo',   top: '#35506E', pants: '#8A7B66' },
-    { skin: 3, hair: 0, style: 'bun',   kind: 'shirt',  top: '#C9D3DD', pants: '#2C3340' },
-    { skin: 2, hair: 4, style: 'short', kind: 'knit',   top: '#55585F', pants: '#2A2E36', glasses: true },
-    { skin: 4, hair: 0, style: 'long',  kind: 'shirt',  top: '#A7B8A0', pants: '#2B2B30' },
-  ].map((v) => person({ ...v, skin: SKIN[v.skin], hair: HAIR[v.hair] }));
-  const CH = {
-    lead:   person({ skin: SKIN[1], hair: HAIR[1], style: 'side',  kind: 'blazer', top: '#2F343C', pants: '#23262C' }),
-    ceo:    person({ s: 0.54, skin: SKIN[1], hair: HAIR[4], style: 'side', kind: 'blazer', top: '#23262C', pants: '#1C1E23', tie: '#B5532F', glasses: true, accent: '#F1EEE7' }),
-    msgbot: person({ skin: SKIN[2], hair: HAIR[0], style: 'short', kind: 'polo', top: '#3E7C86', pants: '#2B2F38', bag: true, accent: '#9FD0D6' }),
-  };
+  const person = (sk, o) => {
+    const st = { ...STY[sk], ...(o.build || {}) };
+    let { s = 0.5, skin, hair, style = 'short', kind = 'shirt', top, pants = '#2B2F38', shoes = '#17181B', shirt = '#F1EEE7', glasses, bag, tie, accent = 'currentColor', gold, beat = 0.4 } = o;
+    if (st.tint && !gold) top = mix(top, st.tint[0], st.tint[1]);
+    if (st.mute && !gold) { top = mix(top, '#A3A8AF', 0.55); pants = mix(pants, '#5C6168', 0.45); skin = mix(skin, '#CFC8BE', 0.35); hair = mix(hair, '#55555A', 0.3); }
+    const { hr, hry, hy, sy, sw, ww, ty, lw, aw, al, rr } = st;
+    const vis = (v, on) => `style="display:var(${v},${on ? 'inline' : 'none'})"`;
+    const sh = (d, op = st.shade) => `<path d="${d}" fill="#000" opacity="${op}"/>`;
+    const blob = (pts, fill, r = rr) => `<polygon points="${pts.map((p) => f(p[0]) + ',' + f(p[1])).join(' ')}" fill="${fill}" stroke="${fill}" stroke-width="${r}" stroke-linejoin="round"/>`;
+    const line = (a, b, c, w = aw) => `<path d="M${f(a[0])} ${f(a[1])} L${f(b[0])} ${f(b[1])}" stroke="${c}" stroke-width="${w}" stroke-linecap="round" fill="none"/>`;
+    const hand = (p) => `<circle cx="${f(p[0])}" cy="${f(p[1])}" r="${f(aw * 0.55)}" fill="${skin}"/>`;
+    const sheen = (a, b) => gold ? line(a, b, '#FFF4C8', aw * 0.2).replace('stroke-linecap', 'stroke-opacity=".6" stroke-linecap') : '';
+    const short = kind === 'polo', fore = short ? skin : top;
 
-  const DEFS = `<defs>
+    // legs
+    const shoe = `<rect x="${f(-lw - 2.5)}" y="-7" width="${f(lw + 1.5)}" height="7" rx="3" fill="${shoes}"/><rect x="1" y="-7" width="${f(lw + 1.5)}" height="7" rx="3" fill="${shoes}"/>`;
+    const legL = [[-lw - 1, ty], [-1, ty], [-1.6, -6], [-lw, -6]], legR = legL.map(([x, y]) => [-x, y]);
+    const crease = st.crease ? line([-lw / 2 - 1, ty + 4], [-lw / 2 - 0.8, -9], '#000', 0.8).replace('stroke="#000"', 'stroke="#000" stroke-opacity=".18"') + line([lw / 2 + 1, ty + 4], [lw / 2 + 0.8, -9], '#000', 0.8).replace('stroke="#000"', 'stroke="#000" stroke-opacity=".18"') : '';
+    const legsStand = `<g ${vis('--ls', 1)}>${blob(legL, pants, 2)}${blob(legR, pants, 2)}${sh(`M${lw * 0.35} ${ty} H${lw + 1} L${lw} -6 H${lw * 0.3} Z`, st.shade + 0.04)}${crease}${sheen([-lw / 2, ty + 6], [-lw / 2, -12])}${shoe}</g>`;
+    const legsSit = `<g ${vis('--lsit', 0)}>${blob([[-lw, -31], [-1.5, -31], [-2, -6], [-lw + 1, -6]], pants, 2)}${blob([[lw, -31], [1.5, -31], [2, -6], [lw - 1, -6]], pants, 2)}` +
+      `<rect x="${f(-lw - 2)}" y="-46" width="${f(lw + 1.5)}" height="17" rx="6" fill="${pants}"/><rect x="0.5" y="-46" width="${f(lw + 1.5)}" height="17" rx="6" fill="${pants}"/>${sh(`M${lw * 0.4} -46 H${lw + 2} V-29 H${lw * 0.4} Z`)}${shoe}</g>`;
+
+    // arms in each pose
+    const S = (d) => [d * (sw - aw * 0.45), sy + aw * 0.5];
+    const standHand = (d) => [d * (ww + aw * 0.6), sy + al];
+    const sideArm = (d) => short
+      ? line(S(d), [S(d)[0] + (standHand(d)[0] - S(d)[0]) * 0.42, S(d)[1] + (standHand(d)[1] - S(d)[1]) * 0.42], top) + line([S(d)[0] + (standHand(d)[0] - S(d)[0]) * 0.42, S(d)[1] + (standHand(d)[1] - S(d)[1]) * 0.42], standHand(d), skin, aw * 0.8) + hand(standHand(d))
+      : line(S(d), standHand(d), top) + hand(standHand(d)) + (d > 0 ? line(S(d), standHand(d), '#000', aw).replace('stroke="#000"', `stroke="#000" stroke-opacity="${st.shade}"`) : sheen(S(d), standHand(d)));
+    const E = (d) => [d * (sw - aw * 0.15), sy + al * 0.6];
+    const deskHand = (d) => [d * ww * 0.52, sy + al * 0.8], readHand = (d) => [d * ww * 0.88, sy + al * 0.42];
+    const tap = (d, off) => `<g>${hand(deskHand(d))}<animateTransform attributeName="transform" type="translate" values="0 0;0 -1.8;0 0;0 0" dur="${beat}s" begin="${off}s" repeatCount="indefinite"/></g>`;
+    const bw = ww * 0.95, bh = al * 0.34, by = sy + al * 0.45;
+    const book = `<path d="M${f(-bw)} ${f(by - bh / 2 - 2)} L0 ${f(by - bh / 2 + 1)} V${f(by + bh / 2 + 1)} L${f(-bw)} ${f(by + bh / 2 - 2)} Z" fill="#F4F1EA"/><path d="M${f(bw)} ${f(by - bh / 2 - 2)} L0 ${f(by - bh / 2 + 1)} V${f(by + bh / 2 + 1)} L${f(bw)} ${f(by + bh / 2 - 2)} Z" fill="#E4E0D6"/>` +
+      `<path d="M${f(-bw)} ${f(by + bh / 2 - 2)} L0 ${f(by + bh / 2 + 1)} L${f(bw)} ${f(by + bh / 2 - 2)} V${f(by + bh / 2)} L0 ${f(by + bh / 2 + 3)} L${f(-bw)} ${f(by + bh / 2)} Z" fill="#3B4A5A"/>`;
+    const Hm = [hr * 0.85, hy + hry * 0.78];
+    const mug = `<rect x="${f(Hm[0] - 4)}" y="${f(Hm[1] - 10)}" width="8" height="9" rx="1.6" fill="#F4F1EA"/><path d="M${f(Hm[0] + 4)} ${f(Hm[1] - 8)} q3.4 .2 3.4 2.6 q0 2.4 -3.4 2.6" fill="none" stroke="#F4F1EA" stroke-width="1.4"/>`;
+    const armsBack = `<g ${vis('--as', 1)}>${sideArm(-1)}${sideArm(1)}</g><g ${vis('--ad', 0)}>${line(S(-1), E(-1), top)}${line(S(1), E(1), top)}</g><g ${vis('--ar', 0)}>${line(S(-1), E(-1), top)}${line(S(1), E(1), top)}</g><g ${vis('--am', 0)}>${sideArm(-1)}${line(S(1), [sw - aw * 0.15, sy + al * 0.5], top)}</g>`;
+    const armsFront = `<g ${vis('--ad', 0)}>${line(E(-1), deskHand(-1), fore)}${line(E(1), deskHand(1), fore)}${tap(-1, 0)}${tap(1, +(beat / 2).toFixed(3))}</g>` +
+      `<g ${vis('--ar', 0)}>${line(E(-1), readHand(-1), fore)}${line(E(1), readHand(1), fore)}${book}${hand(readHand(-1))}${hand(readHand(1))}</g>` +
+      `<g ${vis('--am', 0)}>${line([sw - aw * 0.15, sy + al * 0.5], Hm, fore)}${hand(Hm)}${mug}</g>`;
+
+    // torso and outfit
+    const torsoPts = [[-sw * 0.5, sy - 3], [sw * 0.5, sy - 3], [sw, sy + 5], [ww, ty], [-ww, ty], [-sw, sy + 5]];
+    const torso = blob(torsoPts, top) + sh(`M${f(sw * 0.3)} ${f(sy - 3)} L${f(sw * 0.5)} ${f(sy - 3)} L${f(sw)} ${f(sy + 5)} L${f(ww)} ${f(ty)} L${f(ww * 0.4)} ${f(ty)} Z`) +
+      sheen([-sw + 3, sy + 8], [-ww + 2, ty - 4]);
+    const mid = sy + (ty - sy) * 0.55;
+    let front = '';
+    if (kind === 'blazer') {
+      front = `<path d="M${f(-sw * 0.42)} ${f(sy - 3)} H${f(sw * 0.42)} L0 ${f(mid)} Z" fill="${shirt}"/>` + (tie ? `<path d="M-2 ${f(sy - 1)} H2 L3 ${f(mid - 6)} L0 ${f(mid - 1)} L-3 ${f(mid - 6)} Z" fill="${tie}"/>` : '') +
+        `<path d="M${f(-sw * 0.42)} ${f(sy - 3)} L0 ${f(mid)} L${f(-sw * 0.3)} ${f(sy + (mid - sy) * 0.55)} L${f(-sw * 0.62)} ${f(sy + 2)} Z" fill="#000" opacity=".18"/><path d="M${f(sw * 0.42)} ${f(sy - 3)} L0 ${f(mid)} L${f(sw * 0.3)} ${f(sy + (mid - sy) * 0.55)} L${f(sw * 0.62)} ${f(sy + 2)} Z" fill="#000" opacity=".26"/>` +
+        `<path d="M0 ${f(mid)} V${f(ty)}" stroke="#000" stroke-opacity=".22" stroke-width="1"/><circle cx="0" cy="${f(mid + (ty - mid) * 0.35)}" r="1.3" fill="#000" opacity=".35"/>` +
+        `<path d="M${f(sw * 0.45)} ${f(sy + 13)} l6 -1.4 l-.6 4 l-5 1.1 Z" fill="${accent}"/>`;
+    } else if (kind === 'knit') {
+      front = `<path d="M${f(-hr * 0.55)} ${f(sy - 3)} Q0 ${f(sy + 6)} ${f(hr * 0.55)} ${f(sy - 3)}" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="2"/><rect x="${f(-ww)}" y="${f(ty - 4)}" width="${f(ww * 2)}" height="4" rx="2" fill="#000" opacity=".1"/>`;
+    } else {
+      front = `<path d="M${f(-hr * 0.45)} ${f(sy - 3)} L0 ${f(sy + 8)} L${f(hr * 0.45)} ${f(sy - 3)} Z" fill="${skin}"/><path d="M${f(-hr * 0.55)} ${f(sy - 4)} L-1 ${f(sy + 8)} L${f(-hr * 0.2)} ${f(sy + 11)} L${f(-hr * 0.85)} ${f(sy + 2)} Z M${f(hr * 0.55)} ${f(sy - 4)} L1 ${f(sy + 8)} L${f(hr * 0.2)} ${f(sy + 11)} L${f(hr * 0.85)} ${f(sy + 2)} Z" fill="${top}"/><path d="M${f(-hr * 0.55)} ${f(sy - 4)} L-1 ${f(sy + 8)} L${f(-hr * 0.2)} ${f(sy + 11)} L${f(-hr * 0.85)} ${f(sy + 2)} Z M${f(hr * 0.55)} ${f(sy - 4)} L1 ${f(sy + 8)} L${f(hr * 0.2)} ${f(sy + 11)} L${f(hr * 0.85)} ${f(sy + 2)} Z" fill="#fff" opacity=".15"/>` +
+        (kind === 'polo' ? `<circle cx="0" cy="${f(sy + 12)}" r=".9" fill="#000" opacity=".3"/><circle cx="0" cy="${f(sy + 17)}" r=".9" fill="#000" opacity=".3"/>` : `<path d="M0 ${f(sy + 9)} V${f(ty)}" stroke="#000" stroke-opacity=".14" stroke-width="1"/>`);
+    }
+    if (kind !== 'blazer' && st.badge === 'lanyard') {
+      const bY = sy + (ty - sy) * 0.42;
+      front += `<path d="M-4 ${f(sy - 2)} L-1 ${f(bY)} M4 ${f(sy - 2)} L1 ${f(bY)}" stroke="${accent}" stroke-width="1.5" fill="none" stroke-linecap="round"/><rect x="-4.6" y="${f(bY)}" width="9.2" height="11" rx="1.5" fill="#F4F2EC" stroke="${accent}" stroke-width="1.1"/><rect x="-2.8" y="${f(bY + 2.4)}" width="5.6" height="1.8" rx=".9" fill="${accent}"/>`;
+    } else if (kind !== 'blazer') {
+      front += `<circle cx="${f(-sw * 0.5)}" cy="${f(sy + 13)}" r="${f(aw * 0.28)}" fill="${accent}"/>`;
+    }
+    const strap = bag ? line([-sw * 0.8, sy], [ww + 3, sy + (ty - sy) * 0.75], '#2A2B2F', 3.2) : '';
+    const satchel = bag ? `<rect x="${f(ww - 2)}" y="${f(sy + (ty - sy) * 0.65)}" width="17" height="15" rx="2.6" fill="#3A3C42"/><rect x="${f(ww + 4.5)}" y="${f(sy + (ty - sy) * 0.65 + 4)}" width="4" height="3" rx=".8" fill="${accent}"/>` : '';
+
+    // head
+    const neckTop = hy + hry * 0.6;
+    const neck = `<rect x="${f(-hr * 0.4)}" y="${f(neckTop)}" width="${f(hr * 0.8)}" height="${f(sy - neckTop + 3)}" rx="2.5" fill="${skin}"/><rect x="${f(-hr * 0.4)}" y="${f(neckTop + 2)}" width="${f(hr * 0.8)}" height="3" fill="#000" opacity=".12"/>`;
+    const ears = st.ears ? `<ellipse cx="${f(-hr * 0.98)}" cy="${f(hy + 1)}" rx="${f(hr * 0.2)}" ry="${f(hr * 0.32)}" fill="${skin}"/><ellipse cx="${f(hr * 0.98)}" cy="${f(hy + 1)}" rx="${f(hr * 0.2)}" ry="${f(hr * 0.32)}" fill="${skin}"/>` : '';
+    const headShade = sh(`M${f(hr * 0.35)} ${f(hy - hry * 0.95)} Q${f(hr)} ${f(hy - hry * 0.6)} ${f(hr)} ${f(hy)} Q${f(hr)} ${f(hy + hry * 0.75)} ${f(hr * 0.25)} ${f(hy + hry * 0.98)} Q${f(hr * 0.72)} ${f(hy + hry * 0.4)} ${f(hr * 0.72)} ${f(hy)} Q${f(hr * 0.72)} ${f(hy - hry * 0.55)} ${f(hr * 0.35)} ${f(hy - hry * 0.95)} Z`, st.shade * 0.8);
+    let face = '';
+    if (st.face === 'dots') face = `<g class="eye"><circle cx="${f(-hr * 0.36)}" cy="${f(hy)}" r="${f(hr * 0.085)}" fill="#2A1F1A"/><circle cx="${f(hr * 0.36)}" cy="${f(hy)}" r="${f(hr * 0.085)}" fill="#2A1F1A"/></g><path d="M${f(-hr * 0.2)} ${f(hy + hry * 0.42)} q${f(hr * 0.2)} ${f(hr * 0.11)} ${f(hr * 0.4)} 0" fill="none" stroke="#6E2F28" stroke-opacity=".6" stroke-width="1" stroke-linecap="round"/><circle cx="${f(-hr * 0.58)}" cy="${f(hy + hry * 0.3)}" r="${f(hr * 0.19)}" fill="#E07A6A" opacity=".16"/><circle cx="${f(hr * 0.58)}" cy="${f(hy + hry * 0.3)}" r="${f(hr * 0.19)}" fill="#E07A6A" opacity=".16"/>`;
+    else if (st.face === 'detail') {
+      const ey = hy - hry * 0.03, brow = hair === HAIR[4] || hair === HAIR[5] ? '#7A6A55' : hair;
+      face = `<g class="eye"><ellipse cx="${f(-hr * 0.37)}" cy="${f(ey)}" rx="${f(hr * 0.13)}" ry="${f(hr * 0.15)}" fill="#1B1512"/><ellipse cx="${f(hr * 0.37)}" cy="${f(ey)}" rx="${f(hr * 0.13)}" ry="${f(hr * 0.15)}" fill="#1B1512"/><circle cx="${f(-hr * 0.32)}" cy="${f(ey - hr * 0.05)}" r=".45" fill="#fff"/><circle cx="${f(hr * 0.42)}" cy="${f(ey - hr * 0.05)}" r=".45" fill="#fff"/></g>` +
+        `<path d="M${f(-hr * 0.6)} ${f(hy - hry * 0.28)} q${f(hr * 0.22)} -1 ${f(hr * 0.44)} 0 M${f(hr * 0.16)} ${f(hy - hry * 0.28)} q${f(hr * 0.22)} -1 ${f(hr * 0.44)} 0" stroke="${brow}" stroke-width="1.1" fill="none" stroke-linecap="round"/>` +
+        `<path d="M0 ${f(hy + hry * 0.08)} l-1 ${f(hry * 0.26)} h1.8" fill="none" stroke="#000" stroke-opacity=".24" stroke-width=".9" stroke-linecap="round"/><path d="M${f(-hr * 0.27)} ${f(hy + hry * 0.55)} q${f(hr * 0.27)} 1.7 ${f(hr * 0.54)} 0" fill="none" stroke="#7A3A32" stroke-opacity=".7" stroke-width="1.1" stroke-linecap="round"/>`;
+    }
+    const head = ears + `<ellipse cx="0" cy="${f(hy)}" rx="${hr}" ry="${hry}" fill="${skin}"/>` + headShade + face;
+    // hair, relative to the head
+    const X = (k) => f(hr * k), Y = (k) => f(hy + hry * k);
+    const cap = `<path d="M${X(-1.04)} ${Y(-0.05)} Q${X(-1.18)} ${Y(-1.22)} 0 ${Y(-1.14)} Q${X(1.18)} ${Y(-1.22)} ${X(1.04)} ${Y(-0.05)} Q${X(0.86)} ${Y(-0.62)} ${X(0.15)} ${Y(-0.68)} Q${X(-0.55)} ${Y(-0.6)} ${X(-1.04)} ${Y(-0.05)} Z" fill="${hair}"/>`;
+    let hairBack = '', hairTop = '';
+    if (style === 'short') hairTop = cap;
+    else if (style === 'side') hairTop = `<path d="M${X(-1.05)} ${Y(0.05)} Q${X(-1.22)} ${Y(-1.25)} ${X(0.1)} ${Y(-1.18)} Q${X(1.2)} ${Y(-1.12)} ${X(1.04)} ${Y(-0.15)} Q${X(0.9)} ${Y(-0.62)} ${X(0.3)} ${Y(-0.78)} Q${X(-0.45)} ${Y(-0.42)} ${X(-1.05)} ${Y(0.05)} Z" fill="${hair}"/>`;
+    else if (style === 'buzz') hairTop = `<path d="M${X(-0.98)} ${Y(-0.25)} Q${X(-1)} ${Y(-1.08)} 0 ${Y(-1.06)} Q${X(1)} ${Y(-1.08)} ${X(0.98)} ${Y(-0.25)} Q${X(0.7)} ${Y(-0.78)} 0 ${Y(-0.8)} Q${X(-0.7)} ${Y(-0.78)} ${X(-0.98)} ${Y(-0.25)} Z" fill="${hair}" opacity=".9"/>`;
+    else if (style === 'curly') hairTop = [[-0.75, -0.75, 0.5], [0, -1.0, 0.6], [0.75, -0.75, 0.5], [-1.0, -0.32, 0.36], [1.0, -0.32, 0.36], [-0.38, -0.95, 0.46], [0.38, -0.95, 0.46]].map(([x, y, r]) => `<circle cx="${X(x)}" cy="${Y(y)}" r="${X(r)}" fill="${hair}"/>`).join('');
+    else if (style === 'bun') hairTop = `<circle cx="0" cy="${Y(-1.3)}" r="${X(0.42)}" fill="${hair}"/>` + cap;
+    else if (style === 'long') { hairBack = `<path d="M${X(-1.12)} ${Y(-0.2)} Q${X(-1.25)} ${Y(-1.2)} 0 ${Y(-1.18)} Q${X(1.25)} ${Y(-1.2)} ${X(1.12)} ${Y(-0.2)} L${X(1.25)} ${f(sy + 7)} Q${X(0.8)} ${f(sy + 10)} ${X(0.5)} ${f(sy + 5)} V${Y(0.4)} H${X(-0.5)} V${f(sy + 5)} Q${X(-0.8)} ${f(sy + 10)} ${X(-1.25)} ${f(sy + 7)} Z" fill="${hair}"/>`; hairTop = cap; }
+    else if (style === 'bob') { hairBack = `<path d="M${X(-1.15)} ${Y(-0.1)} Q${X(-1.25)} ${Y(-1.2)} 0 ${Y(-1.18)} Q${X(1.25)} ${Y(-1.2)} ${X(1.15)} ${Y(-0.1)} V${Y(0.92)} Q${X(0.85)} ${Y(1.1)} ${X(0.6)} ${Y(0.85)} V${Y(0.2)} H${X(-0.6)} V${Y(0.85)} Q${X(-0.85)} ${Y(1.1)} ${X(-1.15)} ${Y(0.92)} Z" fill="${hair}"/>`; hairTop = cap; }
+    const specs = glasses ? `<g fill="none" stroke="#1B1512" stroke-width="1"><rect x="${X(-0.66)}" y="${Y(-0.2)}" width="${X(0.56)}" height="${X(0.46)}" rx="1.6"/><rect x="${X(0.1)}" y="${Y(-0.2)}" width="${X(0.56)}" height="${X(0.46)}" rx="1.6"/><path d="M${X(-0.1)} ${Y(-0.02)} h${X(0.2)}"/></g>` : '';
+    const headset = `<g ${vis('--hs', 0)}><path d="M${X(-1.12)} ${Y(0)} Q${X(-1.25)} ${Y(-1.5)} 0 ${Y(-1.5)} Q${X(1.25)} ${Y(-1.5)} ${X(1.12)} ${Y(0)}" fill="none" stroke="#8C929C" stroke-width="2.4"/><rect x="${X(-1.32)}" y="${Y(-0.35)}" width="${X(0.42)}" height="${f(hry * 0.7)}" rx="2.2" fill="#6E7480"/><rect x="${X(0.9)}" y="${Y(-0.35)}" width="${X(0.42)}" height="${f(hry * 0.7)}" rx="2.2" fill="#6E7480"/><path d="M${X(-1.1)} ${Y(0.35)} Q${X(-1)} ${Y(0.75)} ${X(-0.42)} ${Y(0.72)}" fill="none" stroke="#8C929C" stroke-width="1.3"/><circle cx="${X(-0.38)}" cy="${Y(0.72)}" r="1.5" fill="#1E1F23"/></g>`;
+    const drop = -36 - ty;
+    return `<g transform="scale(${s})"><ellipse rx="24" ry="7" fill="#000" opacity=".3"/>${legsStand}${legsSit}<g style="transform:translateY(calc(var(--sitk,0) * ${drop}px))">${armsBack}${torso}${front}${strap}${hairBack}${neck}${head}${hairTop}${specs}${headset}${armsFront}${satchel}</g></g>`;
+  };
+  // Everyone wears the same company suit; colleagues have a gym build and very dark skin, the lead light skin.
+  const SUIT = { kind: 'blazer', top: '#262D3A', pants: '#1D222B', shoes: '#111214', shirt: '#F2F0EA', tie: '#141820', accent: '#C9A227' };
+  const GYM = { sw: 24.5, ww: 14.5, aw: 10.5, lw: 12 };
+  const DARK = ['#3B2619', '#452C1D', '#352217'];
+  const PEOPLE_CFG = [
+    ['short', 0], ['buzz', 1], ['curly', 2], ['side', 0, 1], ['buzz', 2], ['curly', 1], ['short', 2], ['side', 1], ['buzz', 0, 1], ['curly', 0],
+  ].map(([style, sk, glasses]) => ({ ...SUIT, build: GYM, skinHex: DARK[sk], hair: 0, style, glasses: !!glasses }));
+  const CH_CFG = {
+    lead: { ...SUIT, build: GYM, skinHex: '#F7E0CB', hair: 2, style: 'side' },
+    ceo: { s: 0.54, build: { sw: 28, ww: 20, aw: 12, lw: 13.5 }, skin: 1, hair: 4, style: 'side', kind: 'blazer', top: '#C9A227', pants: '#B38E1E', shoes: '#8C6A16', shirt: '#F6E7B0', tie: '#8C6A16', glasses: true, accent: '#FFF3C4', gold: true },
+    msgbot: { skin: 2, hair: 0, style: 'short', kind: 'polo', top: '#3E7C86', pants: '#2B2F38', bag: true, accent: '#9FD0D6' },
+  };
+  const fig = (look, v, i = 0) => person('realistic', { ...v, skin: v.skinHex || SKIN[v.skin], hair: HAIR[v.hair], beat: +(0.34 + (i % 5) * 0.045).toFixed(3) });
+
+  const defsFor = (look) => { const PEOPLE = PEOPLE_CFG.map((v, i) => fig(look, v, i)), CH = { lead: fig(look, CH_CFG.lead), ceo: fig(look, CH_CFG.ceo), msgbot: fig(look, CH_CFG.msgbot) };
+    return `<defs>
+  <linearGradient id="vg-l" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".24"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <linearGradient id="vg-r" x1="0" y1="0" x2="1" y2="0"><stop offset=".45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".3"/></linearGradient>
+  <radialGradient id="vg-h" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#fff" stop-opacity=".3"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
   <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22344A"/><stop offset="1" stop-color="#3B5470"/></linearGradient>
   <radialGradient id="glow"><stop offset="0" stop-color="#F7D9A8" stop-opacity="0.55"/><stop offset="1" stop-color="#F7D9A8" stop-opacity="0"/></radialGradient>
   <pattern id="tiles" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0V50H0" fill="none" stroke="#26262A" stroke-width="1.4"/></pattern>
@@ -148,7 +199,7 @@
   <symbol id="msgdesk" overflow="visible"><ellipse cx="0" cy="12" rx="28" ry="8" fill="#000" opacity=".25"/>
     <polygon points="-24,-12 0,2 0,14 -24,2" fill="#3B3F47"/><polygon points="24,-12 0,2 0,14 24,2" fill="#2B2E35"/><polygon points="0,-26 24,-12 0,2 -24,-12" fill="#B8A083"/>
     <polygon points="-14,-20 2,-28 2,-20 -14,-12" fill="#141413" opacity="0.5"/><polygon points="-14,-14 2,-22 2,-14 -14,-6" fill="#9FD0D6" opacity="0.8"/><polygon points="4,-16 16,-10 14,-7 2,-13" fill="#F1EEE7" opacity="0.9"/></symbol>
-  </defs>`;
+  </defs>`; };
 
   // Room: a work floor (WORK_D deep) then a lounge. Kept compact so a floor reads as one office, not a long hall.
   const ROOM_W = 1040, ROOM_D = 1900, GAP = 40, FAC_W = 440, WORK_D = 740, MIN_D = 2200;
@@ -157,8 +208,12 @@
 
   // ── Furniture, drawn as true isometric boxes (never flat, front-on shapes) ──
   // A sofa / armchair faces +y (towards the viewer's left). Order matters: far pieces first.
-  const sofa = (x, y, len) => box(x, y, x + len, y + 14, 40, SOFA) + box(x - 12, y, x, y + 52, 28, SOFA) + box(x, y + 14, x + len, y + 52, 18, SEAT) + box(x + len, y, x + len + 12, y + 52, 28, SOFA);
-  const armchair = (x, y) => box(x, y, x + 46, y + 12, 36, SOFA) + box(x - 9, y, x, y + 46, 24, SOFA) + box(x, y + 12, x + 46, y + 46, 16, SEAT) + box(x + 46, y, x + 55, y + 46, 24, SOFA);
+  const sofaDraw = (x, y, len) => box(x, y, x + len, y + 14, 40, SOFA) + box(x - 12, y, x, y + 52, 28, SOFA) + box(x, y + 14, x + len, y + 52, 18, SEAT) + box(x + len, y, x + len + 12, y + 52, 28, SOFA);
+  const armchairDraw = (x, y) => box(x, y, x + 46, y + 12, 36, SOFA) + box(x - 9, y, x, y + 46, 24, SOFA) + box(x, y + 12, x + 46, y + 46, 16, SEAT) + box(x + 46, y, x + 55, y + 46, 24, SOFA);
+  // while a lounge is being built, the seats on its sofas and armchairs collect in SEATS (floor points just in front of the cushion)
+  let SEATS = null;
+  const sofa = (x, y, len) => { if (SEATS) { const k = Math.max(2, Math.floor(len / 62)); for (let j = 0; j < k; j++) SEATS.push([x + len * (j + 0.5) / k, y + 48]); } return sofaDraw(x, y, len); };
+  const armchair = (x, y) => { if (SEATS) SEATS.push([x + 23, y + 42]); return armchairDraw(x, y); };
   const lowTable = (x, y, w = 90, d = 46) => box(x + 5, y + 5, x + w - 5, y + d - 5, 14, GRAPH) + box(x, y, x + w, y + d, 3, OAK, 14);
   const meeting = (x, y, len) => { // long oak table, chairs on both long sides
     const n = Math.max(2, Math.floor((len - 40) / 70)); let back = '', frontRow = '';
@@ -187,7 +242,7 @@
     box(x + 16, y + 6, x + 48, y + 30, 26, ['#2A2B2F', '#1D1E22', '#141518'], 41) +
     use('cup', x + 70, y + 20, '', 41) + use('cup', x + 86, y + 14, '', 41) + use('cup', x + len - 30, y + 20, '', 41);
 
-  function build(depts) {
+  function build(depts, look) {
     // Pick the grid: as close to a square floorplan as possible, but never at the cost of holes in the grid
     // (four rooms are a 2x2, not three in a row plus a gap). Departments fill left to right, then a new row.
     const n = depts.length <= 1 ? 1 : depts.length + (depts.length % 2);
@@ -200,14 +255,14 @@
     }
     const rows = Math.ceil(n / cols);
     const fx = cols * (ROOM_W + GAP), W = fx + FAC_W, D = Math.max(rows * (ROOM_D + GAP) - GAP, MIN_D);
-    const desksF = [], deskRoom = [], spotsF = [], spotProp = [], rooms = [];
+    const desksF = [], deskRoom = [], spotsF = [], spotProp = [], spotRoom = [], rooms = [];
     let floor = '', back = '', furn = '';
     // café spots first so their indexes never move: 10 across, 12 rows
     const CAFE_COLS = [fx + 26, fx + 68, fx + 110, fx + 152, fx + 200, fx + 248, fx + 292, fx + 336, fx + 378, fx + 418];
     const CAFE_PROP_CYCLE = ['mug', 'phone', 'rest', 'mug', 'book', 'rest', 'pad', 'mug', 'rest', 'mug', 'phone', 'music'];
     for (let ri = 0; ri < 12; ri++) {
       const y = 666 + ri * 68, stagger = (ri % 2) * 22;
-      for (const x of CAFE_COLS) { spotsF.push([x + stagger, y]); spotProp.push(CAFE_PROP_CYCLE[ri % CAFE_PROP_CYCLE.length]); }
+      for (const x of CAFE_COLS) { spotsF.push([x + stagger, y]); spotProp.push(CAFE_PROP_CYCLE[ri % CAFE_PROP_CYCLE.length]); spotRoom.push(-1); }
     }
     const cafeIdx = spotsF.map((s, i) => i);
 
@@ -238,7 +293,7 @@
       if (y1 < D - 5) furn += glass(x0, y1, x1, y1, 66, [0.45, 0.58]);
 
       // ── Lounge: four zones, back to front. `blocked` = floor nobody may stand on (furniture, and just behind tall pieces).
-      const blocked = [];
+      const blocked = []; SEATS = [];
       // A: coffee point + two standing tables
       furn += counter(x0 + 150, ly + 40, 300);
       for (let k = 0; k < 4; k++) furn += use('stool', x0 + 190 + k * 70, ly + 108);
@@ -260,12 +315,16 @@
       furn += use('plant', x0 + 50, dy + 190) + use('tallplant', x1 - 60, dy + 170);
       blocked.push([x0 + 130, dy - 12, x0 + 390, dy + 140], [x0 + 600, dy - 12, x0 + 860, dy + 140]);
 
+      const seats = SEATS; SEATS = null;
+      // people standing at the coffee counter and the two standing tables
+      room.coffee = [[x0 + 225, ly + 150], [x0 + 295, ly + 150], [x0 + 365, ly + 150], [x0 + 435, ly + 150], [x0 + 640, ly + 132], [x0 + 860, ly + 132]].map(([x, y]) => P(x, y));
+      for (const [sx, sy] of seats) { room.rest.push(spotsF.length); spotsF.push([sx, sy]); spotProp.push('read'); spotRoom.push(i); }
       const clear = (sx, sy) => !blocked.some(([a, b, a2, b2]) => sx > a - 16 && sx < a2 + 16 && sy > b - 16 && sy < b2 + 16);
-      const LPROPS = ['mug', 'phone', 'rest', 'book', 'pad', 'rest', 'mug', 'music', 'rest', 'phone'];
+      const LPROPS = ['phone', 'mug', 'pad', 'book', 'phone', 'rest', 'mug', 'pad', 'phone', 'book'];
       for (let lr = 0; lr < 13; lr++) for (let lc = 0; lc < 10; lc++) {
         const sx = x0 + 60 + lc * 98 + (lr % 2) * 30, sy = ly - 5 + lr * 84;
         if (sx > x1 - 40 || !clear(sx, sy)) continue;
-        room.rest.push(spotsF.length); spotsF.push([sx, sy]); spotProp.push(LPROPS[(lr * 3 + lc) % LPROPS.length]);
+        room.rest.push(spotsF.length); spotsF.push([sx, sy]); spotProp.push(LPROPS[(lr * 3 + lc) % LPROPS.length]); spotRoom.push(i);
       }
       rooms.push(room);
     }
@@ -325,8 +384,8 @@
     const helper = P(helperX, helperY);
     const minX = P(0, D)[0], maxX = P(W, 0)[0], maxY = P(W, D)[1] + 30;
     const vb = { x: minX - 40, y: -10, w: maxX - minX + 80, h: maxY + 20 };
-    const inner = `${DEFS}<g id="layer-back">${back}${furn}<g id="ceo-slot" transform="translate(${f(ceo[0])} ${f(ceo[1])})"></g><g id="helper-slot" transform="translate(${f(helper[0])} ${f(helper[1])})"></g></g><g id="layer-desks">${deskSvg}</g><g id="layer-free"></g><g id="layer-walk"></g>`;
-    return { inner, vb, desks, deskRoom, rooms, hot, cafe, cafeIdx, spotProp, ceo, helper };
+    const inner = `${defsFor(look || LOOK)}<g id="layer-back">${back}${furn}<g id="ceo-slot" transform="translate(${f(ceo[0])} ${f(ceo[1])})"></g><g id="helper-slot" transform="translate(${f(helper[0])} ${f(helper[1])})"></g></g><g id="layer-desks">${deskSvg}</g><g id="layer-free"></g><g id="layer-walk"></g>`;
+    return { inner, vb, desks, deskRoom, rooms, hot, cafe, cafeIdx, spotProp, spotRoom, ceo, helper };
   }
-  window.VScene = { build, people: PEOPLE.length };
+  window.VScene = { build, people: PEOPLE_CFG.length, looks: LOOKS, look: LOOK, defsFor };
 })();

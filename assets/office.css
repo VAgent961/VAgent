@@ -199,6 +199,11 @@ a.btn[aria-disabled]{opacity:.5}
 .agent.idle .body{animation-duration:4.6s}
 @keyframes breathe{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.012)}}
 /* at a desk the person sits: arms forward on the desk (the figures read these two variables, see scene.js) */
-.seat .agent{--stand:none;--sit:inline}
+.seat .agent{--as:none;--ad:inline;--hs:inline;--ls:none;--lsit:inline;--sitk:1}
+.seat .agent .typing{display:none}
+/* lounge poses, set by office.js startLife(): reading on a seat, coffee at the counter */
+.agent[data-pose="read"]{--as:none;--ar:inline;--ls:none;--lsit:inline;--sitk:1}
+.agent[data-pose="mug"]{--as:none;--am:inline}
+.agent[data-pose] .props{display:var(--props,inline)}.agent[data-pose="read"],.agent[data-pose="mug"]{--props:none}
 /* phones: the header keeps its title readable; sign-out shrinks to its icon */
 @media (max-width:560px){.top .logo{min-width:0;flex:1}.top .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.top .actions{flex:none;gap:6px}.top .actions a.btn{padding:0 12px;font-size:0!important;gap:0!important}.top .actions .btn.icon{min-width:40px}.top .actions a.btn svg{margin:0}}
