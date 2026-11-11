@@ -1,20 +1,26 @@
 // Generates the whole office SVG from an array of department objects {id, name, color}.
 // plus the CEO office, the café, the messenger corner and open desks. Floor coords -> screen: X = 600 + 0.8(x - y), Y = 110 + 0.462(x + y).
-// window.VScene.build(departments) -> { inner, vb, desks, deskRoom, rooms[{desks, rest, lead, box}], hot, cafe, cafeIdx, spotProp, ceo, helper }
+// window.VScene.build(departments) -> { inner, vb, desks, deskRoom, rooms[{desks, rest, lead, box}], hot, cafe, cafeIdx, spotProp, ceo, helper, nav{W,D,rects,doors} }  (nav feeds assets/nav.js)
 // window.VScene.people = how many different office workers exist as symbols #p0..#p(n-1) (office.js picks one per agent).
 (function () {
   const P = (x, y, h = 0) => [600 + 0.8 * (x - y), 110 + 0.462 * (x + y) - h];
   const f = (n) => n.toFixed(1);
+  // while build() runs, REC collects what people can't walk through (world rects) and DOORS the gaps in glass walls; FOOT = half-size of small pieces
+  let REC = null, DOORS = null; const FOOT = { table: 16, stool: 7, plant: 8, tallplant: 8, floorlamp: 6, lamp: 8, chair: 11, msgdesk: 16, cooler: 8 };
   const pts = (...a) => a.map((p) => f(p[0]) + ',' + f(p[1])).join(' ');
   const poly = (fill, ...a) => `<polygon points="${pts(...a)}" fill="${fill}"/>`;
-  const box = (x0, y0, x1, y1, h, [top, front, side], z = 0) =>
+  const box = (x0, y0, x1, y1, h, [top, front, side], z = 0) => (REC && h + z >= 10 && REC.push([x0, y0, x1, y1]), '') +
     poly(side, P(x1, y0, z), P(x1, y1, z), P(x1, y1, z + h), P(x1, y0, z + h)) +
     poly(front, P(x0, y1, z), P(x1, y1, z), P(x1, y1, z + h), P(x0, y1, z + h)) +
     poly(top, P(x0, y0, z + h), P(x1, y0, z + h), P(x1, y1, z + h), P(x0, y1, z + h));
-  const use = (id, x, y, extra = '', h = 0) => { const [X, Y] = P(x, y, h); return `<use href="#${id}" x="${f(X)}" y="${f(Y)}" ${extra}/>`; };
+  const use = (id, x, y, extra = '', h = 0) => { if (REC && FOOT[id]) REC.push([x - FOOT[id], y - FOOT[id], x + FOOT[id], y + FOOT[id]]); const [X, Y] = P(x, y, h); return `<use href="#${id}" x="${f(X)}" y="${f(Y)}" ${extra}/>`; };
   const glass = (x0, y0, x1, y1, h = 62, gap) => {
     const seg = (a, b) => { const A = [x0 + (x1 - x0) * a, y0 + (y1 - y0) * a], B = [x0 + (x1 - x0) * b, y0 + (y1 - y0) * b];
       return `<polygon points="${pts(P(...A), P(...B), P(...B, h), P(...A, h))}" fill="#8FB0BE" opacity="0.16" stroke="#4F6B78"/><polyline points="${pts(P(...A, h), P(...B, h))}" stroke="#6B8A97" stroke-width="2.5" fill="none"/>`; };
+    if (REC) { // walls block people; a gap becomes a door (recorded with its centre) they can use
+      const hz = y0 === y1, L = hz ? x1 - x0 : y1 - y0, o = hz ? x0 : y0, c = hz ? y0 : x0, wall = (a, b) => REC.push(hz ? [o + L * a, c - 3, o + L * b, c + 3] : [c - 3, o + L * a, c + 3, o + L * b]);
+      if (gap) { wall(0, gap[0]); wall(gap[1], 1); const m = o + L * (gap[0] + gap[1]) / 2; DOORS.push({ x: hz ? m : c, y: hz ? c : m, hz, w: L * (gap[1] - gap[0]) }); } else wall(0, 1);
+    }
     return gap ? seg(0, gap[0]) + seg(gap[1], 1) : seg(0, 1);
   };
   const onWallR = (x, h) => { const [X, Y] = P(x, 0, h); return `matrix(0.866 0.5 0 1 ${f(X)} ${f(Y)})`; };
@@ -54,12 +60,13 @@
     const short = kind === 'polo', fore = short ? skin : top;
 
     // legs
-    const shoe = `<rect x="${f(-lw - 2.5)}" y="-7" width="${f(lw + 1.5)}" height="7" rx="3" fill="${shoes}"/><rect x="1" y="-7" width="${f(lw + 1.5)}" height="7" rx="3" fill="${shoes}"/>`;
+    const shoeL = `<rect x="${f(-lw - 2.5)}" y="-7" width="${f(lw + 1.5)}" height="7" rx="3" fill="${shoes}"/>`, shoeR = `<rect x="1" y="-7" width="${f(lw + 1.5)}" height="7" rx="3" fill="${shoes}"/>`, shoe = shoeL + shoeR;
     const legL = [[-lw - 1, ty], [-1, ty], [-1.6, -6], [-lw, -6]], legR = legL.map(([x, y]) => [-x, y]);
     const crease = st.crease ? line([-lw / 2 - 1, ty + 4], [-lw / 2 - 0.8, -9], '#000', 0.8).replace('stroke="#000"', 'stroke="#000" stroke-opacity=".18"') + line([lw / 2 + 1, ty + 4], [lw / 2 + 0.8, -9], '#000', 0.8).replace('stroke="#000"', 'stroke="#000" stroke-opacity=".18"') : '';
-    const legsStand = `<g ${vis('--ls', 1)}>${blob(legL, pants, 2)}${blob(legR, pants, 2)}${sh(`M${lw * 0.35} ${ty} H${lw + 1} L${lw} -6 H${lw * 0.3} Z`, st.shade + 0.04)}${crease}${sheen([-lw / 2, ty + 6], [-lw / 2, -12])}${shoe}</g>`;
-    const legsSit = `<g ${vis('--lsit', 0)}>${blob([[-lw, -31], [-1.5, -31], [-2, -6], [-lw + 1, -6]], pants, 2)}${blob([[lw, -31], [1.5, -31], [2, -6], [lw - 1, -6]], pants, 2)}` +
-      `<rect x="${f(-lw - 2)}" y="-46" width="${f(lw + 1.5)}" height="17" rx="6" fill="${pants}"/><rect x="0.5" y="-46" width="${f(lw + 1.5)}" height="17" rx="6" fill="${pants}"/>${sh(`M${lw * 0.4} -46 H${lw + 2} V-29 H${lw * 0.4} Z`)}${shoe}</g>`;
+    const legsStand = `<g ${vis('--ls', 1)}><g class="lgL" style="transform:translateY(calc(var(--sl,0) * 1px))">${blob(legL, pants, 2)}${shoeL}</g><g class="lgR" style="transform:translateY(calc(var(--sr,0) * 1px))">${blob(legR, pants, 2)}${shoeR}</g>${sh(`M${lw * 0.35} ${ty} H${lw + 1} L${lw} -6 H${lw * 0.3} Z`, st.shade + 0.04)}${crease}${sheen([-lw / 2, ty + 6], [-lw / 2, -12])}</g>`;
+    // seated, seen from the front-right: each thigh runs forward (towards the viewer's left) from the hip, the shin drops to the floor in front of the seat
+    const sitLeg = (hx) => { const kx = hx - 36; return line([hx, -41], [kx, -19], pants, lw + 1) + line([kx, -19], [kx, 9], pants, lw) + `<rect x="${f(kx - lw + 1)}" y="8" width="${f(lw + 3)}" height="7" rx="3" fill="${shoes}"/>`; };
+    const legsSit = `<g ${vis('--lsit', 0)}>${sitLeg(-lw * 0.62)}${sitLeg(lw * 0.62)}</g>`;
 
     // arms in each pose
     const S = (d) => [d * (sw - aw * 0.45), sy + aw * 0.5];
@@ -134,7 +141,7 @@
     const specs = glasses ? `<g fill="none" stroke="#1B1512" stroke-width="1"><rect x="${X(-0.66)}" y="${Y(-0.2)}" width="${X(0.56)}" height="${X(0.46)}" rx="1.6"/><rect x="${X(0.1)}" y="${Y(-0.2)}" width="${X(0.56)}" height="${X(0.46)}" rx="1.6"/><path d="M${X(-0.1)} ${Y(-0.02)} h${X(0.2)}"/></g>` : '';
     const headset = `<g ${vis('--hs', 0)}><path d="M${X(-1.12)} ${Y(0)} Q${X(-1.25)} ${Y(-1.5)} 0 ${Y(-1.5)} Q${X(1.25)} ${Y(-1.5)} ${X(1.12)} ${Y(0)}" fill="none" stroke="#8C929C" stroke-width="2.4"/><rect x="${X(-1.32)}" y="${Y(-0.35)}" width="${X(0.42)}" height="${f(hry * 0.7)}" rx="2.2" fill="#6E7480"/><rect x="${X(0.9)}" y="${Y(-0.35)}" width="${X(0.42)}" height="${f(hry * 0.7)}" rx="2.2" fill="#6E7480"/><path d="M${X(-1.1)} ${Y(0.35)} Q${X(-1)} ${Y(0.75)} ${X(-0.42)} ${Y(0.72)}" fill="none" stroke="#8C929C" stroke-width="1.3"/><circle cx="${X(-0.38)}" cy="${Y(0.72)}" r="1.5" fill="#1E1F23"/></g>`;
     const drop = -36 - ty;
-    return `<g transform="scale(${s})"><ellipse rx="24" ry="7" fill="#000" opacity=".3"/>${legsStand}${legsSit}<g style="transform:translateY(calc(var(--sitk,0) * ${drop}px))">${armsBack}${torso}${front}${strap}${hairBack}${neck}${head}${hairTop}${specs}${headset}${armsFront}${satchel}</g></g>`;
+    return `<g transform="scale(${s})"><ellipse rx="24" ry="7" fill="#000" opacity=".3" ${vis('--shd', 1)}/>${legsStand}${legsSit}<g style="transform:translateY(calc(var(--sitk,0) * ${drop}px))">${armsBack}${torso}${front}${strap}${hairBack}${neck}${head}${hairTop}${specs}${headset}${armsFront}${satchel}</g></g>`;
   };
   // Everyone wears the same company suit; colleagues have a gym build and very dark skin, the lead light skin.
   const SUIT = { kind: 'blazer', top: '#262D3A', pants: '#1D222B', shoes: '#111214', shirt: '#F2F0EA', tie: '#141820', accent: '#C9A227' };
@@ -208,12 +215,13 @@
 
   // ── Furniture, drawn as true isometric boxes (never flat, front-on shapes) ──
   // A sofa / armchair faces +y (towards the viewer's left). Order matters: far pieces first.
-  const sofaDraw = (x, y, len) => box(x, y, x + len, y + 14, 40, SOFA) + box(x - 12, y, x, y + 52, 28, SOFA) + box(x, y + 14, x + len, y + 52, 18, SEAT) + box(x + len, y, x + len + 12, y + 52, 28, SOFA);
-  const armchairDraw = (x, y) => box(x, y, x + 46, y + 12, 36, SOFA) + box(x - 9, y, x, y + 46, 24, SOFA) + box(x, y + 12, x + 46, y + 46, 16, SEAT) + box(x + 46, y, x + 55, y + 46, 24, SOFA);
-  // while a lounge is being built, the seats on its sofas and armchairs collect in SEATS (floor points just in front of the cushion)
-  let SEATS = null;
-  const sofa = (x, y, len) => { if (SEATS) { const k = Math.max(2, Math.floor(len / 62)); for (let j = 0; j < k; j++) SEATS.push([x + len * (j + 0.5) / k, y + 48]); } return sofaDraw(x, y, len); };
-  const armchair = (x, y) => { if (SEATS) SEATS.push([x + 23, y + 42]); return armchairDraw(x, y); };
+  const sofaDraw = (x, y, len) => box(x, y, x + len, y + 14, 40, SOFA) + box(x - 12, y, x, y + 52, 28, SOFA) + box(x, y + 14, x + len, y + 52, 18, SEAT);
+  const armchairDraw = (x, y) => box(x, y, x + 46, y + 12, 36, SOFA) + box(x - 9, y, x, y + 46, 24, SOFA) + box(x, y + 12, x + 46, y + 46, 16, SEAT);
+  // while a lounge is being built, the seats on its sofas and armchairs collect in SEATS: the floor point under the hips, in the middle of the cushion.
+  // The armrest nearest the viewer goes into OVER (drawn after the people), so a seated person sits between the back and that arm.
+  let SEATS = null, OVER = '';
+  const sofa = (x, y, len) => { if (SEATS) { const k = Math.max(2, Math.floor(len / 62)); for (let j = 0; j < k; j++) SEATS.push([x + len * (j + 0.5) / k, y + 31]); } OVER += box(x + len, y, x + len + 12, y + 52, 28, SOFA); return sofaDraw(x, y, len); };
+  const armchair = (x, y) => { if (SEATS) SEATS.push([x + 23, y + 29]); OVER += box(x + 46, y, x + 55, y + 46, 24, SOFA); return armchairDraw(x, y); };
   const lowTable = (x, y, w = 90, d = 46) => box(x + 5, y + 5, x + w - 5, y + d - 5, 14, GRAPH) + box(x, y, x + w, y + d, 3, OAK, 14);
   const meeting = (x, y, len) => { // long oak table, chairs on both long sides
     const n = Math.max(2, Math.floor((len - 40) / 70)); let back = '', frontRow = '';
@@ -243,6 +251,7 @@
     use('cup', x + 70, y + 20, '', 41) + use('cup', x + 86, y + 14, '', 41) + use('cup', x + len - 30, y + 20, '', 41);
 
   function build(depts, look) {
+    REC = []; DOORS = []; OVER = '';
     // Pick the grid: as close to a square floorplan as possible, but never at the cost of holes in the grid
     // (four rooms are a 2x2, not three in a row plus a gap). Departments fill left to right, then a new row.
     const n = depts.length <= 1 ? 1 : depts.length + (depts.length % 2);
@@ -284,7 +293,7 @@
         <rect class="room-accent" data-room="${i}" x="${x0 + 40}" y="${y0 + WORK_D - 62}" width="10" height="46" rx="3" fill="#55555C"/><text class="room-name" data-room="${i}" x="${x0 + 66}" y="${y0 + WORK_D - 22}" font-family="Newsreader, Georgia, serif" font-size="52" fill="#FAF9F5" opacity="0.72"></text>
         <text x="${x0 + 40}" y="${lt + 40}" font-size="22" font-weight="600" letter-spacing="7" fill="#FAF9F5" opacity="0.2">LOUNGE</text>`;
       furn += `<use href="#leaddesk" x="${f(room.lead[0] - 25)}" y="${f(room.lead[1] + 20)}" class="room-screen" data-room="${i}" style="color:#3A3935"/><g class="lead-slot" data-room="${i}" transform="translate(${f(room.lead[0])} ${f(room.lead[1])})"></g>`;
-      furn += use('tallplant', x1 - 40, y0 + 40) + use('plant', x1 - 40, y0 + WORK_D - 30);
+      furn += use('tallplant', x1 - 40, y0 + 40) + use('plant', x1 - 40, y0 + WORK_D - 30); REC.push([x0 + 66, y0 + 97, x0 + 106, y0 + 137]); // lead desk
       // 50 desks: 10 x 5
       for (let rr = 0; rr < 5; rr++) for (let cc = 0; cc < 10; cc++) { room.desks.push(desksF.length); desksF.push([x0 + 80 + cc * 95, y0 + 200 + rr * 110]); deskRoom.push(i); }
       furn += glass(x0, y0 + WORK_D + 10, x1, y0 + WORK_D + 10, 54, [0.4, 0.62]);
@@ -317,7 +326,7 @@
 
       const seats = SEATS; SEATS = null;
       // people standing at the coffee counter and the two standing tables
-      room.coffee = [[x0 + 225, ly + 150], [x0 + 295, ly + 150], [x0 + 365, ly + 150], [x0 + 435, ly + 150], [x0 + 640, ly + 132], [x0 + 860, ly + 132]].map(([x, y]) => P(x, y));
+      room.coffee = [[x0 + 225, ly + 68], [x0 + 295, ly + 68], [x0 + 365, ly + 68], [x0 + 435, ly + 68], [x0 + 640, ly + 132], [x0 + 860, ly + 132]].map(([x, y]) => P(x, y));
       for (const [sx, sy] of seats) { room.rest.push(spotsF.length); spotsF.push([sx, sy]); spotProp.push('read'); spotRoom.push(i); }
       const clear = (sx, sy) => !blocked.some(([a, b, a2, b2]) => sx > a - 16 && sx < a2 + 16 && sy > b - 16 && sy < b2 + 16);
       const LPROPS = ['phone', 'mug', 'pad', 'book', 'phone', 'rest', 'mug', 'pad', 'phone', 'book'];
@@ -376,16 +385,18 @@
       <text transform="${onWallR(fx + 78, 72)}" font-size="13" font-weight="600" letter-spacing="1.2" fill="#E7B38F">TASK BOARD</text><text id="board-line" transform="${onWallR(fx + 78, 54)}" font-size="11" fill="#D6D4CC">loading…</text>
       ${poly('#8FC79D', P(fx + 78, 0, 42), P(fx + 170, 0, 42), P(fx + 170, 0, 46), P(fx + 78, 0, 46)).replace('/>', ' id="board-bar1"/>')}${poly('#A8B8E8', P(fx + 78, 0, 34), P(fx + 260, 0, 34), P(fx + 260, 0, 38), P(fx + 78, 0, 38)).replace('/>', ' id="board-bar2"/>')}</g>`;
 
+    for (const [x, y] of desksF) REC.push([x - 28, y - 28, x + 28, y + 28], [x - 21, y - 54, x + 7, y - 26]); // desk top + its chair (the chair is behind the desk)
+    const nav = { W, D, rects: REC, doors: DOORS }; REC = DOORS = null;
     const desks = desksF.map(([x, y]) => P(x, y)), cafe = spotsF.map(([x, y]) => P(x, y));
     const order = desks.map((d, i) => i).sort((a, b) => desks[a][1] - desks[b][1]);
     // chair, then the person (in .seat, low enough to read as sitting), then the desk in front of both
-    const deskSvg = order.map((i) => `<g class="desk" data-desk="${i}" transform="translate(${f(desks[i][0])} ${f(desks[i][1])}) scale(1.1)"><use href="#chair" x="24" y="-20"/><g class="seat" transform="translate(24 -14)"></g><use class="desk-top" href="#desk" style="color:#3A3935"/></g>`).join('');
+    const deskSvg = order.map((i) => `<g class="desk" data-desk="${i}" transform="translate(${f(desks[i][0])} ${f(desks[i][1])}) scale(1.1)"><use href="#chair" x="24" y="-20"/><g class="seat" transform="translate(24 -19)"></g><use class="desk-top" href="#desk" style="color:#3A3935"/></g>`).join('');
     const ceo = P(fx + 230, 80);
     const helper = P(helperX, helperY);
     const minX = P(0, D)[0], maxX = P(W, 0)[0], maxY = P(W, D)[1] + 30;
     const vb = { x: minX - 40, y: -10, w: maxX - minX + 80, h: maxY + 20 };
-    const inner = `${defsFor(look || LOOK)}<g id="layer-back">${back}${furn}<g id="ceo-slot" transform="translate(${f(ceo[0])} ${f(ceo[1])})"></g><g id="helper-slot" transform="translate(${f(helper[0])} ${f(helper[1])})"></g></g><g id="layer-desks">${deskSvg}</g><g id="layer-free"></g><g id="layer-walk"></g>`;
-    return { inner, vb, desks, deskRoom, rooms, hot, cafe, cafeIdx, spotProp, spotRoom, ceo, helper };
+    const inner = `${defsFor(look || LOOK)}<g id="layer-back">${back}${furn}<g id="ceo-slot" transform="translate(${f(ceo[0])} ${f(ceo[1])})"></g><g id="helper-slot" transform="translate(${f(helper[0])} ${f(helper[1])})"></g></g><g id="layer-desks">${deskSvg}</g><g id="layer-free"></g><g id="layer-over">${OVER}</g><g id="layer-walk"></g>`;
+    return { inner, vb, desks, deskRoom, rooms, hot, cafe, cafeIdx, spotProp, spotRoom, ceo, helper, nav };
   }
   window.VScene = { build, people: PEOPLE_CFG.length, looks: LOOKS, look: LOOK, defsFor };
 })();

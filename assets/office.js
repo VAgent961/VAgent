@@ -87,7 +87,7 @@
     return g;
   }
   function updateAgent(g, a) {
-    g.setAttribute('class', 'agent ' + a.status);
+    g.setAttribute('class', 'agent ' + a.status + (g._mv ? ' walking' : ''));
     g.setAttribute('aria-label', a.name + ', ' + (STATUS[a.status] || a.status));
     // swap skin + ring colour live when lead status changes
     const wantRef = personRef(a);
@@ -99,92 +99,140 @@
   }
   svg.addEventListener('pointerover', (e) => { const g = e.target.closest('#layer-free .agent'); if (g && g.parentNode.lastChild !== g) g.parentNode.appendChild(g); });
 
-  // ── wander engine ──────────────────────────────────────────────────────────
-  // Each resting bot gets a looping micro-walk around its home spot.
-  // Cancelled whenever the bot gets a new assignment (status/position change).
+  // ── movement ───────────────────────────────────────────────────────────────
+  // People walk only on open floor (assets/nav.js: A* over a grid of the floor plan, so walls, glass, desks, sofas, tables and plants are never crossed),
+  // through the door gaps, at a human pace; and they sit down properly: walk to the approach point in front of the seat, turn, step back into it
+  // while the body lowers onto it (--sitk, the same variable the poses use). Standing up is the reverse. ?nav=1 draws the grid, the doors and every path.
+  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const DBG = /[?&]nav=1/.test(location.search);
+  const inv = (sx, sy) => { const a = (sx - 600) / 0.8, b = (sy - 110) / 0.462; return [(a + b) / 2, (b - a) / 2]; }; // screen -> floor (world) units
+  const proj = (x, y) => [600 + 0.8 * (x - y), 110 + 0.462 * (x + y)]; // floor -> screen, same as scene.js P()
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
   const rng = (a, b) => a + Math.random() * (b - a);
-  function stopWander(g) { if (g._wanderKill) { g._wanderKill(); g._wanderKill = null; } g.dataset.pose = ''; }
-  function startWander(g, hx, hy) {
-    if (!window.gsap || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    stopWander(g);
-    let alive = true;
-    g._wanderKill = () => { alive = false; };
-    // randomise start delay so bots don't all move at once
-    const delay = rng(0, 12);
-    const loop = () => {
-      if (!alive || !g.isConnected) return;
-      // pick a spot within 32px of home, biased isometrically
-      const ox = rng(-28, 28), oy = rng(-16, 16);
-      const tx = hx + ox, ty = hy + oy;
-      const dist = Math.hypot(ox, oy);
-      const dur = dist / 55; // ~55 px/s — slow stroll
-      free.appendChild(g);
-      g.setAttribute('transform', tr(g._pos ? g._pos[0] : hx, g._pos ? g._pos[1] : hy));
-      const body = g.querySelector('.body');
-      const bob = gsap.fromTo(body, { y: 0 }, { y: -3, duration: 0.22, yoyo: true, repeat: -1, ease: 'sine.inOut' });
-      const s = { x: g._pos ? g._pos[0] : hx, y: g._pos ? g._pos[1] : hy };
-      gsap.to(s, {
-        x: tx, y: ty, duration: dur, ease: 'none',
-        onUpdate: () => { if (!alive) return; g.setAttribute('transform', tr(s.x, s.y)); g._pos = [s.x, s.y]; },
-        onComplete: () => {
-          bob.kill(); gsap.set(body, { y: 0 });
-          if (!alive) return;
-          // pause at destination, then walk home
-          const pause = rng(4, 18);
-          gsap.delayedCall(pause, () => {
-            if (!alive) return;
-            const s2 = { x: s.x, y: s.y };
-            const bob2 = gsap.fromTo(body, { y: 0 }, { y: -3, duration: 0.22, yoyo: true, repeat: -1, ease: 'sine.inOut' });
-            gsap.to(s2, {
-              x: hx, y: hy, duration: Math.hypot(hx - s.x, hy - s.y) / 55, ease: 'none',
-              onUpdate: () => { if (!alive) return; g.setAttribute('transform', tr(s2.x, s2.y)); g._pos = [s2.x, s2.y]; },
-              onComplete: () => {
-                bob2.kill(); gsap.set(body, { y: 0 });
-                if (!alive) return;
-                g._pos = [hx, hy];
-                gsap.delayedCall(rng(6, 20), loop);
-              },
-            });
-          });
-        },
-      });
-    };
-    gsap.delayedCall(delay, loop);
+  const SPEED = 72, BRISK = 112; // world units per second: a calm walk, and a hurry (an agent that needs help)
+  // where a place is, in floor units. Seats also have an approach point in front of them (ap), the desk they belong to, and the arms they use.
+  function dest(p) {
+    if (p.t === 'desk') { const [x, y] = inv(...S.desks[p.i]); const ap = [[x, y - 70], [x - 40, y - 39], [x + 36, y - 39]].find((c) => !VNav.rawBlocked(S.nav, c[0], c[1])) || [x, y - 70]; // behind the chair, or from its side when something (the lead desk) is in the way
+      return { at: [x - 6, y - 39.2], ap, desk: p.i, arms: '--ad' }; }
+    if (p.t === 'cafe') { const [x, y] = inv(...S.cafe[p.i]); return S.spotProp[p.i] === 'read' ? { at: [x, y], ap: [x, y + 40], arms: '--ar', read: true } : { at: [x, y] }; }
+    if (p.t === 'helper') return { at: inv(...S.helper) };
+    return { at: inv(p.xy[0], p.xy[1]) };
   }
+  const seatOf = (p) => { const d = p && dest(p); return d && d.ap ? d : null; };
+  const flip = (g, f) => { if (g._flip === f) return; g._flip = f; const u = g.querySelector('.body > use'); if (u) u.setAttribute('transform', f < 0 ? 'scale(-1 1)' : ''); };
+  // body pose between standing (k=0) and seated (k=1): sets the pose variables inline; clearPose hands control back to the CSS poses
+  const PV = ['--as', '--ad', '--ar', '--am', '--ls', '--lsit', '--sitk', '--shd'];
+  function pose(g, k, arms) {
+    const st = g.style, sit = k > 0.5;
+    st.setProperty('--sitk', k.toFixed(2)); st.setProperty('--shd', sit ? 'none' : 'inline'); st.setProperty('--ls', sit ? 'none' : 'inline'); st.setProperty('--lsit', sit ? 'inline' : 'none');
+    for (const v of ['--as', '--ad', '--ar', '--am']) st.setProperty(v, 'none');
+    st.setProperty(k > 0.75 && arms ? arms : '--as', 'inline');
+  }
+  const clearPose = (g) => PV.forEach((v) => g.style.removeProperty(v));
+  const clearGait = (g) => { g.classList.remove('walking'); g.style.removeProperty('--sl'); g.style.removeProperty('--sr'); const b = g.querySelector('.body'); if (b) b.style.transform = ''; };
+
+  // the walker: one ticker moves everybody along their polyline at a constant speed
+  const movers = new Set(), doorBusy = new Map(); let lastT = 0;
+  function step(m, dt, now) {
+    const g = m.g, pts = m.pts;
+    if (!g.isConnected) { movers.delete(m); return; }
+    if (m.wait > 0) { m.wait -= dt; return; }
+    let sp = m.speed; const door = VNav.doorAt(S.nav, m.x, m.y);
+    if (door >= 0) { // doorway: slow down a little, and one person at a time (the other waits a moment)
+      const st = doorBusy.get(door);
+      if (m.door !== door) { if (st && st.by !== m && now - st.t < 400 && m.waits < 3) { m.wait = 0.3; m.waits++; return; } m.door = door; m.waits = 0; }
+      doorBusy.set(door, { by: m, t: now }); sp *= 0.7;
+    } else m.door = -1;
+    let rem = sp * dt;
+    while (rem > 0 && m.i < pts.length - 1) { const L = m.segL[m.i] - m.off; if (rem >= L) { rem -= L; m.i++; m.off = 0; } else { m.off += rem; rem = 0; } }
+    const end = m.i >= pts.length - 1, k = end ? pts.length - 2 : m.i, a = pts[k], b = pts[k + 1], L = m.segL[k] || 1, t = end ? 1 : m.off / L;
+    m.x = a[0] + (b[0] - a[0]) * t; m.y = a[1] + (b[1] - a[1]) * t;
+    const sdx = 0.8 * ((b[0] - a[0]) - (b[1] - a[1])); if (Math.abs(sdx) > 0.25 * L) flip(g, sdx < 0 ? -1 : 1); // face the way we walk
+    m.phase += sp * dt / 26 * Math.PI; // one stride is about 26 units: legs lift in turn and the body bobs on every step (updated ~12x a second: restyling the figures every frame costs more than it shows)
+    if ((m.gait -= dt) <= 0) { m.gait = 0.08; const s = Math.sin(m.phase), q = (v) => (Math.round(v * 3) / 3).toFixed(1); g.style.setProperty('--sl', q(Math.max(0, s) * -5)); g.style.setProperty('--sr', q(Math.max(0, -s) * -5)); m.body.style.transform = `translateY(${q(-Math.abs(s) * 2.4)}px)`; }
+    const [sx, sy] = proj(m.x, m.y); g._pos = [sx, sy]; g.setAttribute('transform', tr(sx, sy));
+    if (end) { movers.delete(m); g._mv = null; clearGait(g); m.done(); }
+  }
+  function moveTick() { const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now; for (const m of [...movers]) step(m, dt, now); if (!movers.size) gsap.ticker.remove(moveTick); }
+  function startWalk(g, pts, speed, done) {
+    const segL = pts.slice(1).map((p, k) => dist(p, pts[k]));
+    const m = { g, pts, segL, i: 0, off: 0, speed, x: pts[0][0], y: pts[0][1], phase: 0, gait: 0, wait: 0, waits: 0, door: -1, body: g.querySelector('.body'), done };
+    g._mv = m; g.classList.add('walking'); movers.add(m); if (movers.size === 1) { lastT = performance.now(); gsap.ticker.add(moveTick); }
+    if (DBG) dbgPath(pts);
+  }
+  function cancelMove(g) { if (g._mv) { movers.delete(g._mv); g._mv = null; } if (g._tw) { g._tw.kill(); g._tw = null; } clearGait(g); }
+
+  // sit down / stand up: the person slides between the seat and its approach point while the body lowers or rises
+  function seatMove(g, d, toSeat, done) {
+    const desk = d.desk != null ? S.desks[d.desk] : null, o = { u: toSeat ? 0 : 1 }, A = toSeat ? d.ap : d.at, B = toSeat ? d.at : d.ap;
+    const put = (u) => { const x = A[0] + (B[0] - A[0]) * u, y = A[1] + (B[1] - A[1]) * u, [sx, sy] = proj(x, y); g._pos = [sx, sy];
+      g.setAttribute('transform', desk ? `translate(${((sx - desk[0]) / 1.1 - 24).toFixed(1)} ${((sy - desk[1]) / 1.1 + 19).toFixed(1)})` : tr(sx, sy)); pose(g, toSeat ? u : 1 - u, d.arms); };
+    flip(g, 1); g.dataset.pose = ''; g.dataset.prop = '';
+    if (desk) deskG(d.desk).querySelector('.seat').appendChild(g); // inside the desk group, so the desk stays in front of the person
+    else if (toSeat) free.appendChild(g);
+    put(0);
+    g._tw = gsap.to(o, { u: 1, duration: 0.7, delay: toSeat ? 0.25 : 0.1, ease: 'power2.inOut', onUpdate: () => put(o.u), onComplete: () => {
+      g._tw = null; clearPose(g);
+      if (toSeat) { if (d.read) g.dataset.pose = 'read'; g._seat = d; }
+      else { g._seat = null; walkL.appendChild(g); const [sx, sy] = proj(d.ap[0], d.ap[1]); g._pos = [sx, sy]; g.setAttribute('transform', tr(sx, sy)); }
+      done(); } });
+  }
+  // ?nav=1 overlay: blocked cells (red), walled-in pockets (yellow), doors (green) and the paths people are walking (blue)
+  let dbgG = null;
+  function dbgScene() {
+    const W = S.nav.W, D = S.nav.D, dr = (d) => `<rect x="${d.x - (d.hz ? d.w / 2 : 6)}" y="${d.y - (d.hz ? 6 : d.w / 2)}" width="${d.hz ? d.w : 12}" height="${d.hz ? 12 : d.w}" fill="#3FD07A" opacity=".6"/>`;
+    svg.insertAdjacentHTML('beforeend', `<g id="nav-dbg" transform="matrix(0.8 0.462 -0.8 0.462 600 110)" pointer-events="none"><image href="${VNav.debugImage(S.nav)}" width="${W}" height="${D}" preserveAspectRatio="none" style="image-rendering:pixelated"/>${S.nav.doors.map(dr).join('')}<g id="nav-paths"></g></g>`);
+    dbgG = svg.querySelector('#nav-paths');
+  }
+  function dbgPath(pts) { if (!dbgG || !dbgG.isConnected) return; const l = document.createElementNS(NS, 'polyline'); l.setAttribute('points', pts.map((p) => p[0].toFixed(0) + ',' + p[1].toFixed(0)).join(' ')); l.setAttribute('fill', 'none'); l.setAttribute('stroke', '#3CB4FF'); l.setAttribute('stroke-width', '3'); dbgG.appendChild(l); setTimeout(() => l.remove(), 20000); }
+  // go to a place (dest()): stand up if seated, walk the open floor, sit down if it is a seat. done() runs on arrival.
+  function goTo(g, d, opt, done) {
+    cancelMove(g);
+    const run = () => {
+      walkL.appendChild(g); g.dataset.prop = ''; g.dataset.pose = '';
+      const from = g._pos ? inv(g._pos[0], g._pos[1]) : d.ap || d.at, r = VNav.route(S.nav, from, d.ap || d.at);
+      const sp = (opt && opt.speed) || (g.classList.contains('help') ? BRISK : SPEED + (hash(g.dataset.key || '') % 17) - 8); // 'help' (a failed run) hurries
+      if (DBG) (window.__paths ||= []).push({ pts: r.pts, hs: r.hs, he: r.he, key: g.dataset.key });
+      if (r.pts.length < 2) r.pts.push(r.pts[0]);
+      startWalk(g, r.pts, sp, () => (d.ap ? seatMove(g, d, true, done) : (flip(g, 1), done())));
+    };
+    if (g._seat) seatMove(g, g._seat, false, run); else run();
+  }
+  // a short stroll near home and back (people who rest standing up)
+  function startWander(g, hx, hy) {
+    if (!window.gsap || reduced()) return; stopWander(g);
+    let alive = true; g._wanderKill = () => { alive = false; };
+    const h = inv(hx, hy), loop = () => { if (!alive || !g.isConnected) return;
+      goTo(g, { at: VNav.nearest(S.nav, h[0] + rng(-26, 26), h[1] + rng(-26, 26)) }, null, () => { if (alive) gsap.delayedCall(rng(4, 18), () => alive && goTo(g, { at: h }, null, () => alive && gsap.delayedCall(rng(6, 20), loop))); }); };
+    gsap.delayedCall(rng(0, 12), loop);
+  }
+  function stopWander(g) { if (g._wanderKill) { g._wanderKill(); g._wanderKill = null; } cancelMove(g); g.dataset.pose = ''; }
 
   // ── a resting person's day ─────────────────────────────────────────────────
   // Seated spots (prop 'read') read a book; standing spots hold a phone, a tablet or a mug and take a few steps.
   // Every so often anyone gets up, walks to a free place at the coffee counter, drinks, and walks back.
   const coffeeBusy = new Map(); // "room:point" -> time taken (stale claims expire, so a rebuilt floor never jams the counter)
   function startLife(g, spot, hx, hy) {
-    if (!window.gsap || matchMedia('(prefers-reduced-motion: reduce)').matches) { g.dataset.pose = S.spotProp[spot] === 'read' ? 'read' : ''; return; }
+    if (!window.gsap || reduced()) { g.dataset.pose = S.spotProp[spot] === 'read' ? 'read' : ''; return; }
     stopWander(g);
     let alive = true, held = null; const tw = [];
     g._wanderKill = () => { alive = false; tw.forEach((t) => t.kill()); if (held) coffeeBusy.delete(held); held = null; };
-    const reading = S.spotProp[spot] === 'read', room = S.spotRoom ? S.spotRoom[spot] : -1;
+    const reading = S.spotProp[spot] === 'read', room = S.spotRoom ? S.spotRoom[spot] : -1, home = dest({ t: 'cafe', i: spot });
     const counter = (room >= 0 && S.rooms[room] && S.rooms[room].coffee) || [];
-    const body = g.querySelector('.body');
-    const home = () => { g._pos = [hx, hy]; g.dataset.pose = reading ? 'read' : ''; g.dataset.prop = reading ? '' : (S.spotProp[spot] || ''); };
+    const settle = () => { g._pos = [hx, hy]; g.dataset.pose = reading ? 'read' : ''; g.dataset.prop = reading ? '' : (S.spotProp[spot] || ''); if (reading) g._seat = home; };
     const later = (sec, fn) => tw.push(gsap.delayedCall(sec, () => { if (alive && g.isConnected) fn(); }));
-    const go = (tx, ty, done) => {
-      g.dataset.pose = ''; g.dataset.prop = ''; free.appendChild(g);
-      const p0 = { x: g._pos ? g._pos[0] : hx, y: g._pos ? g._pos[1] : hy };
-      const bob = gsap.fromTo(body, { y: 0 }, { y: -3, duration: 0.22, yoyo: true, repeat: -1, ease: 'sine.inOut' });
-      tw.push(bob, gsap.to(p0, { x: tx, y: ty, duration: Math.max(0.6, Math.hypot(tx - p0.x, ty - p0.y) / 60), ease: 'none',
-        onUpdate: () => { if (alive) { g.setAttribute('transform', tr(p0.x, p0.y)); g._pos = [p0.x, p0.y]; } },
-        onComplete: () => { bob.kill(); gsap.set(body, { y: 0 }); if (alive) done(); } }));
-    };
+    const go = (d, done) => goTo(g, d, null, () => { if (alive) done(); });
     const loop = () => {
       const now = Date.now(), open = counter.map((c, k) => k).filter((k) => !(now - (coffeeBusy.get(room + ':' + k) || 0) < 60000));
       if (open.length && Math.random() < (reading ? 0.55 : 0.4)) {
         const k = open[Math.floor(Math.random() * open.length)]; held = room + ':' + k; coffeeBusy.set(held, now);
-        go(counter[k][0], counter[k][1], () => { g.dataset.pose = 'mug';
-          later(rng(8, 18), () => go(hx, hy, () => { coffeeBusy.delete(held); held = null; home(); later(rng(30, 80), loop); })); });
+        go({ at: inv(counter[k][0], counter[k][1]) }, () => { g.dataset.pose = 'mug';
+          later(rng(8, 18), () => go(home, () => { coffeeBusy.delete(held); held = null; settle(); later(rng(30, 80), loop); })); });
       } else if (!reading) {
-        go(hx + rng(-26, 26), hy + rng(-14, 14), () => later(rng(4, 12), () => go(hx, hy, () => { home(); later(rng(12, 35), loop); })));
+        const h = inv(hx, hy); go({ at: VNav.nearest(S.nav, h[0] + rng(-26, 26), h[1] + rng(-26, 26)) }, () => later(rng(4, 12), () => go(home, () => { settle(); later(rng(12, 35), loop); })));
       } else later(rng(20, 50), loop);
     };
-    home();
+    settle();
     later(rng(reading ? 12 : 4, reading ? 70 : 30), loop);
   }
 
@@ -195,23 +243,17 @@
       const slot = svg.querySelector('#helper-slot'); if (slot) { slot.appendChild(g); g.setAttribute('transform', ''); } else { free.appendChild(g); g.setAttribute('transform', tr(S.helper[0], S.helper[1])); }
     }
     else { const [x, y] = posOf(p); free.appendChild(g); g.setAttribute('transform', tr(x, y)); }
+    flip(g, 1); g._seat = seatOf(p);
     g.dataset.prop = p.t === 'cafe' ? (S.spotProp[p.i] || 'rest') : '';
-    const [bx, by] = posOf(p); g._pos = [bx, by]; g._home = [bx, by];
+    const [bx, by] = p.t === 'desk' ? [S.desks[p.i][0] + 26.4, S.desks[p.i][1] - 20.9] : posOf(p); g._pos = [bx, by]; g._home = [bx, by];
     // resting people live their day: read on a sofa, get up for a coffee, come back
     if (p.t === 'cafe') startLife(g, p.i, bx, by);
   }
 
   function walk(g, from, to) {
     stopWander(g);
-    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!window.gsap || reduce || !from) return attach(g, to);
-    const s = { x: g._pos ? g._pos[0] : posOf(from)[0], y: g._pos ? g._pos[1] : posOf(from)[1] }, [tx, ty] = posOf(to);
-    walkL.appendChild(g); g.dataset.prop = ''; g.dataset.pose = ''; g.setAttribute('transform', tr(s.x, s.y));
-    const body = g.querySelector('.body');
-    const bob = gsap.fromTo(body, { y: 0 }, { y: -4, duration: 0.18, yoyo: true, repeat: -1, ease: 'sine.inOut' });
-    gsap.to(s, { x: tx, y: ty, duration: Math.min(3.2, Math.max(1.2, Math.hypot(tx - s.x, ty - s.y) / 230)), ease: 'power1.inOut',
-      onUpdate: () => { g.setAttribute('transform', tr(s.x, s.y)); g._pos = [s.x, s.y]; },
-      onComplete: () => { bob.kill(); gsap.set(body, { y: 0 }); attach(g, to); } });
+    if (!window.gsap || reduced() || !from) return attachAny(g, to);
+    goTo(g, dest(to), null, () => attachAny(g, to));
   }
   function leave(g) { stopWander(g); if (window.gsap) gsap.to(g, { opacity: 0, duration: 0.5, onComplete: () => g.remove() }); else g.remove(); }
 
@@ -317,7 +359,7 @@
     const key = 'F' + floor + ':' + V.departments.map((d) => d.id).join(','); if (key === sceneKey) return;
     sceneKey = key; S = VScene.build(V.departments);
     for (const k of Object.keys(els)) { els[k].remove(); delete els[k]; delete places[k]; }
-    svg.innerHTML = S.inner; free = $('#layer-free'); walkL = $('#layer-walk');
+    svg.innerHTML = S.inner; free = $('#layer-free'); walkL = $('#layer-walk'); if (DBG) dbgScene();
     VB0 = { ...S.vb }; Object.assign(vb, VB0); setVB();
   }
   function zoomRoom(i) {
@@ -450,34 +492,9 @@
       attach(g, p);
     }
   }
-  function walkAny(g, from, to) {
-    if (to.t === 'leaddesk') {
-      stopWander(g);
-      const [tx, ty] = to.xy;
-      if (!window.gsap || !from) { attachAny(g, to); return; }
-      const sx = g._pos ? g._pos[0] : tx, sy = g._pos ? g._pos[1] : ty;
-      walkL.appendChild(g); g.setAttribute('transform', tr(sx, sy));
-      const body = g.querySelector('.body'), s = { x: sx, y: sy };
-      const bob = gsap.fromTo(body, { y: 0 }, { y: -4, duration: 0.18, yoyo: true, repeat: -1, ease: 'sine.inOut' });
-      gsap.to(s, { x: tx, y: ty, duration: Math.min(3.2, Math.max(1.2, Math.hypot(tx - sx, ty - sy) / 230)), ease: 'power1.inOut',
-        onUpdate: () => { g.setAttribute('transform', tr(s.x, s.y)); g._pos = [s.x, s.y]; },
-        onComplete: () => { bob.kill(); gsap.set(body, { y: 0 }); attachAny(g, to); } });
-      return;
-    }
-    if (to.t === 'helperworking') {
-      const [tx, ty] = to.xy;
-      if (!window.gsap) { const [x, y] = to.xy; free.appendChild(g); g.setAttribute('transform', tr(x, y)); g._pos = [x, y]; return; }
-      const sx = g._pos ? g._pos[0] : S.helper[0], sy = g._pos ? g._pos[1] : S.helper[1];
-      walkL.appendChild(g); g.setAttribute('transform', tr(sx, sy));
-      const body = g.querySelector('.body'), s = { x: sx, y: sy };
-      const bob = gsap.fromTo(body, { y: 0 }, { y: -4, duration: 0.18, yoyo: true, repeat: -1, ease: 'sine.inOut' });
-      gsap.to(s, { x: tx, y: ty, duration: Math.min(3.2, Math.max(1.4, Math.hypot(tx - sx, ty - sy) / 220)), ease: 'power1.inOut',
-        onUpdate: () => { g.setAttribute('transform', tr(s.x, s.y)); g._pos = [s.x, s.y]; },
-        onComplete: () => { bob.kill(); gsap.set(body, { y: 0 }); free.appendChild(g); g.setAttribute('transform', tr(tx, ty)); g._pos = [tx, ty]; } });
-    } else {
-      walk(g, from, to);
-    }
-  }
+  // every kind of place (desk, lounge spot, lead desk, messenger corner) is reached the same way: walk() -> goTo()
+  const walkAny = walk;
+  if (DBG) window.__vo = { scene: () => S, els, places, dest, goTo, inv, proj, movers: () => movers.size };
 
   const where = (a) => { const x = D.departments.find((y) => y.id === a.dept); if (!x) return 'No department'; const t = x.teams.find((y) => y.id === a.team); return x.name + (t ? ' / ' + t.name : ''); };
   const dotColor = { working: '#3F7D4E', help: '#B3261E', idle: '#B5532F', off: '#B0AEA5' };
