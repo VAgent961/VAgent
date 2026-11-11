@@ -74,7 +74,8 @@
   const isHelper = (a) => /office.?helper/i.test((a.name || '').replace(/\s+/g, '.'));
 
   // Each agent is one of the office's people (always the same one: picked from its key), or the messenger.
-  const personRef = (a) => isHelper(a) ? '#msgbot' : '#p' + (hash(a.key) % ((window.VScene && window.VScene.people) || 1));
+  const isLeadAgent = (a) => !!a && (a.isLead || ((typeof D !== 'undefined' && D && D.departments) || []).some((d) => d.lead_key === a.key));
+  const personRef = (a) => isHelper(a) ? '#msgbot' : isLeadAgent(a) ? '#lead' : '#p' + (hash(a.key) % ((window.VScene && window.VScene.people) || 1));
   function makeAgent(a) {
     const g = document.createElementNS(NS, 'g');
     g.setAttribute('class', 'agent'); g.setAttribute('tabindex', '0'); g.setAttribute('role', 'button'); g.dataset.key = a.key;
