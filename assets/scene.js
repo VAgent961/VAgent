@@ -363,8 +363,10 @@
     // Café bar + tables
     furn += box(fx + 40, 580, fx + 400, 612, 36, WOOD) + box(fx + 40, 580, fx + 400, 612, 3, ['#C9A984', '#A9744C', '#8A5E3C'], 34) +
       box(fx + 60, 585, fx + 90, 605, 26, ['#55534D', '#3A3935', '#232320'], 37) + use('cup', fx + 300, 594, '', 37);
-    for (const [x, y] of [[fx + 90, 710], [fx + 310, 720], [fx + 180, 800], [fx + 90, 900], [fx + 310, 900], [fx + 200, 1000], [fx + 90, 1120], [fx + 310, 1120], [fx + 200, 1240], [fx + 90, 1360], [fx + 310, 1360]])
-      furn += use('table', x, y) + use('cup', x - 6, y, '', 25);
+    const CAFE_TABLES = [[fx + 90, 710], [fx + 310, 720], [fx + 180, 800], [fx + 90, 900], [fx + 310, 900], [fx + 200, 1000], [fx + 90, 1120], [fx + 310, 1120], [fx + 200, 1240], [fx + 90, 1360], [fx + 310, 1360]];
+    for (const [x, y] of CAFE_TABLES) furn += use('table', x, y) + use('cup', x - 6, y, '', 25);
+    // a café spot must never land on a table: step it just in front of the table (indexes stay put)
+    for (let k = 0; k < spotsF.length; k++) if (spotRoom[k] === -1) { const t = CAFE_TABLES.find(([tx, ty]) => Math.abs(spotsF[k][0] - tx) < 36 && Math.abs(spotsF[k][1] - ty) < 36); if (t) spotsF[k] = [spotsF[k][0], t[1] + 50]; }
     furn += use('lamp', fx + 90, 710) + use('lamp', fx + 310, 720) + use('lamp', fx + 180, 800);
     furn += use('tallplant', fx + 392, 1440) + use('plant', fx + 30, 1440);
     furn += glass(fx, 1490, W, 1490, 40, [0.4, 0.6]);
