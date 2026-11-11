@@ -167,6 +167,12 @@
   <pattern id="tiles" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0V50H0" fill="none" stroke="#26262A" stroke-width="1.4"/></pattern>
   <pattern id="carpet" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60 0V60H0" fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.2"/></pattern>
   <pattern id="timber" width="120" height="26" patternUnits="userSpaceOnUse"><path d="M0 13H120M0 26H120M30 0V13M90 13V26" fill="none" stroke="#000" stroke-opacity=".22" stroke-width="1.3"/></pattern>
+  <linearGradient id="dayg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF1D0" stop-opacity=".16"/><stop offset="1" stop-color="#FFF1D0" stop-opacity="0"/></linearGradient>
+  <linearGradient id="dayh" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFF1D0" stop-opacity=".16"/><stop offset="1" stop-color="#FFF1D0" stop-opacity="0"/></linearGradient>
+  <radialGradient id="pool"><stop offset="0" stop-color="#F7D9A8" stop-opacity=".2"/><stop offset="1" stop-color="#F7D9A8" stop-opacity="0"/></radialGradient>
+  <radialGradient id="shade"><stop offset="0" stop-color="#000" stop-opacity=".38"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+  <pattern id="ktile" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="20" height="20" fill="#E9E4D6" opacity=".09"/><rect x="20" y="20" width="20" height="20" fill="#E9E4D6" opacity=".09"/></pattern>
+  <pattern id="rugw" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M0 12H24M12 0V24" stroke="#fff" stroke-opacity=".05" stroke-width="2"/></pattern>
   <pattern id="planks" width="1000" height="33" patternUnits="userSpaceOnUse"><path d="M0 33H1000" stroke="#46342A" stroke-width="2"/></pattern>
   <symbol id="desk" overflow="visible"><ellipse cx="0" cy="24" rx="52" ry="14" fill="#000" opacity=".28"/>
     <polygon points="-44,-30 0,-5 0,25 -44,0" fill="#3B3F47"/><polygon points="44,-30 0,-5 0,25 44,0" fill="#2B2E35"/><polygon points="-40,-24 -4,-3.5 -4,19 -40,-1.5" fill="#000" opacity=".14"/>
@@ -175,10 +181,17 @@
     <ellipse cx="-18" cy="-41" rx="8" ry="3.4" fill="#2A2B2F"/><rect x="-19.2" y="-56" width="2.4" height="15" fill="#3A3B40"/>
     <polygon points="-31.5,-50.5 -4.5,-66 -4.5,-85.5 -31.5,-70" fill="#141518"/><polygon class="screen" points="-30,-52 -6,-66 -6,-83 -30,-69" fill="#1E2630"/>
     <polygon points="-30,-66.4 -6,-80.4 -6,-83 -30,-69" fill="currentColor" opacity=".95"/>
-    <polygon points="-27.5,-62 -14,-69.9 -14,-68.4 -27.5,-60.5" fill="#DDE3EA" opacity=".5"/><polygon points="-27.5,-58.6 -17,-64.7 -17,-63.2 -27.5,-57.1" fill="#DDE3EA" opacity=".32"/><polygon points="-27.5,-55.2 -20,-59.6 -20,-58.1 -27.5,-53.7" fill="#DDE3EA" opacity=".32"/>
+    <g style="display:var(--dt,inline)"><polygon points="-27.5,-62 -14,-69.9 -14,-68.4 -27.5,-60.5" fill="#DDE3EA" opacity=".5"/><polygon points="-27.5,-58.6 -17,-64.7 -17,-63.2 -27.5,-57.1" fill="#DDE3EA" opacity=".32"/><polygon points="-27.5,-55.2 -20,-59.6 -20,-58.1 -27.5,-53.7" fill="#DDE3EA" opacity=".32"/>
     <polygon points="-12,-62.5 -8,-64.8 -8,-71 -12,-68.7" fill="currentColor" opacity=".7"/>
     <polygon points="3,-32 21,-21.8 14.5,-18 -3.5,-28.2" fill="#E6E3DC" stroke="#A9A69D" stroke-width=".6"/><ellipse cx="27.5" cy="-23.5" rx="3" ry="2" fill="#E6E3DC" stroke="#A9A69D" stroke-width=".5"/>
-    <g transform="translate(-27 -27)"><rect x="-3" y="-7" width="6" height="7" rx="1.4" fill="#F1EEE7"/><ellipse cx="0" cy="-7" rx="3" ry="1.2" fill="#3B2A20"/></g></symbol>
+    <g transform="translate(-27 -27)"><rect x="-3" y="-7" width="6" height="7" rx="1.4" fill="#F1EEE7"/><ellipse cx="0" cy="-7" rx="3" ry="1.2" fill="#3B2A20"/></g></g></symbol>
+  <symbol id="desk-lo" overflow="visible"><ellipse cx="0" cy="24" rx="52" ry="14" fill="#000" opacity=".28"/><polygon points="-44,-30 0,-5 0,25 -44,0" fill="#3B3F47"/><polygon points="44,-30 0,-5 0,25 44,0" fill="#2B2E35"/><polygon points="0,-55 44,-30 0,-5 -44,-30" fill="#B8A083"/><polygon points="-31.5,-50.5 -4.5,-66 -4.5,-85.5 -31.5,-70" fill="#141518"/><polygon points="-30,-66.4 -6,-80.4 -6,-83 -30,-69" fill="currentColor" opacity=".95"/></symbol>
+  <symbol id="chair-lo" overflow="visible"><rect x="-16" y="-62" width="32" height="42" rx="8" fill="#2C3038"/><ellipse cx="0" cy="-17" rx="13.5" ry="5.5" fill="#2E3138"/></symbol>
+  <symbol id="bel0" overflow="visible"><polygon points="-9,-3 4,3.5 9,0.5 -4,-6" fill="#E9E4D6" stroke="#B9B3A3" stroke-width=".5"/><polygon points="-9,-3 4,3.5 4,5 -9,-1.5" fill="#B5532F"/><line x1="-1" y1="-2" x2="6" y2="1.5" stroke="#2A2B2F" stroke-width="1" stroke-linecap="round"/></symbol>
+  <symbol id="bel1" overflow="visible"><rect x="-4" y="-7" width="8" height="7" rx="1.5" fill="#E9E4D6"/><circle cx="-2" cy="-11" r="4" fill="#5F8560"/><circle cx="2.5" cy="-12" r="3.5" fill="#79A077"/></symbol>
+  <symbol id="bel2" overflow="visible"><polygon points="-6,-1 4,4 4,-9 -6,-14" fill="#2A2B2F"/><polygon points="-4.6,-3 2.6,1 2.6,-7.5 -4.6,-11.6" fill="#C9A984"/><circle cx="-1" cy="-7" r="2" fill="#7A5237"/></symbol>
+  <symbol id="bel3" overflow="visible"><path d="M-7 -1 Q-7 -9 0 -9 Q7 -9 7 -1" fill="none" stroke="#2A2B2F" stroke-width="1.8"/><rect x="-9" y="-4" width="4" height="5" rx="1.5" fill="#B5532F"/><rect x="5" y="-4" width="4" height="5" rx="1.5" fill="#B5532F"/></symbol>
+  <symbol id="bel4" overflow="visible"><polygon points="-9,-2 2,4 10,-0.5 -1,-6.5" fill="#1E2630" stroke="#3A3B40" stroke-width=".6"/><polygon points="-6,-2 1,2 7,-1 0,-5" fill="#8FB0BE" opacity=".5"/></symbol>
   <symbol id="chair" overflow="visible"><ellipse cx="0" cy="1" rx="14" ry="5" fill="#000" opacity=".25"/><path d="M-11 1 L11 1 M-6 -3 L6 5 M6 -3 L-6 5" stroke="#2A2B2F" stroke-width="2" stroke-linecap="round"/><rect x="-1.3" y="-16" width="2.6" height="16" fill="#4A4C52"/>
     <rect x="-16" y="-62" width="32" height="42" rx="8" fill="#262930"/><rect x="-13" y="-59" width="26" height="34" rx="6" fill="#343840"/><ellipse cx="0" cy="-17" rx="13.5" ry="5.5" fill="#2E3138"/><ellipse cx="-2" cy="-18" rx="8" ry="2.6" fill="#fff" opacity=".06"/>
     <rect x="-18.5" y="-30" width="3" height="11" rx="1.5" fill="#1F2126"/><rect x="15.5" y="-30" width="3" height="11" rx="1.5" fill="#1F2126"/></symbol>
@@ -209,7 +222,7 @@
   </defs>`; };
 
   // Room: a work floor (WORK_D deep) then a lounge. Kept compact so a floor reads as one office, not a long hall.
-  const ROOM_W = 1040, ROOM_D = 1900, GAP = 40, FAC_W = 440, WORK_D = 740, MIN_D = 2200;
+  const ROOM_W = 1040, ROOM_D = 1960, GAP = 40, FAC_W = 440, WORK_D = 800, MIN_D = 2200;
   const OAK = ['#B8A083', '#8F7558', '#745E47'], GRAPH = ['#3B3F47', '#2B2E35', '#24262C'], WOOD = ['#8A6446', '#6E4F37', '#5A402C'];
   const SOFA = ['#5E6672', '#4B525D', '#3E444E'], SEAT = ['#6B7380', '#565D69', '#474D58'];
 
@@ -250,6 +263,29 @@
     box(x + 16, y + 6, x + 48, y + 30, 26, ['#2A2B2F', '#1D1E22', '#141518'], 41) +
     use('cup', x + 70, y + 20, '', 41) + use('cup', x + 86, y + 14, '', 41) + use('cup', x + len - 30, y + 20, '', 41);
 
+  // zone sign: a small dark pill on a glass wall / the floor; hides together with the other decoration when --dt is none
+  const sign = (x, y, h, text, w = 150) => `<g transform="${onPlaneY(x, y, h)}" style="display:var(--dt,inline)"><rect x="0" y="-16" width="${w}" height="26" rx="6" fill="#141413" stroke="#55555C" stroke-width="1.2"/><text x="${w / 2}" y="2" text-anchor="middle" font-size="12" font-weight="600" letter-spacing="3" fill="#D6D4CC">${text}</text></g>`;
+  const zlabel = (x, y, text) => `<text x="${x}" y="${y}" font-size="22" font-weight="600" letter-spacing="7" fill="#FAF9F5" opacity="0.22" style="display:var(--dt,inline)">${text}</text>`;
+  const gpane = (a, b, c, d, op = 0.2) => `<polygon points="${pts(a, b, c, d)}" fill="#9FC3D2" opacity="${op}" stroke="#6B8A97" stroke-width="1"/>`;
+  const STEEL = ['#B9BEC6', '#9AA0A9', '#7F858E'], PANEL = ['#7A8794', '#66727E', '#56616C'], BLK = ['#2A2B2F', '#1D1E22', '#141518'];
+  // phone booth: a frosted glass cabin with a seat and a shelf; people never walk in (the whole footprint is blocked)
+  const booth = (x, y) => {
+    const w = 64, h = 100; if (REC) REC.push([x, y, x + w, y + w]);
+    return poly('#2E3139', P(x, y), P(x + w, y), P(x + w, y + w), P(x, y + w)) + box(x, y, x + w, y + 5, h, GRAPH) +
+      gpane(P(x, y), P(x, y + w), P(x, y + w, h), P(x, y, h)) +
+      box(x + 14, y + 18, x + 50, y + 46, 16, SOFA) + box(x + 8, y + 8, x + 56, y + 14, 3, OAK, 40) +
+      poly('#F7D9A8', P(x + 10, y + 5.5, h - 6), P(x + w - 10, y + 5.5, h - 6), P(x + w - 10, y + 5.5, h - 2), P(x + 10, y + 5.5, h - 2)) +
+      gpane(P(x + w, y), P(x + w, y + w), P(x + w, y + w, h), P(x + w, y, h)) + gpane(P(x, y + w), P(x + w, y + w), P(x + w, y + w, h), P(x, y + w, h), 0.14) +
+      `<polyline points="${pts(P(x, y + w, h), P(x + w, y + w, h), P(x + w, y, h))}" fill="none" stroke="#6B8A97" stroke-width="2.5"/>`;
+  };
+  // focus bench: single desks side by side with acoustic panels between them, chairs behind
+  const focusBench = (x, y, n) => {
+    let ch = '', pn = '';
+    for (let k = 0; k < n; k++) ch += use('chair', x + 50 + k * 100, y - 14);
+    for (let k = 0; k <= n; k++) pn += box(x + k * 100 - 3, y - 2, x + k * 100 + 3, y + 36, 62, PANEL);
+    let tops = ''; for (let k = 0; k < n; k++) tops += use('bel' + (k % 5), x + 30 + k * 100, y + 12, '', 30) + use('bel4', x + 72 + k * 100, y + 20, '', 30);
+    return ch + box(x, y, x + n * 100, y + 36, 30, GRAPH) + box(x - 3, y - 3, x + n * 100 + 3, y + 39, 3, OAK, 30) + tops + pn;
+  };
   function build(depts, look) {
     REC = []; DOORS = []; OVER = '';
     // Pick the grid: as close to a square floorplan as possible, but never at the cost of holes in the grid
@@ -289,13 +325,29 @@
       // floors: carpet tiles where people work, timber in the lounge, rugs under the seating groups
       floor += `<rect x="${x0}" y="${y0}" width="${ROOM_W}" height="${WORK_D}" fill="#24262B"/><rect x="${x0}" y="${y0}" width="${ROOM_W}" height="${WORK_D}" fill="url(#carpet)"/><rect class="room-floor" data-room="${i}" x="${x0 + 10}" y="${y0 + 10}" width="${ROOM_W - 20}" height="${WORK_D - 20}" rx="22" fill="#2A2A2E" opacity="0.6"/>
         <rect x="${x0}" y="${lt}" width="${ROOM_W}" height="${lh}" fill="#2B2622"/><rect x="${x0}" y="${lt}" width="${ROOM_W}" height="${lh}" fill="url(#timber)"/>
-        <rect x="${x0 + 70}" y="${gy - 26}" width="420" height="190" rx="16" fill="#343942"/><rect x="${x0 + 100}" y="${dy - 30}" width="800" height="200" rx="16" fill="#343942"/>
+        <rect x="${x0 + 70}" y="${gy - 26}" width="420" height="190" rx="16" fill="#343942"/><rect x="${x0 + 100}" y="${dy + 108}" width="360" height="170" rx="16" fill="#343942"/><rect x="${x0 + 570}" y="${dy + 108}" width="360" height="170" rx="16" fill="#343942"/>
         <rect class="room-accent" data-room="${i}" x="${x0 + 40}" y="${y0 + WORK_D - 62}" width="10" height="46" rx="3" fill="#55555C"/><text class="room-name" data-room="${i}" x="${x0 + 66}" y="${y0 + WORK_D - 22}" font-family="Newsreader, Georgia, serif" font-size="52" fill="#FAF9F5" opacity="0.72"></text>
         <text x="${x0 + 40}" y="${lt + 40}" font-size="22" font-weight="600" letter-spacing="7" fill="#FAF9F5" opacity="0.2">LOUNGE</text>`;
+      const mx0 = x0 + 560, mx1 = x0 + 940, my0 = gy - 48, my1 = gy + 196;
+      floor += `<rect x="${x0 + 80}" y="${ly - 40}" width="500" height="215" rx="10" fill="#2C2F34"/><rect x="${x0 + 80}" y="${ly - 40}" width="500" height="215" rx="10" fill="url(#ktile)"/>
+        <rect x="${mx0}" y="${my0}" width="${mx1 - mx0}" height="${my1 - my0}" fill="#2A3038"/><rect x="${mx0}" y="${my0}" width="${mx1 - mx0}" height="${my1 - my0}" fill="url(#rugw)"/><rect x="${mx0 + 6}" y="${my0 + 6}" width="${mx1 - mx0 - 12}" height="${my1 - my0 - 12}" fill="none" stroke="#fff" stroke-opacity=".07" stroke-width="3"/>
+        <rect x="${x0 + 70}" y="${dy - 50}" width="490" height="150" rx="12" fill="#2A3139"/><rect x="${x0 + 70}" y="${dy - 50}" width="490" height="150" rx="12" fill="url(#rugw)"/>
+        <ellipse cx="${x0 + 780}" cy="${dy + 45}" rx="190" ry="64" fill="url(#shade)"/><ellipse cx="${x0 + 320}" cy="${ly + 70}" rx="260" ry="120" fill="url(#pool)"/><ellipse cx="${(mx0 + mx1) / 2}" cy="${gy + 70}" rx="230" ry="130" fill="url(#pool)"/><ellipse cx="${x0 + 315}" cy="${dy + 20}" rx="230" ry="80" fill="url(#pool)"/>
+        ${zlabel(x0 + 90, ly + 196, 'KITCHENETTE')}${zlabel(x0 + 80, dy + 128 - 4 - 28, 'FOCUS ZONE · QUIET')}${zlabel(x0 + 640, dy + 118, 'PHONE BOOTHS')}${zlabel(x0 + 80, cy + 190, 'LIBRARY')}`;
       furn += `<use href="#leaddesk" x="${f(room.lead[0] - 25)}" y="${f(room.lead[1] + 20)}" class="room-screen" data-room="${i}" style="color:#3A3935"/><g class="lead-slot" data-room="${i}" transform="translate(${f(room.lead[0])} ${f(room.lead[1])})"></g>`;
       furn += use('tallplant', x1 - 40, y0 + 40) + use('plant', x1 - 40, y0 + WORK_D - 30); REC.push([x0 + 66, y0 + 97, x0 + 106, y0 + 137]); // lead desk
       // 50 desks: 10 x 5
-      for (let rr = 0; rr < 5; rr++) for (let cc = 0; cc < 10; cc++) { room.desks.push(desksF.length); desksF.push([x0 + 80 + cc * 95, y0 + 200 + rr * 110]); deskRoom.push(i); }
+      const PXs = (cc) => x0 + 70 + cc * 88 + (cc >= 5 ? 56 : 0), PYs = (rr) => y0 + 200 + rr * 110 + (rr >= 2 ? 30 : 0) + (rr >= 4 ? 30 : 0);
+      for (let rr = 0; rr < 5; rr++) for (let cc = 0; cc < 10; cc++) { room.desks.push(desksF.length); desksF.push([PXs(cc), PYs(rr)]); deskRoom.push(i); }
+      // pods: a rug and a pool of warm light under each cluster of desks, aisles between them
+      for (const [c0, c1] of [[0, 4], [5, 9]]) for (const [r0, r1] of [[0, 1], [2, 3], [4, 4]]) {
+        const rx = PXs(c0) - 54, rw = PXs(c1) + 54 - rx, ry = PYs(r0) - 74, rh = PYs(r1) + 44 - ry;
+        floor += `<ellipse cx="${rx + rw / 2}" cy="${ry + rh / 2 + 8}" rx="${rw * 0.66}" ry="${rh * 0.8}" fill="url(#pool)"/><rect x="${rx}" y="${ry}" width="${rw}" height="${rh}" rx="18" fill="#30343C" opacity=".6"/><rect x="${rx}" y="${ry}" width="${rw}" height="${rh}" rx="18" fill="url(#rugw)"/><rect x="${rx}" y="${ry}" width="${rw}" height="${rh}" rx="18" fill="none" stroke="#000" stroke-opacity=".3" stroke-width="3"/>`;
+      }
+      // aisle details: water cooler and plants in the middle aisle, printer + filing along the right wall
+      furn += use('cooler', x0 + 494, y0 + 150) + use('plant', x0 + 494, y0 + 380) + use('tallplant', x0 + 494, y0 + 640) +
+        box(x1 - 46, y0 + 300, x1 - 8, y0 + 338, 36, STEEL) + box(x1 - 44, y0 + 302, x1 - 10, y0 + 336, 14, ['#E6E3DC', '#C9C6BE', '#A9A69D'], 36) +
+        box(x1 - 46, y0 + 520, x1 - 8, y0 + 548, 52, STEEL) + box(x1 - 46, y0 + 556, x1 - 8, y0 + 584, 52, STEEL);
       furn += glass(x0, y0 + WORK_D + 10, x1, y0 + WORK_D + 10, 54, [0.4, 0.62]);
       furn += `<g transform="${onPlaneY(x0 + 430, y0 + WORK_D + 10, 78)}"><rect x="0" y="-16" width="150" height="26" rx="6" fill="#141413" stroke="#55555C" stroke-width="1.2"/><text x="75" y="2" text-anchor="middle" font-size="12" font-weight="600" letter-spacing="3" fill="#D6D4CC">LOUNGE</text></g>`;
       furn += glass(x1, y0, x1, y1, 66, [0.3, 0.42]);
@@ -304,25 +356,30 @@
       // ── Lounge: four zones, back to front. `blocked` = floor nobody may stand on (furniture, and just behind tall pieces).
       const blocked = []; SEATS = [];
       // A: coffee point + two standing tables
-      furn += counter(x0 + 150, ly + 40, 300);
+      furn += counter(x0 + 150, ly + 40, 300) + box(x0 + 470, ly + 36, x0 + 512, ly + 78, 82, STEEL) + box(x0 + 509, ly + 40, x0 + 511, ly + 76, 1, BLK, 52) +
+        box(x0 + 220, ly + 48, x0 + 262, ly + 70, 15, BLK, 41) + box(x0 + 290, ly + 48, x0 + 336, ly + 70, 2, STEEL, 41);
       for (let k = 0; k < 4; k++) furn += use('stool', x0 + 190 + k * 70, ly + 108);
       furn += use('plant', x0 + 50, ly + 70) + use('tallplant', x1 - 60, ly + 50);
       furn += use('table', x0 + 660, ly + 70) + use('cup', x0 + 654, ly + 66, '', 25) + use('stool', x0 + 620, ly + 96) + use('table', x0 + 820, ly + 70) + use('stool', x0 + 862, ly + 92);
-      blocked.push([x0 + 120, ly - 30, x0 + 470, ly + 125], [x0 + 600, ly + 30, x0 + 880, ly + 110]);
+      blocked.push([x0 + 120, ly - 30, x0 + 530, ly + 125], [x0 + 600, ly + 30, x0 + 880, ly + 110]);
       // B: sofa group on a rug; meeting table in front of a wall display
       furn += use('floorlamp', x0 + 80, gy + 16) + sofa(x0 + 110, gy, 240) + armchair(x0 + 396, gy + 6) + lowTable(x0 + 180, gy + 84, 100, 46) + use('cup', x0 + 214, gy + 100, '', 17) + use('plant', x0 + 500, gy + 10);
-      furn += display(x0 + 600, gy - 30, 300) + meeting(x0 + 610, gy + 70, 280);
-      blocked.push([x0 + 70, gy - 12, x0 + 470, gy + 140], [x0 + 580, gy - 110, x0 + 920, gy + 186]);
+      furn += glass(mx0, my0, mx1, my0, 64) + glass(mx0, my0, mx0, my1, 64, [0.45, 0.62]) + sign(mx0 + 100, my0, 78, 'MEETING ROOM', 170);
+      furn += display(x0 + 600, gy - 30, 300) + meeting(x0 + 610, gy + 70, 280) + use('plant', mx1 - 24, my0 + 22) + use('floorlamp', mx0 + 22, my1 - 26);
+      furn += glass(mx1, my0, mx1, my1, 64) + glass(mx0, my1, mx1, my1, 64);
+      blocked.push([x0 + 70, gy - 12, x0 + 470, gy + 140], [x0 + 540, gy - 60, x0 + 960, gy + 212]);
       // C: bookcases with a reading pair; a second pair by the window side
       furn += shelf(x0 + 70, cy, 160) + shelf(x0 + 240, cy, 160) + use('floorlamp', x0 + 430, cy + 50);
       furn += armchair(x0 + 110, cy + 96) + use('table', x0 + 205, cy + 124) + armchair(x0 + 250, cy + 96);
       furn += armchair(x0 + 620, cy + 40) + use('table', x0 + 716, cy + 70) + use('cup', x0 + 710, cy + 66, '', 25) + armchair(x0 + 762, cy + 40) + use('plant', x0 + 900, cy + 40);
       blocked.push([x0 + 60, cy - 80, x0 + 410, cy + 150], [x0 + 600, cy + 30, x0 + 830, cy + 96]);
-      // D: two facing sofa groups on a long rug
-      furn += use('floorlamp', x0 + 110, dy + 16) + sofa(x0 + 150, dy, 220) + lowTable(x0 + 210, dy + 84, 100, 46) + use('plant', x0 + 500, dy + 20);
-      furn += sofa(x0 + 620, dy, 220) + lowTable(x0 + 680, dy + 84, 100, 46) + use('cup', x0 + 716, dy + 100, '', 17) + use('floorlamp', x0 + 880, dy + 16);
-      furn += use('plant', x0 + 50, dy + 190) + use('tallplant', x1 - 60, dy + 170);
-      blocked.push([x0 + 130, dy - 12, x0 + 390, dy + 140], [x0 + 600, dy - 12, x0 + 860, dy + 140]);
+      // D: focus zone (quiet single desks behind glass) and phone booths; below them two sofa groups
+      furn += focusBench(x0 + 100, dy + 4, 4) + use('plant', x0 + 60, dy + 70) + sign(x0 + 120, dy + 84, 54, 'FOCUS ZONE', 150) + glass(x0 + 70, dy + 84, x0 + 560, dy + 84, 54, [0.55, 0.7]);
+      furn += booth(x0 + 640, dy + 6) + booth(x0 + 730, dy + 6) + booth(x0 + 820, dy + 6) + use('tallplant', x0 + 930, dy + 40);
+      furn += use('floorlamp', x0 + 110, dy + 146) + sofa(x0 + 150, dy + 130, 220) + lowTable(x0 + 210, dy + 214, 100, 46) + use('plant', x0 + 500, dy + 140);
+      furn += sofa(x0 + 620, dy + 130, 220) + lowTable(x0 + 680, dy + 214, 100, 46) + use('cup', x0 + 716, dy + 230, '', 17) + use('floorlamp', x0 + 880, dy + 146);
+      furn += use('plant', x0 + 50, dy + 250) + use('tallplant', x1 - 60, dy + 250);
+      blocked.push([x0 + 60, dy - 40, x0 + 570, dy + 100], [x0 + 620, dy - 10, x0 + 930, dy + 82], [x0 + 130, dy + 118, x0 + 390, dy + 270], [x0 + 600, dy + 118, x0 + 860, dy + 270]);
 
       const seats = SEATS; SEATS = null;
       // people standing at the coffee counter and the two standing tables
@@ -377,6 +434,9 @@
     // walls, windows, clock, task board
     const wins = []; for (let x = 120; x < fx - 160; x += 330) wins.push(sky(x, x + 160, 50, 92, 'R'));
     const winsL = []; for (let y = 120; y < D - 200; y += 360) winsL.push(sky(y, y + 190, 32, 82, 'L'));
+    // daylight: a soft warm patch on the floor under every outer window
+    for (let x = 120; x < fx - 160; x += 330) floor += `<polygon points="${x},0 ${x + 160},0 ${x + 290},260 ${x + 130},260" fill="url(#dayg)"/>`;
+    for (let y = 120; y < D - 200; y += 360) floor += `<polygon points="0,${y} 0,${y + 190} 260,${y + 320} 260,${y + 130}" fill="url(#dayh)"/>`;
     back = `${poly('#141416', P(0, D), P(W, D), P(W, D, -18), P(0, D, -18))}${poly('#0F0F11', P(W, 0), P(W, D), P(W, D, -18), P(W, 0, -18))}
       ${poly('#2A2A2F', P(0, 0), P(W, 0), P(W, 0, 100), P(0, 0, 100))}${poly('#232327', P(0, 0), P(0, D), P(0, D, 100), P(0, 0, 100))}
       ${poly('#3A3A40', P(0, 0, 100), P(W, 0, 100), P(W, 0, 106), P(0, 0, 106))}${poly('#323237', P(0, 0, 100), P(0, D, 100), P(0, D, 106), P(0, 0, 106))}
@@ -392,7 +452,7 @@
     const desks = desksF.map(([x, y]) => P(x, y)), cafe = spotsF.map(([x, y]) => P(x, y));
     const order = desks.map((d, i) => i).sort((a, b) => desks[a][1] - desks[b][1]);
     // chair, then the person (in .seat, low enough to read as sitting), then the desk in front of both
-    const deskSvg = order.map((i) => `<g class="desk" data-desk="${i}" transform="translate(${f(desks[i][0])} ${f(desks[i][1])}) scale(1.1)"><use href="#chair" x="24" y="-20"/><g class="seat" transform="translate(24 -19)"></g><use class="desk-top" href="#desk" style="color:#3A3935"/></g>`).join('');
+    const deskSvg = order.map((i) => `<g class="desk" data-desk="${i}" transform="translate(${f(desks[i][0])} ${f(desks[i][1])}) scale(1.1)"><use href="#chair" x="24" y="-20" style="display:var(--dt,inline)"/><use href="#chair-lo" x="24" y="-20" style="display:var(--dl,none)"/><g class="seat" transform="translate(24 -19)"></g><g class="desk-top" style="color:#3A3935"><use href="#desk" style="display:var(--dt,inline)"/><use href="#desk-lo" style="display:var(--dl,none)"/></g>${(i * 7 + 3) % 9 < 5 ? `<use href="#bel${(i * 7 + 3) % 9}" x="22" y="-37" style="display:var(--dt,inline)"/>` : ''}</g>`).join('');
     const ceo = P(fx + 230, 80);
     const helper = P(helperX, helperY);
     const minX = P(0, D)[0], maxX = P(W, 0)[0], maxY = P(W, D)[1] + 30;

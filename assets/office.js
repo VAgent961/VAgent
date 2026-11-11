@@ -38,7 +38,18 @@
   // ---------- zoom + pan ----------
   const stage = $('#stage'); let VB0 = { ...S.vb }; const vb = { ...VB0 }, MAXZ = 5;
   stage.insertAdjacentHTML('beforeend', '<div class="zoom" role="group" aria-label="Zoom the office"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button><button type="button" data-z="reset" aria-label="Fit the whole office" style="font-size:14px">⤢</button></div>');
-  const setVB = () => { svg.setAttribute('viewBox', vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h); };
+  let lodNear = null, szW = 0, szH = 0;
+  const lod = () => { if (!szW) { const r = svg.getBoundingClientRect(); szW = r.width; szH = r.height; if (!szW) return; }
+    const near = Math.min(szW / vb.w, szH / vb.h) >= 0.34; if (near !== lodNear) { lodNear = near; svg.style.setProperty('--dt', near ? 'inline' : 'none'); svg.style.setProperty('--dl', near ? 'none' : 'inline'); svg.dataset.lod = near ? 'near' : 'far'; }
+    if (!cullQ) { cullQ = true; requestAnimationFrame(cull); } };
+  // zoomed in: desks outside the view are not drawn at all (a phone never paints the whole floor at full detail)
+  let cullQ = false;
+  const cull = () => { cullQ = false; const els = svg.getElementsByClassName('desk'), x0 = vb.x - 130, x1 = vb.x + vb.w + 130, y0 = vb.y - 150, y1 = vb.y + vb.h + 90;
+    for (let k = 0; k < els.length; k++) { const e = els[k], p = S.desks && S.desks[+e.dataset.desk]; if (!p) continue; const hide = !!lodNear && (p[0] < x0 || p[0] > x1 || p[1] < y0 || p[1] > y1); if (e._h !== hide) { e._h = hide; e.style.display = hide ? 'none' : ''; } } };
+  if (window.ResizeObserver) new ResizeObserver(() => { szW = 0; lod(); }).observe(stage);
+  stage.insertAdjacentHTML('beforeend', '<button type="button" class="legend-btn" aria-expanded="false" aria-controls="legend">Legend</button><div class="legend" id="legend" hidden><p><i class="sd working"></i>Working at a desk</p><p><i class="sd idle"></i>Resting in the lounge or café</p><p><i class="sd help"></i>Needs help (last run failed)</p><p><i class="sd off"></i>Turned off</p><p class="muted">Zoom in to see rooms, signs and desk details.</p></div><div class="floor-badge" id="floor-badge" hidden></div>');
+  stage.addEventListener('click', (e) => { const b = e.target.closest('.legend-btn'); if (!b) return; const l = $('#legend'); l.hidden = !l.hidden; b.setAttribute('aria-expanded', String(!l.hidden)); });
+  const setVB = () => { svg.setAttribute('viewBox', vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h); lod(); };
   setVB();
   const clampVB = () => { vb.w = Math.min(VB0.w, Math.max(VB0.w / MAXZ, vb.w)); vb.h = vb.w * VB0.h / VB0.w; vb.x = Math.min(VB0.x + VB0.w - vb.w, Math.max(VB0.x, vb.x)); vb.y = Math.min(VB0.y + VB0.h - vb.h, Math.max(VB0.y, vb.y)); };
   const view = () => { const r = svg.getBoundingClientRect(), s = Math.min(r.width / vb.w, r.height / vb.h); return { s, ox: r.left + (r.width - vb.w * s) / 2, oy: r.top + (r.height - vb.h * s) / 2 }; };
@@ -313,7 +324,8 @@
     }
     renderDepts(); renderFloorNav();
   }
-  function renderFloorNav() {
+  function renderFloorNav() { renderFloorNav0(); const fb = $('#floor-badge'); if (!fb) return; if (floor === null) { fb.hidden = true; return; } fb.hidden = false; fb.textContent = 'Floor ' + (floor + 1) + ' · ' + (floorsInfo()[floor].depts.map((d) => d.name).join(' · ') || 'empty'); }
+  function renderFloorNav0() {
     let nav = $('#floornav'); if (!nav) { nav = document.createElement('div'); nav.id = 'floornav'; nav.className = 'floornav'; nav.setAttribute('role', 'group'); nav.setAttribute('aria-label', 'Building floors'); stage.appendChild(nav); }
     const n = floorCount();
     if (floor === null) {
@@ -494,6 +506,8 @@
   }
   // every kind of place (desk, lounge spot, lead desk, messenger corner) is reached the same way: walk() -> goTo()
   const walkAny = walk;
+  if (DBG) { const h = document.createElement('div'); h.id = 'dev-hud'; h.style.cssText = 'position:fixed;left:50%;bottom:4px;transform:translateX(-50%);z-index:99;font:11px/1.4 monospace;background:#000c;color:#9f9;padding:4px 7px;border-radius:6px;pointer-events:none';
+    document.body.appendChild(h); let n = 0, t0 = performance.now(); const tk = (t) => { n++; if (t - t0 >= 1000) { h.textContent = Math.round(n * 1000 / (t - t0)) + ' fps · ' + svg.querySelectorAll('*').length + ' nodes · ' + S.nav.rects.length + ' rects · detail ' + (lodNear ? 'on' : 'off'); n = 0; t0 = t; } requestAnimationFrame(tk); }; requestAnimationFrame(tk); }
   if (DBG) window.__vo = { scene: () => S, els, places, dest, goTo, inv, proj, movers: () => movers.size };
 
   const where = (a) => { const x = D.departments.find((y) => y.id === a.dept); if (!x) return 'No department'; const t = x.teams.find((y) => y.id === a.team); return x.name + (t ? ' / ' + t.name : ''); };
