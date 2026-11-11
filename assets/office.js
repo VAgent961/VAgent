@@ -18,6 +18,8 @@
   let D = { agents: [], departments: [], activity: [], errors: [], instances: [] };
   const els = {}, places = {};
   let first = true, current = null;
+  // building mode: floor === null shows the tower; a number shows that apartment (4 departments) in detail
+  let V = { departments: [], agents: [] }, floor = null, bBoxes = [], busy = false; const PER = 4;
 
   async function api(path, opt = {}) {
     const r = await fetch('/api/' + path + (opt.query ? '?' + opt.query : ''), { method: opt.method || (opt.body ? 'POST' : 'GET'), headers: opt.body ? { 'Content-Type': 'application/json' } : {}, body: opt.body ? JSON.stringify(opt.body) : undefined });
@@ -178,7 +180,7 @@
     const cs = svg.querySelector("#ceo-slot"); if (cs && !cs.firstChild) cs.innerHTML = '<g class="ceo-g" tabindex="0" role="button" aria-label="Talk to the CEO"><g transform="scale(1.25)"><use href="#ceo"/></g><g class="tag" transform="translate(0 -104)"><rect x="-64" y="-13" width="128" height="24" rx="12" fill="#2B2416"/><text y="3" text-anchor="middle" fill="#E9C46A" font-size="12" font-weight="600">CEO · Talk to me</text></g></g>';
     renderDepts();
     S.rooms.forEach((r, i) => {
-      const d = D.departments[i], slot = svg.querySelector(`.lead-slot[data-room="${i}"]`), screen = svg.querySelector(`.room-screen[data-room="${i}"]`);
+      const d = V.departments[i], slot = svg.querySelector(`.lead-slot[data-room="${i}"]`), screen = svg.querySelector(`.room-screen[data-room="${i}"]`);
       if (!slot) return;
       if (screen) screen.style.color = d ? d.color : '#3A3935';
       const fl = svg.querySelector(`.room-floor[data-room="${i}"]`), nm = svg.querySelector(`.room-name[data-room="${i}"]`);
@@ -198,9 +200,82 @@
     });
   }
 
+  // ---------- building: apartments of 4 departments, stacked as floors ----------
+  const floorCount = () => Math.max(1, Math.ceil(D.departments.length / PER));
+  function floorView() {
+    if (floor === null) return { departments: [], agents: [] };
+    if (floor >= floorCount()) floor = floorCount() - 1;
+    const deps = D.departments.slice(floor * PER, floor * PER + PER), ids = new Set(deps.map((d) => d.id)), known = new Set(D.departments.map((d) => d.id));
+    // the messenger is in every apartment; agents with no department live on the ground floor
+    return { departments: deps, agents: D.agents.filter((a) => isHelper(a) || ids.has(a.dept) || (floor === 0 && !known.has(a.dept))) };
+  }
+  function floorOfAgent(key) {
+    const a = D.agents.find((x) => x.key === key); if (!a) return null;
+    const i = D.departments.findIndex((d) => d.id === a.dept); return i < 0 ? 0 : Math.floor(i / PER);
+  }
+  function floorsInfo() {
+    return Array.from({ length: floorCount() }, (_, k) => {
+      const depts = D.departments.slice(k * PER, k * PER + PER).map((d) => { const m = D.agents.filter((a) => a.dept === d.id); return { id: d.id, name: d.name, color: d.color, count: m.length, working: m.filter((a) => a.status === 'working').length }; });
+      return { depts, total: depts.reduce((n, d) => n + d.count, 0), working: depts.reduce((n, d) => n + d.working, 0) };
+    });
+  }
+  function showBuilding() {
+    render.over = [];
+    const info = floorsInfo(), key = 'B:' + JSON.stringify(info);
+    if (key !== sceneKey) {
+      sceneKey = key;
+      for (const k of Object.keys(els)) { els[k].remove(); delete els[k]; delete places[k]; }
+      const B = VBuilding.build(info);
+      svg.innerHTML = B.inner; free = walkL = null; bBoxes = B.boxes;
+      VB0 = { ...B.vb }; Object.assign(vb, VB0); setVB();
+    }
+    renderDepts(); renderFloorNav();
+  }
+  function renderFloorNav() {
+    let nav = $('#floornav'); if (!nav) { nav = document.createElement('div'); nav.id = 'floornav'; nav.className = 'floornav'; nav.setAttribute('role', 'group'); nav.setAttribute('aria-label', 'Building floors'); stage.appendChild(nav); }
+    const n = floorCount();
+    if (floor === null) {
+      const info = floorsInfo();
+      nav.innerHTML = '<span class="fn-title">Pick an apartment</span>' + info.map((fl, k) => `<button type="button" data-floor="${k}" aria-label="Floor ${k + 1}"><b><span class="fx">Floor </span>${k + 1}</b> <small>${fl.depts.map((d) => esc(d.name)).join(' · ') || 'empty'}</small></button>`).reverse().join('');
+    } else {
+      nav.innerHTML = `<button type="button" data-fn="building">🏢 Building</button><div class="fn-row"><button type="button" data-fn="up" aria-label="Floor up" ${floor >= n - 1 ? 'disabled' : ''}>▲</button><span class="fn-lbl">Floor ${floor + 1} / ${n}</span><button type="button" data-fn="down" aria-label="Floor down" ${floor <= 0 ? 'disabled' : ''}>▼</button></div>`;
+    }
+  }
+  // select an apartment in the tower: floors above lift away, the camera drops onto it, then the apartment opens
+  function selectFloor(k) {
+    if (busy || k < 0 || k >= floorCount()) return;
+    const fls = [...svg.querySelectorAll('.fl')], box = bBoxes[k];
+    if (floor !== null || !window.gsap || !fls.length || !box) return enterFloor(k);
+    busy = true;
+    gsap.to(fls.filter((g) => +g.dataset.f > k), { y: -520, opacity: 0, duration: 0.55, ease: 'power2.in' });
+    const nw = Math.min(VB0.w, box.w * 1.15), to = { w: nw, h: nw * VB0.h / VB0.w }; to.x = box.x + box.w / 2 - to.w / 2; to.y = box.y + box.h / 2 - to.h / 2;
+    gsap.to(vb, { ...to, duration: 0.8, ease: 'power2.inOut', onUpdate: () => { clampVB(); setVB(); }, onComplete: () => {
+      gsap.to(svg, { opacity: 0, duration: 0.2, onComplete: () => { enterFloor(k); gsap.to(svg, { opacity: 1, duration: 0.35, onComplete: () => { busy = false; } }); } });
+    } });
+  }
+  function enterFloor(k) { floor = Math.max(0, Math.min(floorCount() - 1, k)); sceneKey = ''; render(); }
+  function stepFloor(d) {
+    if (floor === null || busy) return; const k = floor + d; if (k < 0 || k >= floorCount()) return;
+    if (!window.gsap) return enterFloor(k);
+    busy = true; gsap.to(svg, { opacity: 0, duration: 0.18, onComplete: () => { enterFloor(k); gsap.to(svg, { opacity: 1, duration: 0.3, onComplete: () => { busy = false; } }); } });
+  }
+  function showTower() {
+    if (floor === null || busy) return; floor = null; sceneKey = ''; render();
+    if (window.gsap) { gsap.set(svg, { opacity: 1 }); gsap.from(svg.querySelectorAll('.fl'), { y: -420, opacity: 0, duration: 0.5, stagger: 0.07, ease: 'power2.out' }); }
+  }
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-floor],[data-fn]'); if (!t || !t.closest('#floornav')) return;
+    if (t.dataset.floor !== undefined) selectFloor(+t.dataset.floor); else if (t.dataset.fn === 'building') showTower(); else stepFloor(t.dataset.fn === 'up' ? 1 : -1);
+  });
+  svg.addEventListener('click', (e) => { const g = e.target.closest('.fl'); if (g && floor === null) selectFloor(+g.dataset.f); });
+  document.addEventListener('keydown', (e) => {
+    if (current || e.target.closest('input,textarea,select')) return;
+    if (e.key === 'ArrowUp') { if (floor !== null) { e.preventDefault(); stepFloor(1); } } else if (e.key === 'ArrowDown') { if (floor !== null) { e.preventDefault(); stepFloor(-1); } } else if (e.key === 'Escape') showTower();
+  });
+
   function buildScene() {
-    const key = D.departments.map((d) => d.id).join(','); if (key === sceneKey) return;
-    sceneKey = key; S = VScene.build(D.departments);
+    const key = 'F' + floor + ':' + V.departments.map((d) => d.id).join(','); if (key === sceneKey) return;
+    sceneKey = key; S = VScene.build(V.departments);
     for (const k of Object.keys(els)) { els[k].remove(); delete els[k]; delete places[k]; }
     svg.innerHTML = S.inner; free = $('#layer-free'); walkL = $('#layer-walk');
     VB0 = { ...S.vb }; Object.assign(vb, VB0); setVB();
@@ -214,19 +289,24 @@
   function renderDepts() {
     const box = $('#depts'); if (!box) return;
     const count = (id) => D.agents.filter((a) => a.dept === id).length;
-    box.innerHTML = '<span class="depts-h">Departments</span>' + (D.departments.map((d, i) => `<button type="button" class="dept-btn" data-room-i="${i}" data-dept="${d.id}"><span class="dd" style="background:${d.color}"></span><span class="dn">${esc(d.name)}</span><span class="dc">${count(d.id)}/35</span></button>`).join('') || '<p class="empty">No departments yet.</p>') + '<button type="button" class="dept-btn add" id="dept-add">+ New department</button>';
+    box.innerHTML = '<span class="depts-h">Departments</span>' + ((floor === null ? D.departments : V.departments).map((d, i) => `<button type="button" class="dept-btn" data-room-i="${i}" data-dept="${d.id}"><span class="dd" style="background:${d.color}"></span><span class="dn">${esc(d.name)}</span><span class="dc">${count(d.id)}/35</span></button>`).join('') || '<p class="empty">No departments yet.</p>') + '<button type="button" class="dept-btn add" id="dept-add">+ New department</button>';
   }
 
   function render() {
+    V = floorView();
+    if (floor === null) { showBuilding(); sideRender(); return; }
+    sceneRender(); renderFloorNav(); sideRender();
+  }
+  function sceneRender() {
     buildScene();
-    const A = D.agents;
+    const A = V.agents;
     const working = A.filter((a) => a.status === 'working' && !isHelper(a));
     const cafe = A.filter((a) => (a.status === 'idle' || a.status === 'help') && !isHelper(a));
     const off = A.filter((a) => a.status === 'off' && !isHelper(a));
     const helpers = A.filter(isHelper);
 
     const next = {}, used = { desk: new Set(), cafe: new Set() }, over = [];
-    const roomOf = (a) => { const i = D.departments.findIndex((x) => x.id === a.dept); return i >= 0 && i < S.rooms.length ? i : -1; };
+    const roomOf = (a) => { const i = V.departments.findIndex((x) => x.id === a.dept); return i >= 0 && i < S.rooms.length ? i : -1; };
     const pick = (a, t, choices) => { const p = places[a.key]; if (p && p.t === t && choices.includes(p.i) && !used[t].has(p.i)) return p.i; return choices.find((i) => !used[t].has(i)); };
     // leads sit at their lead-desk when idle, not in the lounge
     const leadKeys = new Set(D.departments.map((d) => d.lead_key).filter(Boolean));
@@ -245,7 +325,7 @@
     for (const a of helpers) {
       if (a.status === 'working') {
         // walk to the first valid dept lead position (or fall back to helper spot)
-        const targetRoom = S.rooms.find((r, i) => D.departments[i] && !r.ghost);
+        const targetRoom = S.rooms.find((r, i) => V.departments[i] && !r.ghost);
         const dest = targetRoom ? targetRoom.lead : S.helper;
         // we store it as a 'lead' type with the xy baked in
         next[a.key] = { t: 'helperworking', xy: dest };
@@ -274,7 +354,7 @@
       // rooms + leads: only allowed depts are lit + interactive
       svg.querySelectorAll('.lead-slot,.room-screen,.room-floor,.room-name,.add-room,.lead').forEach((el) => {
         const roomIdx = el.dataset.room !== undefined ? Number(el.dataset.room) : null;
-        const deptId = el.dataset.dept ? Number(el.dataset.dept) : (roomIdx !== null ? D.departments[roomIdx]?.id : null);
+        const deptId = el.dataset.dept ? Number(el.dataset.dept) : (roomIdx !== null ? V.departments[roomIdx]?.id : null);
         const mine = allowed.size > 0 && allowed.has(deptId);
         el.setAttribute('opacity', mine ? '1' : '0.08');
         el.setAttribute('pointer-events', mine ? 'auto' : 'none');
@@ -289,10 +369,15 @@
         el.removeAttribute('tabindex');
       });
     }
+    render.over = over;
+  }
+  function sideRender() {
+    const A = D.agents, working = A.filter((a) => a.status === 'working' && !isHelper(a)), cafe = A.filter((a) => (a.status === 'idle' || a.status === 'help') && !isHelper(a)), off = A.filter((a) => a.status === 'off' && !isHelper(a));
+    const over = render.over || [];
     const help = A.filter((a) => a.status === 'help').length;
     $('#n-working').textContent = working.length; $('#n-idle').textContent = cafe.length - help; $('#n-help').textContent = help;
-    svg.querySelector('#board-bar1').setAttribute('opacity', working.length ? 1 : 0.35); svg.querySelector('#board-bar2').setAttribute('opacity', cafe.length ? 1 : 0.35);
-    $('#board-line').textContent = A.length ? working.length + ' working · ' + cafe.length + ' in café' : 'Connect n8n to start';
+    svg.querySelector('#board-bar1')?.setAttribute('opacity', working.length ? 1 : 0.35); svg.querySelector('#board-bar2')?.setAttribute('opacity', cafe.length ? 1 : 0.35);
+    const bl = $('#board-line'); if (bl) bl.textContent = A.length ? working.length + ' working · ' + cafe.length + ' in café' : 'Connect n8n to start';
     $('#n-all').textContent = A.length; $('#n-off').textContent = off.length;
     const notes = [];
     if (!D.instances.some((i) => i.owner === D.me)) notes.push('<button class="chip hello" type="button" data-open="connect"><b>Bring your agents in</b><span>Connect your n8n in 3 quick steps →</span></button>');
@@ -364,6 +449,7 @@
   $('#inst').onchange = (e) => { inst = e.target.value; renderList(); };
   document.addEventListener('keydown', (e) => { if (e.key === '/' && !e.target.closest('input,textarea,select')) { e.preventDefault(); $('#q').focus(); } });
   function focusAgent(key) {
+    if (!els[key] || floor === null) { const k = floorOfAgent(key); if (k !== null && k !== floor) { enterFloor(k); setTimeout(() => focusAgent(key), 900); } return; }
     const g = els[key]; if (!g || !g._pos) return;
     document.querySelectorAll('.agent.found').forEach((x) => x.classList.remove('found')); g.classList.add('found'); setTimeout(() => g.classList.remove('found'), 4000);
     const nw = Math.min(VB0.w, VB0.w / 2.2), to = { w: nw, h: nw * VB0.h / VB0.w }; to.x = g._pos[0] - to.w / 2; to.y = g._pos[1] - 40 - to.h / 2;
@@ -737,8 +823,8 @@
     if (t.dataset.delN8n) { if (!confirm('Remove this n8n? Its agents leave the office (nothing is deleted in n8n).')) return; await api('n8n?id=' + t.dataset.delN8n, { method: 'DELETE' }); await load(); return openSettings(); }
     const o = t.dataset.open; if (o === 'connect') openConnect(); else if (o === 'settings') openSettings(); else if (o === 'new-dept') newDept(); else if (o === 'off' || o === 'over') openList(o);
   });
-  document.addEventListener('click', (e) => { const b = e.target.closest('.dept-btn'); if (!b) return; if (b.id === 'dept-add') return newDept(); zoomRoom(+b.dataset.roomI); }, true);
-  svg.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.agent,.lead,.add-room,.ceo-g,.task-board')) { e.preventDefault(); e.target.closest('.agent,.lead,.add-room,.ceo-g,.task-board').dispatchEvent(new MouseEvent('click', { bubbles: true })); } });
+  document.addEventListener('click', (e) => { const b = e.target.closest('.dept-btn'); if (!b) return; if (b.id === 'dept-add') return newDept(); if (floor === null) return selectFloor(Math.floor(+b.dataset.roomI / PER)); zoomRoom(+b.dataset.roomI); }, true);
+  svg.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.agent,.lead,.add-room,.ceo-g,.task-board,.fl')) { e.preventDefault(); e.target.closest('.agent,.lead,.add-room,.ceo-g,.task-board,.fl').dispatchEvent(new MouseEvent('click', { bubbles: true })); } });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && current) close(); });
   $('#drawer-close').onclick = close; scrim.onclick = close;
   $('#btn-settings').onclick = openSettings; $('#btn-task').onclick = openCEO; $('#btn-clients').onclick = openClients;
