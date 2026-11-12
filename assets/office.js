@@ -445,6 +445,7 @@
       const p = next[a.key]; let g = els[a.key];
       if (!p) { if (g) { leave(g); delete els[a.key]; delete places[a.key]; } continue; }
       if (!g) { g = els[a.key] = makeAgent(a); updateAgent(g, a); attachAny(g, p); if (!first && window.gsap) gsap.from(g, { opacity: 0, duration: 0.6 }); }
+      else if (g._errand) { updateAgent(g, a); } // the Office Helper is out on a build errand; it goes to its place when back
       else { updateAgent(g, a); const o = places[a.key]; if (!o || o.t !== p.t || o.i !== p.i || o.xy !== p.xy || (p.xy && o.xy && (p.xy[0]!==o.xy[0]||p.xy[1]!==o.xy[1]))) walkAny(g, o, p); }
       places[a.key] = p;
       if (p.t === 'desk') deskG(p.i).querySelector('.desk-top').style.color = colorOf(a.key);
@@ -537,13 +538,66 @@
     const nw = Math.min(VB0.w, VB0.w / 2.2), to = { w: nw, h: nw * VB0.h / VB0.w }; to.x = g._pos[0] - to.w / 2; to.y = g._pos[1] - 40 - to.h / 2;
     if (window.gsap) gsap.to(vb, { ...to, duration: 0.6, ease: 'power2.inOut', onUpdate: () => { clampVB(); setVB(); } }); else { Object.assign(vb, to); clampVB(); setVB(); }
   }
+  // ── Office Helper errands for website builds ───────────────────────────────
+  // D.builds (from /hook/build): "sent" = the helper takes the brief from the Sniper lead, carries it to PM Tech
+  // (Abdallah's builder; out through the exit when PM Tech isn't on this floor) and comes back.
+  // "done" = it comes back in with the live link and hands it to the lead. "failed" = it tells the lead.
+  // Builds already known when the page opens are not replayed.
+  const seenBuild = new Map(), errands = []; let buildsPrimed = false, errandBusy = false;
+  function handleBuilds() {
+    for (const b of (D && D.builds) || []) {
+      if (seenBuild.get(b.job_id) === b.stage) continue;
+      seenBuild.set(b.job_id, b.stage); if (buildsPrimed) errands.push(b);
+    }
+    buildsPrimed = true; runErrand();
+  }
+  function say(g, text) {
+    let s = g.querySelector('.say'); if (s) s.remove(); if (!text) return;
+    const w = Math.round(text.length * 6.4 + 18);
+    g.insertAdjacentHTML('beforeend', `<g class="say" transform="translate(0 -124)" pointer-events="none"><rect x="${-w / 2}" y="-12" width="${w}" height="22" rx="11" fill="#FAF9F5" stroke="#9FD0D6" stroke-width="1.5"/><path d="M-5 9.5 L0 16 L5 9.5 Z" fill="#FAF9F5"/><text y="3.5" text-anchor="middle" font-size="11.5" font-weight="600" fill="#141413"></text></g>`);
+    g.querySelector('.say text').textContent = text;
+  }
+  function runErrand() {
+    if (errandBusy || !errands.length) return;
+    if (!window.gsap || reduced() || !S || !walkL || !walkL.isConnected) { errands.length = 0; return; }
+    const helper = D.agents.find(isHelper), g = helper && els[helper.key];
+    if (!g || !g.isConnected) { errands.length = 0; return; }
+    const b = errands.shift(), biz = (b.business || 'the client').slice(0, 26);
+    const placed = (a) => a && places[a.key] && els[a.key] && els[a.key].isConnected ? posOf(places[a.key]) : null;
+    const lead = D.agents.find((a) => a.isLead && /sniper/i.test(a.realName || a.name)) || D.agents.find((a) => a.isLead);
+    const pm = D.agents.find((a) => /pm.?tech/i.test(a.realName || a.name));
+    const lp = placed(lead), pp = placed(pm);
+    const near = (xy) => { const w = inv(xy[0], xy[1]); return { at: VNav.nearest(S.nav, w[0] - 34, w[1] + 34) }; };
+    const exit = { at: VNav.nearest(S.nav, 90, 40) };
+    const go = (d) => new Promise((r) => goTo(g, d, { speed: BRISK }, r));
+    const wait = (sec) => new Promise((r) => gsap.delayedCall(sec, r));
+    const talk = async (t, sec) => { say(g, t); await wait(sec); say(g, ''); };
+    const outAndIn = async (t) => { await go(exit); await new Promise((r) => gsap.to(g, { opacity: 0, duration: 0.5, onComplete: r })); await wait(3); gsap.to(g, { opacity: 1, duration: 0.5 }); if (t) await talk(t, 2.2); };
+    errandBusy = true; stopWander(g); g._errand = true; say(g, '');
+    const reset = () => { g._errand = false; errandBusy = false; }, guard = setTimeout(reset, 90000); // never stuck if the floor is rebuilt mid-errand
+    (async () => {
+      if (b.stage === 'sent') {
+        if (lp) { await go(near(lp)); await talk('Got the brief: ' + biz, 2.6); }
+        if (pp) { await go(near(pp)); await talk('New website: ' + biz, 2.6); }
+        else await outAndIn('Handed to PM Tech ✓');
+      } else if (b.stage === 'done') {
+        if (!pp) await outAndIn('The site is live!'); else { await go(near(pp)); await talk('Site ready? Thanks!', 2); }
+        if (lp) { await go(near(lp)); await talk('Here is the link: ' + biz, 3); }
+      } else if (lp) { await go(near(lp)); await talk('The build failed, check the chat', 3); }
+    })().catch(() => {}).finally(() => {
+      const p = places[helper.key] || { t: 'helper' };
+      if (!g.isConnected) { clearTimeout(guard); reset(); return; }
+      goTo(g, dest(p), null, () => { clearTimeout(guard); attachAny(g, p); say(g, ''); reset(); runErrand(); });
+    });
+  }
+
   async function load() {
     try {
       D = await api('office');
       document.body.dataset.role = D.role || 'owner';
       if (D.role !== 'client') $('#btn-clients').style.display = '';
       $('#live-dot').className = 'dot ' + (D.errors.length ? 'err' : 'on'); $('#live-text').textContent = 'Live · ' + hhmm(new Date());
-      render();
+      render(); handleBuilds();
     } catch (e) { $('#live-dot').className = 'dot err'; $('#live-text').textContent = 'Offline, retrying'; }
     api('me').then((me) => { if (me.owners) renderOwners(me.owners); }).catch(() => {});
   }
