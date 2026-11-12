@@ -577,7 +577,7 @@
       + leadRow
       + `<p class="label">Talk to ${esc(d.name)}</p>`
       + chatUI('agent:' + key, 'Ask it something…')
-      + (d.runnable ? `<div class="chips"><button class="pick" type="button" data-say="start">▶ Start over</button></div>` : '') + `<p class="help">${how}</p>`
+      + `<div class="chips"><button class="pick" type="button" ${d.runnable ? 'data-say="start"' : 'data-reset'}>▶ Start over</button></div>` + `<p class="help">${how}</p>`
       + `<div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1"><label for="dept">Department</label><select class="input" id="dept">${opts}</select></div><div class="field" style="flex:1"><label for="team">Team</label><select class="input" id="team">${teamOpts(d.dept)}</select></div></div>`
       + `<details class="more"><summary>What it does (${d.steps.length} steps)</summary><ol class="steps">${steps}</ol></details>`
       + `<details class="more"><summary>Recent runs</summary><ul class="runs">${runs}</ul></details>`
@@ -613,7 +613,7 @@
     const leadPickOpts = '<option value="">— no lead —</option>' + team.map((a) => `<option value="${esc(a.key)}" ${a.key === d.lead_key ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
     open(`<div class="d-head"><span class="avatar">${leadAvatarSvg}</span><div><h2 class="d-title">${leadTitle}</h2><div class="d-sub">${team.length} employees · ${can} can take tasks${d.mission ? '<br>' + esc(d.mission) : ''}</div></div></div>
       ${isClient ? '' : `<div class="field"><label for="lead-pick">Lead</label><select class="input" id="lead-pick">${leadPickOpts}</select></div>`}
-      <p class="label">Talk to the lead</p>${chatUI('lead:' + d.id, 'Ask the ' + d.name + ' lead…')}
+      <p class="label">Talk to the lead</p>${chatUI('lead:' + d.id, 'Ask the ' + d.name + ' lead…')}<div class="chips"><button class="pick" type="button" data-reset>▶ Start over</button></div>
       <form id="f-task" class="field"><label for="task">Give the lead a task</label><textarea class="input" id="task" name="t" required placeholder="Example: check vagent.online and report anything broken" ${focusTask ? 'autofocus' : ''}></textarea>
       <button class="btn primary" type="submit">Send to the team</button><p class="help">The lead sends it to every agent here that has a webhook, waits for them, and gives you one final result.</p></form>
       <div id="task-out"></div>
@@ -784,6 +784,7 @@
     inner.onclick = async (e) => {
       const say = e.target.closest('[data-say]'); // works for chips painted after load too
       if (say) { e.preventDefault(); return send(say.dataset.say); }
+      if (e.target.closest('[data-reset]')) { save([]); paint(); toast('Started over'); return; } // no webhook: a fresh thread
       const ap = e.target.closest('[data-approve],[data-skip],[data-copy],[data-start]'); if (!ap) return;
       const l = log(), m = l.find((x) => String(x.id) === (ap.dataset.approve || ap.dataset.skip || ap.dataset.copy || ap.dataset.start)); if (!m) return;
       if (ap.dataset.start) { ap.disabled = true; ap.textContent = 'The team is working… (up to a minute)'; const depId = Number(to.split(':')[1]); if (!depId) { m.done = 'Pick a department first (open its lead).'; save(l); return paint(); } try { const r = await api('tasks', { body: { deptId: depId, text: m.project } }); m.done = 'Done: ' + r.used + ' of ' + r.team + ' team members worked on it.'; const l2 = log(); l2.push({ id: Date.now(), t: r.final }); save(l2 === l ? l : l2); if (l2 !== l) {} } catch (x) { m.done = 'Could not start: ' + x.message; } save(l); paint(); load(); return; }
