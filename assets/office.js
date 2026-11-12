@@ -565,6 +565,12 @@
     const opts = '<option value="">No department</option>' + D.departments.map((x) => `<option value="${x.id}" ${x.id === d.dept ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
     const teamOpts = (deptId) => { const x = D.departments.find((y) => y.id === Number(deptId)); return '<option value="">No team</option>' + (x ? x.teams.map((t) => `<option value="${t.id}" ${t.id === d.team ? 'selected' : ''}>${esc(t.name)}</option>`).join('') : ''); };
     const how = d.runnable ? 'It has its own webhook, so your messages go straight to it.' : d.canRun ? 'Ask it anything. Press Run now to start it.' : d.hasHook ? 'Ask it anything. Turn it on to be able to start it from here.' : 'Ask it anything. It starts from its own trigger (' + esc(TRIG[d.trigger] || d.trigger) + ').';
+    // An agent with no webhook of its own can't be started. If its department has a chat agent
+    // (e.g. Sniper Lead Machine → Sniper Client Chat), Start over hands the flow over to it.
+    const flow = d.runnable ? null : (() => {
+      const c = D.agents.filter((x) => x.dept === d.dept && x.runnable && x.key !== key);
+      return c.find((x) => /chat/i.test(x.name)) || (c.length === 1 ? c[0] : null);
+    })();
     const aInD = D.departments.find((x) => x.id === d.dept);
     const isLeadOf = aInD && aInD.lead_key === key;
     const leadRow = aInD
@@ -577,7 +583,7 @@
       + leadRow
       + `<p class="label">Talk to ${esc(d.name)}</p>`
       + chatUI('agent:' + key, 'Ask it something…')
-      + `<div class="chips"><button class="pick" type="button" ${d.runnable ? 'data-say="start"' : 'data-reset'}>▶ Start over</button></div>` + `<p class="help">${how}</p>`
+      + `<div class="chips"><button class="pick" type="button" ${d.runnable ? 'data-say="start"' : flow ? `data-flow="${esc(flow.key)}"` : 'data-reset'}>▶ Start over</button></div>` + `<p class="help">${how}</p>`
       + `<div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1"><label for="dept">Department</label><select class="input" id="dept">${opts}</select></div><div class="field" style="flex:1"><label for="team">Team</label><select class="input" id="team">${teamOpts(d.dept)}</select></div></div>`
       + `<details class="more"><summary>What it does (${d.steps.length} steps)</summary><ol class="steps">${steps}</ol></details>`
       + `<details class="more"><summary>Recent runs</summary><ul class="runs">${runs}</ul></details>`
@@ -744,6 +750,8 @@
     open(`<h2 class="d-title">Give a task</h2><p class="help">Pick the department whose lead should handle it.</p><div class="items">${D.departments.map((d) => `<button class="item" type="button" data-dept-task="${d.id}">${leadSvg(d.color, 32)}<span class="grow"><b>${esc(d.name)} Lead</b><small>${D.agents.filter((a) => a.dept === d.id).length} agents</small></span>›</button>`).join('')}</div>`, 'task');
   }
 
+  // Set just before opening a drawer: the chat there sends this message as soon as it is painted.
+  let pendingSay = null;
   const store = { get: (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v.slice(-30))); } catch {} } };
   const ACT = { create_department: (a) => 'Create department "' + a.name + '"', rename_department: (a) => 'Rename ' + a.department + ' to "' + a.name + '"', set_mission: (a) => 'New mission for ' + a.department + ': ' + a.mission, delete_department: (a) => 'Delete department ' + a.department,
     create_team: (a) => 'New team "' + a.name + '" in ' + a.department, delete_team: (a) => 'Remove team ' + a.team + ' from ' + a.department, move_agent: (a) => 'Move ' + a.agent + ' → ' + a.department + (a.team ? ' / ' + a.team : ''),
@@ -788,6 +796,8 @@
     inner.onclick = async (e) => {
       const say = e.target.closest('[data-say]'); // works for chips painted after load too
       if (say) { e.preventDefault(); return send(say.dataset.say); }
+      const fl = e.target.closest('[data-flow]');
+      if (fl) { e.preventDefault(); pendingSay = 'start'; return openAgent(fl.dataset.flow); } // this one has no webhook: start the department's chat agent
       if (e.target.closest('[data-reset]')) { save([]); paint(); toast('Started over'); return; } // no webhook: a fresh thread
       const ap = e.target.closest('[data-approve],[data-skip],[data-copy],[data-start]'); if (!ap) return;
       const l = log(), m = l.find((x) => String(x.id) === (ap.dataset.approve || ap.dataset.skip || ap.dataset.copy || ap.dataset.start)); if (!m) return;
@@ -807,6 +817,7 @@
       save(l); paint(); load();
     };
     paint();
+    if (pendingSay) { const m = pendingSay; pendingSay = null; send(m); }
   }
   async function openBoard() {
     open(`<h2 class="d-title">Task board</h2><p class="help">Every project the leads ran, newest first.</p><button class="btn primary" type="button" id="board-new" style="align-self:flex-start">+ Give a task</button><div class="items" id="board-list"><p class="empty">Loading…</p></div>`, 'board');
