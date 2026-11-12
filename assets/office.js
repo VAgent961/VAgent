@@ -576,8 +576,8 @@
       + (d.canRun ? `<button class="btn primary" type="button" id="run-now">▶ Run now</button>` : '')
       + leadRow
       + `<p class="label">Talk to ${esc(d.name)}</p>`
-      + (d.runnable ? `<div class="chips"><button class="pick" type="button" data-say="start">▶ Start</button></div>` : '')
-      + chatUI('agent:' + key, 'Ask it something…') + `<p class="help">${how}</p>`
+      + chatUI('agent:' + key, 'Ask it something…')
+      + (d.runnable ? `<div class="chips"><button class="pick" type="button" data-say="start">▶ Start over</button></div>` : '') + `<p class="help">${how}</p>`
       + `<div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1"><label for="dept">Department</label><select class="input" id="dept">${opts}</select></div><div class="field" style="flex:1"><label for="team">Team</label><select class="input" id="team">${teamOpts(d.dept)}</select></div></div>`
       + `<details class="more"><summary>What it does (${d.steps.length} steps)</summary><ol class="steps">${steps}</ol></details>`
       + `<details class="more"><summary>Recent runs</summary><ul class="runs">${runs}</ul></details>`
