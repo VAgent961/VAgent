@@ -15,5 +15,8 @@ export async function onRequestPost({ request, env }) {
     ON CONFLICT (job_id) DO UPDATE SET business = COALESCE(EXCLUDED.business, vagent_builds.business), stage = EXCLUDED.stage,
     link = COALESCE(EXCLUDED.link, vagent_builds.link), error = EXCLUDED.error, updated_at = now()`,
   [job, s(b.business, 160), stage, s(b.link, 500), s(b.error, 300)]);
+  // The Website builder team works while a build is running: "sent" marks the department busy (office.js puts its people at
+  // their desks, same 15-minute rule as talking to a lead); "done"/"failed" lets them go back to the lounge about a minute later.
+  await sql(env, `UPDATE vagent_departments SET last_talk = ${stage === 'sent' ? 'now()' : "now() - interval '14 minutes'"} WHERE name ILIKE '%website%'`).catch(() => {});
   return json({ ok: true });
 }
