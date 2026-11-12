@@ -824,6 +824,13 @@
     paint();
     if (pendingSay) { const m = pendingSay; pendingSay = null; send(m); }
   }
+  // Reports agents post to /hook/daily (Sniper Daily's 9:00 list used to go to Telegram).
+  async function openDaily() {
+    open('<h2 class="d-title">📋 Daily reports</h2><p class="help">What your agents sent in, newest first.</p><div class="items" id="daily-list"><p class="empty">Loading…</p></div>', 'daily');
+    try { const rows = await api('daily');
+      $('#daily-list').innerHTML = rows.map((r) => `<details class="item" style="display:block"${r === rows[0] ? ' open' : ''}><summary style="cursor:pointer"><b style="font-weight:500">${esc(r.title)}</b> <small class="muted">· ${esc(r.source || '')} · ${ago(r.at)}</small></summary><div class="result" style="margin-top:8px;white-space:pre-wrap">${esc(r.text)}</div></details>`).join('') || '<p class="empty">Nothing yet. The first one lands tomorrow at 9:00.</p>'; }
+    catch (x) { $('#daily-list').innerHTML = `<p class="empty">${esc(x.message)}</p>`; }
+  }
   async function openBoard() {
     open(`<h2 class="d-title">Task board</h2><p class="help">Every project the leads ran, newest first.</p><button class="btn primary" type="button" id="board-new" style="align-self:flex-start">+ Give a task</button><div class="items" id="board-list"><p class="empty">Loading…</p></div>`, 'board');
     $('#board-new').onclick = openTask;
@@ -925,6 +932,7 @@
   svg.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.agent,.lead,.add-room,.ceo-g,.task-board,.fl')) { e.preventDefault(); e.target.closest('.agent,.lead,.add-room,.ceo-g,.task-board,.fl').dispatchEvent(new MouseEvent('click', { bubbles: true })); } });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && current) close(); });
   $('#drawer-close').onclick = close; scrim.onclick = close;
+  $('#btn-daily').onclick = openDaily;
   $('#btn-settings').onclick = openSettings; $('#btn-task').onclick = openCEO; $('#btn-clients').onclick = openClients;
   const tick = () => { const n = new Date(); const h = $('#clock-h'), m = $('#clock-m'); if (h) { h.setAttribute('transform', 'rotate(' + ((n.getHours() % 12) * 30 + n.getMinutes() / 2) + ')'); m.setAttribute('transform', 'rotate(' + n.getMinutes() * 6 + ')'); } };
   tick(); setInterval(tick, 30000);

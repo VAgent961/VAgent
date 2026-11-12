@@ -24,6 +24,7 @@ const steps = [
   "ALTER TABLE vagent_agent_meta ADD COLUMN IF NOT EXISTS team_id int REFERENCES vagent_teams(id) ON DELETE SET NULL",
   "CREATE TABLE IF NOT EXISTS vagent_hooks (key text PRIMARY KEY, status text NOT NULL, note text, at timestamptz DEFAULT now())",
   "CREATE TABLE IF NOT EXISTS vagent_tasks (id serial PRIMARY KEY, dept_id int REFERENCES vagent_departments(id) ON DELETE CASCADE, text text NOT NULL, status text NOT NULL DEFAULT 'running', results jsonb DEFAULT '[]', final text, created_by text, created_at timestamptz DEFAULT now(), done_at timestamptz)",
+  "CREATE TABLE IF NOT EXISTS vagent_daily (id bigserial PRIMARY KEY, title text, text text NOT NULL, source text, at timestamptz DEFAULT now())",
 ];
 for (const s of steps) await sql(s);
 // Seed a professional org chart once (only when there are no departments yet).
