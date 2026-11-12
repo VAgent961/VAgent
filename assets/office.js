@@ -34,9 +34,14 @@
   let S = VScene.build([]), sceneKey = '';
   $('#stage').innerHTML = '<svg id="scene" preserveAspectRatio="xMidYMid meet" role="img" aria-label="The VAgent office: one room per department, the CEO office, the café and open desks."></svg>';
   const svg = $('#scene'); svg.innerHTML = S.inner;
+  const NS_ = 'http://www.w3.org/2000/svg', mkLayer = (id, before) => { const e = document.createElementNS(NS_, 'svg'); e.id = id; e.setAttribute('class', 'fx-layer fx-all'); e.setAttribute('aria-hidden', 'true'); e.setAttribute('preserveAspectRatio', 'xMidYMid meet'); before ? svg.parentNode.insertBefore(e, svg) : svg.parentNode.appendChild(e); return e; };
+  const bgL = mkLayer('scene-bg', true), topL = mkLayer('scene-top', false);
+  const setOutside = (o) => { bgL.innerHTML = (o && o.outside) || ''; topL.innerHTML = (o && o.outsideTop) || ''; };
+  setOutside(S);
   let free = $('#layer-free'), walkL = $('#layer-walk');
   // ---------- zoom + pan ----------
-  const stage = $('#stage'); let VB0 = { ...S.vb }; const vb = { ...VB0 }, MAXZ = 5;
+  const phoneMQ = window.matchMedia('(max-width:560px)'), vbOf = (o) => (phoneMQ.matches && o.vbCore ? o.vbCore : o.vb); // phones get the office alone, no floating-world margin
+  const stage = $('#stage'); let VB0 = { ...vbOf(S) }; const vb = { ...VB0 }, MAXZ = 5;
   stage.insertAdjacentHTML('beforeend', '<div class="zoom" role="group" aria-label="Zoom the office"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button><button type="button" data-z="reset" aria-label="Fit the whole office" style="font-size:14px">⤢</button></div>');
   let lodNear = null, szW = 0, szH = 0;
   const lod = () => { if (!szW) { const r = svg.getBoundingClientRect(); szW = r.width; szH = r.height; if (!szW) return; }
@@ -49,7 +54,7 @@
   if (window.ResizeObserver) new ResizeObserver(() => { szW = 0; lod(); }).observe(stage);
   stage.insertAdjacentHTML('beforeend', '<button type="button" class="legend-btn" aria-expanded="false" aria-controls="legend">Legend</button><div class="legend" id="legend" hidden><p><i class="sd working"></i>Working at a desk</p><p><i class="sd idle"></i>Resting in the lounge or café</p><p><i class="sd help"></i>Needs help (last run failed)</p><p><i class="sd off"></i>Turned off</p><p class="muted">Zoom in to see rooms, signs and desk details.</p></div><div class="floor-badge" id="floor-badge" hidden></div>');
   stage.addEventListener('click', (e) => { const b = e.target.closest('.legend-btn'); if (!b) return; const l = $('#legend'); l.hidden = !l.hidden; b.setAttribute('aria-expanded', String(!l.hidden)); });
-  const setVB = () => { svg.setAttribute('viewBox', vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h); lod(); };
+  const setVB = () => { const v = vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h; svg.setAttribute('viewBox', v); if (bgL) { bgL.setAttribute('viewBox', v); topL.setAttribute('viewBox', v); } lod(); };
   setVB();
   const clampVB = () => { vb.w = Math.min(VB0.w, Math.max(VB0.w / MAXZ, vb.w)); vb.h = vb.w * VB0.h / VB0.w; vb.x = Math.min(VB0.x + VB0.w - vb.w, Math.max(VB0.x, vb.x)); vb.y = Math.min(VB0.y + VB0.h - vb.h, Math.max(VB0.y, vb.y)); };
   const view = () => { const r = svg.getBoundingClientRect(), s = Math.min(r.width / vb.w, r.height / vb.h); return { s, ox: r.left + (r.width - vb.w * s) / 2, oy: r.top + (r.height - vb.h * s) / 2 }; };
@@ -319,8 +324,8 @@
       sceneKey = key;
       for (const k of Object.keys(els)) { els[k].remove(); delete els[k]; delete places[k]; }
       const B = VBuilding.build(info);
-      svg.innerHTML = B.inner; free = walkL = null; bBoxes = B.boxes;
-      VB0 = { ...B.vb }; Object.assign(vb, VB0); setVB();
+      svg.innerHTML = B.inner; setOutside(B); free = walkL = null; bBoxes = B.boxes;
+      VB0 = { ...vbOf(B) }; Object.assign(vb, VB0); setVB();
     }
     renderDepts(); renderFloorNav();
   }
@@ -371,8 +376,8 @@
     const key = 'F' + floor + ':' + V.departments.map((d) => d.id).join(','); if (key === sceneKey) return;
     sceneKey = key; S = VScene.build(V.departments);
     for (const k of Object.keys(els)) { els[k].remove(); delete els[k]; delete places[k]; }
-    svg.innerHTML = S.inner; free = $('#layer-free'); walkL = $('#layer-walk'); if (DBG) dbgScene();
-    VB0 = { ...S.vb }; Object.assign(vb, VB0); setVB();
+    svg.innerHTML = S.inner; setOutside(S); free = $('#layer-free'); walkL = $('#layer-walk'); if (DBG) dbgScene();
+    VB0 = { ...vbOf(S) }; Object.assign(vb, VB0); setVB();
   }
   function zoomRoom(i) {
     const r = S.rooms[i]; if (!r) return;

@@ -50,9 +50,18 @@ body[data-role=client] #btn-task,body[data-role=client] #btn-settings,body[data-
 .empty{font-size:14px;color:var(--muted);margin:0}
 
 /* stage */
-.stage{position:relative;overflow:hidden;touch-action:none;cursor:grab;background:radial-gradient(1100px 700px at 55% 45%,#2A2A2E 0%,#18181A 60%,#0E0E10 100%)}
+.stage{position:relative;overflow:hidden;touch-action:none;cursor:grab;background:
+  radial-gradient(1.4px 1.4px at 8% 14%,rgba(255,255,255,.85),transparent),radial-gradient(1px 1px at 21% 63%,rgba(255,255,255,.6),transparent),radial-gradient(1.6px 1.6px at 34% 9%,rgba(255,255,255,.8),transparent),radial-gradient(1px 1px at 47% 31%,rgba(255,255,255,.55),transparent),
+  radial-gradient(1.4px 1.4px at 58% 78%,rgba(255,255,255,.7),transparent),radial-gradient(1px 1px at 69% 17%,rgba(255,255,255,.65),transparent),radial-gradient(1.6px 1.6px at 83% 52%,rgba(255,255,255,.8),transparent),radial-gradient(1px 1px at 91% 88%,rgba(255,255,255,.55),transparent),
+  radial-gradient(1px 1px at 14% 86%,rgba(255,255,255,.6),transparent),radial-gradient(1.4px 1.4px at 76% 7%,rgba(255,255,255,.75),transparent),radial-gradient(1px 1px at 39% 92%,rgba(255,255,255,.5),transparent),radial-gradient(1.2px 1.2px at 95% 28%,rgba(255,255,255,.7),transparent),
+  radial-gradient(420px 300px at 86% 12%,rgba(181,83,47,.20),transparent 70%),radial-gradient(520px 360px at 10% 88%,rgba(72,96,170,.20),transparent 70%),
+  linear-gradient(#070912,#12102A 70%,#1A1226)}
+@media (max-width:1024px){.fx-deco{display:none}}
+@media (max-width:560px){.stage>svg.fx-all,.fx-all{display:none}.stage{background:radial-gradient(1100px 700px at 55% 45%,#2A2A2E 0%,#18181A 60%,#0E0E10 100%)}}
 .stage.panning{cursor:grabbing}
 .stage svg{width:100%;height:100%;display:block}
+.stage>svg#scene{position:relative}
+.stage>svg.fx-layer{position:absolute;left:0;top:0;pointer-events:none;will-change:transform}
 #scene[data-lod="far"]{shape-rendering:optimizeSpeed}#scene[data-lod="far"] *{animation-play-state:paused!important}
 .legend-btn{position:absolute;top:14px;right:14px;z-index:3;min-height:34px;padding:0 14px;border-radius:999px;border:1px solid #3A3A40;background:rgba(30,30,33,.92);color:#D6D4CC;font:500 12px Inter,sans-serif;cursor:pointer}
 .legend-btn:hover{background:#2A2A2E}
