@@ -816,14 +816,17 @@
     create_team: (a) => 'New team "' + a.name + '" in ' + a.department, delete_team: (a) => 'Remove team ' + a.team + ' from ' + a.department, move_agent: (a) => 'Move ' + a.agent + ' → ' + a.department + (a.team ? ' / ' + a.team : ''),
     assign_task: (a) => 'Give ' + a.department + ' Lead the task: ' + a.task, rename_agent: (a) => 'Rename ' + a.agent + ' to "' + a.name + '"', run_agent: (a) => 'Start ' + a.agent + ' now', turn_on: (a) => 'Turn on ' + a.agent, turn_off: (a) => 'Turn off ' + a.agent,
     set_lead: (a) => (a.agent ? a.agent + ' becomes lead of ' + a.department : 'Clear lead of ' + a.department) };
+  // links in chat text open in a new tab (text is escaped first, so only plain http(s) links become <a>)
+  const linkify = (t) => esc(t).replace(/https?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]]/g, (u) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
+  const isUrl = (v) => /^https?:\/\/\S+$/.test(String(v || '').trim());
   const bubble = (m) => {
-    if (m.me) return `<div class="msg me">${esc(m.t)}</div>`;
+    if (m.me) return `<div class="msg me">${linkify(m.t)}</div>`;
     // still waiting on a reply — shown again if you reopen the drawer mid-answer
     if (m.pending) return Date.now() - (m.at || 0) > 18e4
       ? `<div class="msg it bad">That answer never came back. Send it again.</div>`
       : `<div class="msg it typing-msg">${esc(m.t)}</div>`;
-    let h = `<div class="msg it${m.bad ? ' bad' : ''}">${esc(m.t)}</div>`;
-    if (m.buttons && m.buttons.length) h += `<div class="chips">${m.buttons.map((b) => `<button class="pick" type="button" data-say="${esc(b.value)}">${esc(b.label)}</button>`).join('')}</div>`;
+    let h = `<div class="msg it${m.bad ? ' bad' : ''}">${linkify(m.t)}</div>`;
+    if (m.buttons && m.buttons.length) h += `<div class="chips">${m.buttons.map((b) => isUrl(b.value) ? `<a class="pick" href="${esc(b.value.trim())}" target="_blank" rel="noopener noreferrer">${esc(b.label)} ↗</a>` : `<button class="pick" type="button" data-say="${esc(b.value)}">${esc(b.label)}</button>`).join('')}</div>`;
     if (m.actions && m.actions.length) h += `<div class="plan" data-plan="${m.id}"><p class="label">The CEO wants to</p><ul>${m.actions.map((a) => `<li>${esc((ACT[a.type] || ((x) => x.type))(a))}</li>`).join('')}</ul>${m.done ? `<div class="result">${esc(m.done)}</div>` : `<div class="row"><button class="btn primary" type="button" data-approve="${m.id}">Approve</button><button class="btn" type="button" data-skip="${m.id}">No thanks</button></div>`}</div>`;
     if (m.project) h += `<div class="plan"><p class="label">Project brief</p><div class="result">${esc(m.project)}</div>${m.done ? `<div class="result" style="margin-top:6px">${esc(m.done)}</div>` : `<div class="row"><button class="btn primary" type="button" data-start="${m.id}">Start with the team</button><button class="btn" type="button" data-skip="${m.id}">Not now</button></div>`}</div>`;
     if (m.prompt) h += `<div class="plan"><p class="label">Prompt for Claude</p><pre class="prompt">${esc(m.prompt)}</pre><button class="btn" type="button" data-copy="${m.id}">Copy prompt</button></div>`;
