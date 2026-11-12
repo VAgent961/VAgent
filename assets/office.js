@@ -607,13 +607,17 @@
     const d = D.departments.find((x) => x.id === Number(id)); if (!d) return;
     const team = D.agents.filter((a) => a.dept === d.id), can = team.filter((a) => a.runnable).length;
     const leadAgent = d.lead_key ? D.agents.find((a) => a.key === d.lead_key) : null;
+    // A lead that is a real webhook agent (e.g. Sniper Client Chat) answers its own chat here,
+    // so its button flow (district → business type → …) works from the department drawer too.
+    const leadHook = !!(leadAgent && leadAgent.runnable);
+    const leadTo = leadHook ? 'agent:' + leadAgent.key : 'lead:' + d.id;
     const leadAvatarSvg = leadAgent ? botSvg(colorOf(leadAgent.key), 40, personRef(leadAgent)) : leadSvg(d.color);
     const leadTitle = leadAgent ? esc(leadAgent.name) + ' <small class="muted">(lead)</small>' : esc(d.name) + ' Lead';
     const isClient = D.role === 'client';
     const leadPickOpts = '<option value="">— no lead —</option>' + team.map((a) => `<option value="${esc(a.key)}" ${a.key === d.lead_key ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
     open(`<div class="d-head"><span class="avatar">${leadAvatarSvg}</span><div><h2 class="d-title">${leadTitle}</h2><div class="d-sub">${team.length} employees · ${can} can take tasks${d.mission ? '<br>' + esc(d.mission) : ''}</div></div></div>
       ${isClient ? '' : `<div class="field"><label for="lead-pick">Lead</label><select class="input" id="lead-pick">${leadPickOpts}</select></div>`}
-      <p class="label">Talk to the lead</p>${chatUI('lead:' + d.id, 'Ask the ' + d.name + ' lead…')}<div class="chips"><button class="pick" type="button" data-reset>▶ Start over</button></div>
+      <p class="label">Talk to the lead</p>${chatUI(leadTo, 'Ask the ' + d.name + ' lead…')}<div class="chips"><button class="pick" type="button" ${leadHook ? 'data-say="start"' : 'data-reset'}>▶ Start over</button></div>
       <form id="f-task" class="field"><label for="task">Give the lead a task</label><textarea class="input" id="task" name="t" required placeholder="Example: check vagent.online and report anything broken" ${focusTask ? 'autofocus' : ''}></textarea>
       <button class="btn primary" type="submit">Send to the team</button><p class="help">The lead sends it to every agent here that has a webhook, waits for them, and gives you one final result.</p></form>
       <div id="task-out"></div>
@@ -629,7 +633,7 @@
       ${isClient ? '' : `<p class="label">Edit</p><form id="f-edit" class="field"><input class="input" name="n" value="${esc(d.name)}" aria-label="Department name" required><div class="sw">${DEPT_COLORS.map((c) => `<button type="button" aria-label="Color ${c}" aria-pressed="${c === d.color}" data-c="${c}" style="background:${c}"></button>`).join('')}</div>
       <div class="row"><button class="btn" type="submit">Save</button><button class="btn danger" type="button" id="del-dept">Delete department</button></div></form>`}`, 'dept:' + d.id);
     let color = d.color;
-    bindChat('lead:' + d.id, d.name + ' lead');
+    bindChat(leadTo, leadHook ? leadAgent.name : d.name + ' lead');
     if ($('#lead-pick')) $('#lead-pick').onchange = async (e) => {
       try { await api('departments', { body: { deptId: d.id, leadKey: e.target.value || '' } }); toast(e.target.value ? 'Lead set' : 'Lead cleared'); await load(); openDept(d.id, focusTask); } catch (x) { toast(x.message); }
     };
