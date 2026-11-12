@@ -10,6 +10,7 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const cut = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
   const W = 1000, D = 1000, FH = 250, PER = 4;
+  const WD = () => window.VWorld;
 
   function floorSvg(fl, i) {
     const e = (i + 1) * FH; // height of this floor's top surface
@@ -46,7 +47,8 @@
     const aria = `Apartment ${i + 1}: ${fl.depts.length} department${fl.depts.length === 1 ? '' : 's'}, ${fl.working} working`;
     return `<g class="fl" data-f="${i}" tabindex="0" role="button" aria-label="${esc(aria)}">` +
       // faces below the plan
-      poly('#2A2A2F', Q(0, D), Q(W, D), Q(W, D, -FH), Q(0, D, -FH)) + poly('#1C1C1F', Q(W, D), Q(W, 0), Q(W, 0, -FH), Q(W, D, -FH)) +
+      poly(WD() ? '#5A5349' : '#2A2A2F', Q(0, D), Q(W, D), Q(W, D, -FH), Q(0, D, -FH)) + poly(WD() ? '#413B33' : '#1C1C1F', Q(W, D), Q(W, 0), Q(W, 0, -FH), Q(W, D, -FH)) +
+      (WD() ? poly('url(#stoneR)', Q(0, D), Q(W, D), Q(W, D, -FH), Q(0, D, -FH)) + poly('url(#stoneL)', Q(W, D), Q(W, 0), Q(W, 0, -FH), Q(W, D, -FH)) : '') +
       wins + stripe + text +
       poly('#3A3A40', Q(0, D), Q(W, D), Q(W, D, -9), Q(0, D, -9)) + poly('#2E2E33', Q(W, D), Q(W, 0), Q(W, 0, -9), Q(W, D, -9)) +
       // low back walls so the plan reads as a cut-open apartment
@@ -61,14 +63,16 @@
     const n = Math.max(1, floors.length);
     const list = floors.length ? floors : [{ depts: [], total: 0, working: 0 }];
     // ground slab / shadow
-    const ground = `<ellipse cx="600" cy="${f(P(W / 2, D / 2)[1] + 20)}" rx="900" ry="470" fill="#141413" opacity=".16"/>` +
-      poly('#202024', P(-60, -60), P(W + 60, -60), P(W + 60, D + 60), P(-60, D + 60));
-    const body = list.map((fl, i) => floorSvg(fl, i)).join('');
+    const wd = WD();
+    const ground = wd ? `<defs>${wd.defs()}</defs>` :
+      `<ellipse cx="600" cy="${f(P(W / 2, D / 2)[1] + 20)}" rx="900" ry="470" fill="#141413" opacity=".16"/>` + poly('#202024', P(-60, -60), P(W + 60, -60), P(W + 60, D + 60), P(-60, D + 60));
+    const body = list.map((fl, i) => floorSvg(fl, i)).join('') + '';
     const top = n * FH;
     const minX = P(0, D)[0] - 80, maxX = P(W, 0)[0] + 80, y0 = P(0, 0, top + 90)[1] - 40, y1 = P(W + 60, D + 60)[1] + 40;
-    const vb = { x: minX, y: y0, w: maxX - minX, h: y1 - y0 };
+    const vbCore = { x: minX, y: y0, w: maxX - minX, h: y1 - y0 };
+    const dep = 300, vb = wd ? { x: P(-100, D + 100)[0] - 140, y: y0 - 120, w: P(W + 100, -100)[0] + 140 - (P(-100, D + 100)[0] - 140), h: P(W + 100, D + 100, -dep)[1] + 300 - (y0 - 120) } : vbCore;
     const boxes = list.map((fl, i) => { const e = (i + 1) * FH, ya = P(0, 0, e)[1], yb = P(W, D, e - FH)[1]; return { x: P(0, D)[0], y: ya, w: P(W, 0)[0] - P(0, D)[0], h: yb - ya }; });
-    return { inner: `<g id="building">${ground}${body}</g>`, vb, boxes };
+    return { inner: `<g id="building">${ground}${body}</g>`, outside: wd ? wd.platform(W, D, 0, 100) + wd.mist(W, D, 0) : '', outsideTop: wd ? wd.gate(700, D, 0, 'VAGENT HQ') + wd.core(W, 0, n * FH + 30) : '', vb, vbCore, boxes };
   }
   window.VBuilding = { build, PER };
 })();

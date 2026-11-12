@@ -157,8 +157,9 @@
   };
   const fig = (look, v, i = 0) => person('realistic', { ...v, skin: v.skinHex || SKIN[v.skin], hair: HAIR[v.hair], beat: +(0.34 + (i % 5) * 0.045).toFixed(3) });
 
+  const WORLD = () => window.VWorld;
   const defsFor = (look) => { const PEOPLE = PEOPLE_CFG.map((v, i) => fig(look, v, i)), CH = { lead: fig(look, CH_CFG.lead), ceo: fig(look, CH_CFG.ceo), msgbot: fig(look, CH_CFG.msgbot) };
-    return `<defs>
+    return `<defs>${WORLD() ? WORLD().defs() : ''}
   <linearGradient id="vg-l" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".24"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/></linearGradient>
   <linearGradient id="vg-r" x1="0" y1="0" x2="1" y2="0"><stop offset=".45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".3"/></linearGradient>
   <radialGradient id="vg-h" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#fff" stop-opacity=".3"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
@@ -434,14 +435,16 @@
     // walls, windows, clock, task board
     const wins = []; for (let x = 120; x < fx - 160; x += 330) wins.push(sky(x, x + 160, 50, 92, 'R'));
     const winsL = []; for (let y = 120; y < D - 200; y += 360) winsL.push(sky(y, y + 190, 32, 82, 'L'));
+    floor += `<rect x="340" y="${D - 170}" width="80" height="170" fill="#7C2F26" opacity=".6"/><rect x="346" y="${D - 170}" width="68" height="170" fill="none" stroke="#C9A227" stroke-opacity=".5" stroke-width="2"/>`;
     // daylight: a soft warm patch on the floor under every outer window
     for (let x = 120; x < fx - 160; x += 330) floor += `<polygon points="${x},0 ${x + 160},0 ${x + 290},260 ${x + 130},260" fill="url(#dayg)"/>`;
     for (let y = 120; y < D - 200; y += 360) floor += `<polygon points="0,${y} 0,${y + 190} 260,${y + 320} 260,${y + 130}" fill="url(#dayh)"/>`;
-    back = `${poly('#141416', P(0, D), P(W, D), P(W, D, -18), P(0, D, -18))}${poly('#0F0F11', P(W, 0), P(W, D), P(W, D, -18), P(W, 0, -18))}
-      ${poly('#2A2A2F', P(0, 0), P(W, 0), P(W, 0, 100), P(0, 0, 100))}${poly('#232327', P(0, 0), P(0, D), P(0, D, 100), P(0, 0, 100))}
-      ${poly('#3A3A40', P(0, 0, 100), P(W, 0, 100), P(W, 0, 106), P(0, 0, 106))}${poly('#323237', P(0, 0, 100), P(0, D, 100), P(0, D, 106), P(0, 0, 106))}
+    const wd = WORLD(), frames = [], exits = [];
+    if (wd) { for (let x = 290, k = 0; x < fx - 220; x += 330, k++) frames.push(wd.frame(x, 40 + (k % 3) * 8, 46, 30, ['#B5532F', '#3A6EA5', '#4B8B5A'][k % 3])); exits.push(wd.exitSign(70), wd.exitSign(fx - 70)); }
+    back = `${wd ? wd.slab(W, D) : poly('#141416', P(0, D), P(W, D), P(W, D, -18), P(0, D, -18)) + poly('#0F0F11', P(W, 0), P(W, D), P(W, D, -18), P(W, 0, -18))}
+      ${wd ? wd.walls(W, D, fx) : poly('#2A2A2F', P(0, 0), P(W, 0), P(W, 0, 100), P(0, 0, 100)) + poly('#232327', P(0, 0), P(0, D), P(0, D, 100), P(0, 0, 100))}
       <g transform="matrix(0.8 0.462 -0.8 0.462 600 110)"><rect width="${W}" height="${D}" fill="#1B1B1E"/><rect width="${W}" height="${D}" fill="url(#tiles)"/>${floor}<rect width="${W}" height="${D}" fill="none" stroke="#34343A" stroke-width="2"/></g>
-      ${poly('#18181B', P(0, 0), P(W, 0), P(W, 0, 7), P(0, 0, 7))}${poly('#121214', P(0, 0), P(0, D), P(0, D, 7), P(0, 0, 7))}${wins.join('')}${winsL.join('')}
+      ${poly('#2E2B26', P(0, 0), P(W, 0), P(W, 0, 7), P(0, 0, 7))}${poly('#26231F', P(0, 0), P(0, D), P(0, D, 7), P(0, 0, 7))}${wd ? '' : wins.join('') + winsL.join('')}${frames.join('')}${exits.join('')}
       <g transform="${onWallR(Math.max(60, fx - 120), 76)}"><circle r="15" fill="#45454C" stroke="#FAF9F5" stroke-width="2"/><circle r="1.6" fill="#FAF9F5"/><line id="clock-h" y2="-7" stroke="#FAF9F5" stroke-width="2" stroke-linecap="round"/><line id="clock-m" y2="-11" stroke="#E7B38F" stroke-width="1.5" stroke-linecap="round"/></g>
       <g class="task-board" tabindex="0" role="button" aria-label="Open the task board" style="cursor:pointer">${poly('#0B0B0C', P(fx + 60, 0, 22), P(fx + 380, 0, 22), P(fx + 380, 0, 92), P(fx + 60, 0, 92))}
       <text transform="${onWallR(fx + 78, 72)}" font-size="13" font-weight="600" letter-spacing="1.2" fill="#E7B38F">TASK BOARD</text><text id="board-line" transform="${onWallR(fx + 78, 54)}" font-size="11" fill="#D6D4CC">loading…</text>
@@ -456,9 +459,12 @@
     const ceo = P(fx + 230, 80);
     const helper = P(helperX, helperY);
     const minX = P(0, D)[0], maxX = P(W, 0)[0], maxY = P(W, D)[1] + 30;
-    const vb = { x: minX - 40, y: -10, w: maxX - minX + 80, h: maxY + 20 };
+    const vbCore = { x: minX - 40, y: -10, w: maxX - minX + 80, h: maxY + 20 }; // the office alone (phones)
+    const dep = wd ? wd.depth(W, D) : 0;
+    const vb = wd ? { x: minX - 330, y: -120, w: maxX - minX + 660, h: P(W, D)[1] + dep + 150 + 120 } : vbCore; // the whole floating building
+    const outside = wd ? wd.platform(W, D, -30) + wd.mist(W, D, -30) : '', outsideTop = wd ? wd.gate(380, D, -30, 'VAGENT HQ') + wd.core(W, -30) : '';
     const inner = `${defsFor(look || LOOK)}<g id="layer-back">${back}${furn}<g id="ceo-slot" transform="translate(${f(ceo[0])} ${f(ceo[1])})"></g><g id="helper-slot" transform="translate(${f(helper[0])} ${f(helper[1])})"></g></g><g id="layer-desks">${deskSvg}</g><g id="layer-free"></g><g id="layer-over">${OVER}</g><g id="layer-walk"></g>`;
-    return { inner, vb, desks, deskRoom, rooms, hot, cafe, cafeIdx, spotProp, spotRoom, ceo, helper, nav };
+    return { inner, outside, outsideTop, vb, vbCore, desks, deskRoom, rooms, hot, cafe, cafeIdx, spotProp, spotRoom, ceo, helper, nav };
   }
   window.VScene = { build, people: PEOPLE_CFG.length, looks: LOOKS, look: LOOK, defsFor };
 })();
