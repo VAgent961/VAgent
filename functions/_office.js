@@ -40,8 +40,8 @@ export async function officeData(env) {
   const BUSY_MS = 15 * 60 * 1000;
   const busy = new Set(depts.filter((x) => x.last_talk && Date.now() - Date.parse(x.last_talk) < BUSY_MS).map((x) => x.id));
   for (const a of agents) if (a.dept != null && busy.has(a.dept) && a.active && a.status === 'idle') a.status = 'working';
-  // website builds from the last 30 minutes (written by /hook/build) — the office acts them out with the Office Helper
-  const builds = await sql(env, "SELECT job_id, business, stage, link, updated_at FROM vagent_builds WHERE updated_at > now() - interval '30 minutes' ORDER BY updated_at").catch(() => []);
+  // website builds from the last 6 hours (written by /hook/build) — the office acts them out with the Office Helper
+  const builds = await sql(env, "SELECT job_id, business, stage, link, left(error, 200) AS error, updated_at FROM vagent_builds WHERE updated_at > now() - interval '6 hours' ORDER BY updated_at").catch(() => []);
   return { agents, departments, builds, activity: activity.slice(0, 25), errors, instances: insts.map((i) => ({ id: i.id, label: i.label, url: i.base_url, owner: i.owner_email })) };
 }
 

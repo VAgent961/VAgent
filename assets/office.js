@@ -539,15 +539,38 @@
     if (window.gsap) gsap.to(vb, { ...to, duration: 0.6, ease: 'power2.inOut', onUpdate: () => { clampVB(); setVB(); } }); else { Object.assign(vb, to); clampVB(); setVB(); }
   }
   // ── Office Helper errands for website builds ───────────────────────────────
-  // D.builds (from /hook/build): "sent" = the helper takes the brief from the Sniper lead, carries it to PM Tech
-  // (Abdallah's builder; out through the exit when PM Tech isn't on this floor) and comes back.
-  // "done" = it comes back in with the live link and hands it to the lead. "failed" = it tells the lead.
-  // Builds already known when the page opens are not replayed.
-  const seenBuild = new Map(), errands = []; let buildsPrimed = false, errandBusy = false;
+  // D.builds (from /hook/build, last 6 h). "sent": the helper takes the brief from the Sniper lead, walks it to PM Tech
+  // (lead of the Website builder department) and WAITS there until the site is built. "done": it takes the link from
+  // PM Tech, walks back to the Sniper lead and the link lands in that lead's chat (with an "Open the website" chip).
+  // "failed": it tells the Sniper lead and the error goes in the chat. PM Tech not on this floor → out the exit and wait outside.
+  // A build still running when the page opens → the helper goes straight to PM Tech and waits. A finished build whose link
+  // never reached the chat (page was closed) → delivered on the next visit. Delivered jobs are remembered in localStorage.
+  const seenBuild = new Map(), errands = []; let buildsPrimed = false, errandBusy = false, waiting = null;
+  const DELIV = 'vagent-builds-delivered';
+  const delivered = () => { try { return JSON.parse(localStorage.getItem(DELIV) || '[]'); } catch { return []; } };
+  const sniperLead = () => D.agents.find((a) => a.isLead && /sniper/i.test(a.realName || a.name)) || null;
+  const builderLead = () => D.agents.find((a) => /pm.?tech/i.test(a.realName || a.name)) || null;
+  function deliverBuild(b) {
+    const done = delivered(); if (done.includes(b.job_id + ':' + b.stage)) return;
+    try { localStorage.setItem(DELIV, JSON.stringify(done.concat(b.job_id + ':' + b.stage).slice(-60))); } catch {}
+    const lead = sniperLead(), biz = b.business || 'the client'; if (!lead) return;
+    const to = lead.runnable ? 'agent:' + lead.key : 'lead:' + lead.dept;
+    const l = store.get(chatKey(to));
+    if (b.stage === 'done' && b.link) l.push({ id: Date.now(), t: 'The website for ' + biz + ' is ready (PM Tech built it):\n' + b.link, buttons: [{ label: 'Open the website', value: b.link }, { label: 'Back to search', value: 'start' }] });
+    else l.push({ id: Date.now(), bad: 1, t: 'PM Tech could not build the website for ' + biz + (b.error ? ': ' + b.error : '.') + ' Pick the lead again to retry.' });
+    store.set(chatKey(to), l);
+    if (chatOpen && chatOpen.to === to) chatOpen.paint();
+    toast(b.stage === 'done' ? 'Website ready: ' + biz + ' (link in the Sniper chat)' : 'Website build failed: ' + biz);
+  }
   function handleBuilds() {
+    const sent = delivered();
     for (const b of (D && D.builds) || []) {
       if (seenBuild.get(b.job_id) === b.stage) continue;
-      seenBuild.set(b.job_id, b.stage); if (buildsPrimed) errands.push(b);
+      const first = !seenBuild.has(b.job_id) && !buildsPrimed; seenBuild.set(b.job_id, b.stage);
+      const age = Date.now() - new Date(String(b.updated_at).replace(' ', 'T').replace(/([+-]\d\d)$/, '$1:00')).getTime();
+      if (!first) errands.push(b);
+      else if (b.stage === 'sent' && age < 45 * 60e3) errands.push({ ...b, resume: true }); // still building: go wait at PM Tech
+      else if (b.stage !== 'sent' && !sent.includes(b.job_id + ':' + b.stage)) errands.push(b); // finished while the office was closed
     }
     buildsPrimed = true; runErrand();
   }
@@ -559,35 +582,50 @@
   }
   function runErrand() {
     if (errandBusy || !errands.length) return;
-    if (!window.gsap || reduced() || !S || !walkL || !walkL.isConnected) { errands.length = 0; return; }
     const helper = D.agents.find(isHelper), g = helper && els[helper.key];
-    if (!g || !g.isConnected) { errands.length = 0; return; }
+    // no animation possible (reduced motion, no helper on this floor…): still hand the link over in the chat
+    if (!window.gsap || reduced() || !S || !walkL || !walkL.isConnected || !g || !g.isConnected) {
+      for (const b of errands.splice(0)) if (b.stage !== 'sent') deliverBuild(b);
+      return;
+    }
     const b = errands.shift(), biz = (b.business || 'the client').slice(0, 26);
+    if (b.stage === 'sent' && waiting && waiting.job === b.job_id) return runErrand();
     const placed = (a) => a && places[a.key] && els[a.key] && els[a.key].isConnected ? posOf(places[a.key]) : null;
-    const lead = D.agents.find((a) => a.isLead && /sniper/i.test(a.realName || a.name)) || D.agents.find((a) => a.isLead);
-    const pm = D.agents.find((a) => /pm.?tech/i.test(a.realName || a.name));
-    const lp = placed(lead), pp = placed(pm);
+    const lp = placed(sniperLead()), pp = placed(builderLead());
     const near = (xy) => { const w = inv(xy[0], xy[1]); return { at: VNav.nearest(S.nav, w[0] - 34, w[1] + 34) }; };
     const exit = { at: VNav.nearest(S.nav, 90, 40) };
     const go = (d) => new Promise((r) => goTo(g, d, { speed: BRISK }, r));
     const wait = (sec) => new Promise((r) => gsap.delayedCall(sec, r));
     const talk = async (t, sec) => { say(g, t); await wait(sec); say(g, ''); };
-    const outAndIn = async (t) => { await go(exit); await new Promise((r) => gsap.to(g, { opacity: 0, duration: 0.5, onComplete: r })); await wait(3); gsap.to(g, { opacity: 1, duration: 0.5 }); if (t) await talk(t, 2.2); };
+    const fade = (o) => new Promise((r) => gsap.to(g, { opacity: o, duration: 0.5, onComplete: r }));
     errandBusy = true; stopWander(g); g._errand = true; say(g, '');
-    const reset = () => { g._errand = false; errandBusy = false; }, guard = setTimeout(reset, 90000); // never stuck if the floor is rebuilt mid-errand
+    let park = false;
+    const home = () => { const p = places[helper.key] || { t: 'helper' }; gsap.set(g, { opacity: 1 }); goTo(g, dest(p), null, () => { attachAny(g, p); say(g, ''); g._errand = false; errandBusy = false; runErrand(); }); };
+    const guard = setTimeout(() => { errandBusy = false; }, 120000); // a walk never blocks the queue for good
     (async () => {
       if (b.stage === 'sent') {
-        if (lp) { await go(near(lp)); await talk('Got the brief: ' + biz, 2.6); }
-        if (pp) { await go(near(pp)); await talk('New website: ' + biz, 2.6); }
-        else await outAndIn('Handed to PM Tech ✓');
-      } else if (b.stage === 'done') {
-        if (!pp) await outAndIn('The site is live!'); else { await go(near(pp)); await talk('Site ready? Thanks!', 2); }
-        if (lp) { await go(near(lp)); await talk('Here is the link: ' + biz, 3); }
-      } else if (lp) { await go(near(lp)); await talk('The build failed, check the chat', 3); }
-    })().catch(() => {}).finally(() => {
-      const p = places[helper.key] || { t: 'helper' };
-      if (!g.isConnected) { clearTimeout(guard); reset(); return; }
-      goTo(g, dest(p), null, () => { clearTimeout(guard); attachAny(g, p); say(g, ''); reset(); runErrand(); });
+        if (lp && !b.resume) { await go(near(lp)); await talk('Got the brief: ' + biz, 2.6); }
+        if (pp) { await go(near(pp)); await talk('New website: ' + biz, 2.6); say(g, '⏳ Waiting for ' + biz); }
+        else { await go(exit); await fade(0); }
+        park = true; waiting = { job: b.job_id, away: !pp };
+      } else {
+        const was = waiting; waiting = null;
+        if (was && was.away) { await fade(1); }
+        else if (!was && pp) { await go(near(pp)); }
+        if (b.stage === 'done') { await talk('Got the link ✓', 1.8); if (lp) { await go(near(lp)); await talk('Your website: ' + biz, 3); } }
+        else { if (lp) { await go(near(lp)); await talk('The build failed: ' + biz, 3); } }
+        deliverBuild(b);
+      }
+    })().catch(() => { if (b.stage !== 'sent') deliverBuild(b); }).finally(() => {
+      clearTimeout(guard);
+      if (!g.isConnected) { waiting = null; g._errand = false; errandBusy = false; return; }
+      if (park) {
+        // wait at PM Tech; give up after 45 min (the link is still delivered to the chat when it comes)
+        errandBusy = false; const job = b.job_id;
+        gsap.delayedCall(45 * 60, () => { if (waiting && waiting.job === job && !errandBusy) { waiting = null; errandBusy = true; say(g, ''); home(); } });
+        return runErrand();
+      }
+      home();
     });
   }
 
@@ -810,7 +848,7 @@
   }
 
   // Set just before opening a drawer: the chat there sends this message as soon as it is painted.
-  let pendingSay = null;
+  let pendingSay = null, chatOpen = null; // chatOpen: the chat on screen, so a delivered website link shows at once
   const store = { get: (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v.slice(-30))); } catch {} } };
   const ACT = { create_department: (a) => 'Create department "' + a.name + '"', rename_department: (a) => 'Rename ' + a.department + ' to "' + a.name + '"', set_mission: (a) => 'New mission for ' + a.department + ': ' + a.mission, delete_department: (a) => 'Delete department ' + a.department,
     create_team: (a) => 'New team "' + a.name + '" in ' + a.department, delete_team: (a) => 'Remove team ' + a.team + ' from ' + a.department, move_agent: (a) => 'Move ' + a.agent + ' → ' + a.department + (a.team ? ' / ' + a.team : ''),
@@ -841,6 +879,7 @@
     const f = $('#f-chat'), log = () => store.get(chatKey(to));
     const save = (l) => store.set(chatKey(to), l);
     const paint = () => { const c = $('#chat'); if (!c) return; c.innerHTML = log().map(bubble).join(''); c.lastElementChild && c.lastElementChild.scrollIntoView({ block: 'nearest' }); };
+    chatOpen = { to, paint };
     const settle = (id, entry) => { const l = log(), i = l.findIndex((x) => x.id === id); if (i >= 0) l[i] = entry; else l.push(entry); save(l); paint(); };
     const send = async (m) => {
       const id = Date.now();
