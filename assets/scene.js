@@ -155,10 +155,37 @@
     ceo: { s: 0.54, build: { sw: 28, ww: 20, aw: 12, lw: 13.5 }, skin: 1, hair: 4, style: 'side', kind: 'blazer', top: '#C9A227', pants: '#B38E1E', shoes: '#8C6A16', shirt: '#F6E7B0', tie: '#8C6A16', glasses: true, accent: '#FFF3C4', gold: true },
     msgbot: { skin: 2, hair: 0, style: 'short', kind: 'polo', top: '#3E7C86', pants: '#2B2F38', bag: true, accent: '#9FD0D6' },
   };
+  // Office Helper: an original Sonic-inspired blue hedgehog (drawn, no downloaded assets). Feet at y=0, ~80 tall, faces right (office.js flips it).
+  // Legs read --sl / --sr like every other figure, so the walk cycle in office.js drives them (speed trails + glow are drawn by office.js, outside this symbol).
+  const sonic = () => {
+    const B = '#1F5FD6', D = '#1646A8', L = '#4C8BF0', C = '#F2D3AE', W = '#FFFFFF', R = '#D8232A';
+    const shoe = (x) => `<g transform="translate(${x} 0)"><path d="M-7 -11 L7 -11 L7 -6 Q13 -6 13 -1 Q13 0 11 0 L-8 0 Q-9 0 -9 -2 Z" fill="${R}"/><rect x="-8" y="-3" width="19" height="3" rx="1.5" fill="${W}"/><rect x="-6" y="-9" width="12" height="2.4" rx="1.2" fill="${W}"/><circle cx="1" cy="-6.5" r="1.1" fill="#F4C430"/></g>`;
+    const leg = (x, cls, v) => `<g class="${cls}" style="transform:translateY(calc(var(${v},0) * 1px))"><rect x="${x - 4}" y="-26" width="8" height="17" rx="4" fill="${B}"/><rect x="${x - 5}" y="-16" width="10" height="5" rx="2.4" fill="${W}"/>${shoe(x + 1)}</g>`;
+    const quill = (d, c) => `<path d="${d}" fill="${c}"/>`;
+    return `<g><ellipse rx="22" ry="6.5" fill="#000" opacity=".3"/>
+      ${leg(-6, 'lgL', '--sl')}${leg(6, 'lgR', '--sr')}
+      <g class="hog">
+      ${quill('M-9 -60 L-40 -78 L-27 -63 L-46 -64 L-28 -54 L-44 -49 L-22 -46 L-8 -40 Z', D)}
+      ${quill('M-9 -62 L-34 -80 L-24 -64 L-40 -62 L-24 -54 L-36 -50 L-12 -44 Z', B)}
+      <ellipse cx="-3" cy="-33" rx="11" ry="14" fill="${B}"/><ellipse cx="2" cy="-31" rx="7" ry="10" fill="${C}"/>
+      <path d="M-9 -41 q-12 6 -13 17" stroke="${B}" stroke-width="6" stroke-linecap="round" fill="none"/><circle cx="-22" cy="-24" r="4.6" fill="${W}"/>
+      <path d="M7 -41 q9 6 9 14" stroke="${B}" stroke-width="6" stroke-linecap="round" fill="none"/><circle cx="16" cy="-26" r="4.8" fill="${W}"/><path d="M13 -28 h6" stroke="#C9CFDA" stroke-width="1"/>
+      <path d="M-3 -62 L-9 -80 L2 -68 Z" fill="${B}"/><path d="M4 -66 L6 -84 L14 -66 Z" fill="${B}"/><path d="M-12 -52 L-24 -76 L-8 -66 Z" fill="${D}"/>
+      <circle cx="0" cy="-54" r="16" fill="${B}"/><ellipse cx="-5" cy="-60" rx="8" ry="5" fill="${L}" opacity=".5"/>
+      <path d="M-14 -62 L-11 -78 L-3 -66 Z" fill="${D}"/>
+      <ellipse cx="10" cy="-49" rx="9" ry="7.4" fill="${C}"/>
+      <ellipse cx="2.5" cy="-56" rx="5.4" ry="7" fill="${W}" stroke="#14213D" stroke-width=".9"/><ellipse cx="9.8" cy="-56" rx="5.2" ry="6.8" fill="${W}" stroke="#14213D" stroke-width=".9"/>
+      <ellipse cx="4.2" cy="-55.5" rx="2.6" ry="4" fill="#2E9B4A"/><ellipse cx="11.4" cy="-55.5" rx="2.5" ry="3.9" fill="#2E9B4A"/>
+      <ellipse cx="4.4" cy="-55.5" rx="1.3" ry="2.4" fill="#0B0F1A"/><ellipse cx="11.6" cy="-55.5" rx="1.3" ry="2.3" fill="#0B0F1A"/>
+      <circle cx="3.6" cy="-57.4" r=".9" fill="#fff"/><circle cx="10.8" cy="-57.4" r=".9" fill="#fff"/>
+      <path d="M-2 -63.5 Q3 -66 8 -62.5 M8 -63 Q13 -65 16 -61" stroke="${D}" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+      <ellipse cx="16.8" cy="-51.4" rx="2.7" ry="2.1" fill="#0B0F1A"/><path d="M9 -45 q4 3 8 -.5" stroke="#7A2E22" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+      <path d="M-6 -66 L-4 -78 L3 -69 Z" fill="${B}"/></g></g>`;
+  };
   const fig = (look, v, i = 0) => person('realistic', { ...v, skin: v.skinHex || SKIN[v.skin], hair: HAIR[v.hair], beat: +(0.34 + (i % 5) * 0.045).toFixed(3) });
 
   const WORLD = () => window.VWorld;
-  const defsFor = (look) => { const PEOPLE = PEOPLE_CFG.map((v, i) => fig(look, v, i)), CH = { lead: fig(look, CH_CFG.lead), ceo: fig(look, CH_CFG.ceo), msgbot: fig(look, CH_CFG.msgbot) };
+  const defsFor = (look) => { const PEOPLE = PEOPLE_CFG.map((v, i) => fig(look, v, i)), CH = { lead: fig(look, CH_CFG.lead), ceo: fig(look, CH_CFG.ceo), msgbot: sonic() };
     return `<defs>${WORLD() ? WORLD().defs() : ''}
   <linearGradient id="vg-l" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".24"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/></linearGradient>
   <linearGradient id="vg-r" x1="0" y1="0" x2="1" y2="0"><stop offset=".45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".3"/></linearGradient>
@@ -457,7 +484,7 @@
     // chair, then the person (in .seat, low enough to read as sitting), then the desk in front of both
     const deskSvg = order.map((i) => `<g class="desk" data-desk="${i}" transform="translate(${f(desks[i][0])} ${f(desks[i][1])}) scale(1.1)"><use href="#chair" x="24" y="-20" style="display:var(--dt,inline)"/><use href="#chair-lo" x="24" y="-20" style="display:var(--dl,none)"/><g class="seat" transform="translate(24 -19)"></g><g class="desk-top" style="color:#3A3935"><use href="#desk" style="display:var(--dt,inline)"/><use href="#desk-lo" style="display:var(--dl,none)"/></g>${(i * 7 + 3) % 9 < 5 ? `<use href="#bel${(i * 7 + 3) % 9}" x="22" y="-37" style="display:var(--dt,inline)"/>` : ''}</g>`).join('');
     const ceo = P(fx + 230, 80);
-    const helper = P(helperX, helperY);
+    const helper = P(helperX + 34, helperY + 14); // stands in front of his desk, on open floor (the desk footprint itself is blocked in the nav grid)
     const minX = P(0, D)[0], maxX = P(W, 0)[0], maxY = P(W, D)[1] + 30;
     const vbCore = { x: minX - 40, y: -10, w: maxX - minX + 80, h: maxY + 20 }; // the office alone (phones)
     const dep = wd ? wd.depth(W, D) : 0;

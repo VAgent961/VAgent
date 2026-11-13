@@ -92,10 +92,11 @@
   // Each agent is one of the office's people (always the same one: picked from its key), or the messenger.
   const isLeadAgent = (a) => !!a && (a.isLead || ((typeof D !== 'undefined' && D && D.departments) || []).some((d) => d.lead_key === a.key));
   const personRef = (a) => isHelper(a) ? '#msgbot' : isLeadAgent(a) ? '#lead' : '#p' + (hash(a.key) % ((window.VScene && window.VScene.people) || 1));
+  const SONIC_FX = `<g class="sfx" opacity="0" pointer-events="none"><ellipse cx="0" cy="-38" rx="34" ry="44" fill="#5AA8FF" opacity=".16"/><g class="sdir" transform="translate(0 -34)">${[[-14, '#BFE0FF', 3], [-6, '#5AA8FF', 4], [2, '#2F7BFF', 4], [10, '#5AA8FF', 3], [18, '#BFE0FF', 2]].map(([y, c, w]) => `<line class="sl" x1="-6" y1="${y}" x2="-40" y2="${y}" stroke="${c}" stroke-width="${w}" stroke-linecap="round" opacity=".75"/>`).join('')}</g></g>`;
   function makeAgent(a) {
     const g = document.createElementNS(NS, 'g');
-    g.setAttribute('class', 'agent'); g.setAttribute('tabindex', '0'); g.setAttribute('role', 'button'); g.dataset.key = a.key;
-    g.innerHTML = `<circle class="ring" cy="-38" r="40" fill="none" stroke="${isHelper(a) ? '#9FD0D6' : a.isLead ? '#E9C46A' : '#B5532F'}" stroke-width="3"/><g class="body"><use href="${personRef(a)}" style="color:${colorOf(a.key)}"/></g>
+    g.setAttribute('class', 'agent'); g.setAttribute('tabindex', '0'); g.setAttribute('role', 'button'); g.dataset.key = a.key; if (isHelper(a)) g.dataset.sonic = '1';
+    g.innerHTML = `<circle class="ring" cy="-38" r="40" fill="none" stroke="${isHelper(a) ? '#9FD0D6' : a.isLead ? '#E9C46A' : '#B5532F'}" stroke-width="3"/>${isHelper(a) ? SONIC_FX : ''}<g class="body"><use href="${personRef(a)}" style="color:${colorOf(a.key)}"/></g>
       <g class="props"><g class="p p-book" transform="translate(-12 -36)"><rect x="-3.5" y="-6" width="7" height="11" rx="1" fill="#D8D3C6"/><rect x="-3.5" y="-6" width="1.6" height="11" fill="#9A968A"/></g><g class="p p-pad" transform="translate(12 -37)"><rect x="-4" y="-6" width="8" height="11" rx="1.4" fill="#2A2B2F"/><rect x="-3" y="-5" width="6" height="9" rx=".8" fill="#9DB7CE"/></g><g class="p p-phone" transform="translate(12 -36)"><rect x="-2.6" y="-5" width="5.2" height="9" rx="1.3" fill="#17181B"/><rect x="-1.9" y="-4" width="3.8" height="6.6" rx=".6" fill="#7FB0E0"/></g><g class="p p-mug" transform="translate(12 -35)"><rect x="-3" y="-4" width="6" height="7" rx="1.4" fill="#F1EEE7"/><path d="M3 -2.6 q3 .6 0 3.8" stroke="#F1EEE7" stroke-width="1.3" fill="none"/></g><g class="p p-music" transform="translate(-12 -37)"><rect x="-5" y="-4" width="10" height="7" rx="1" fill="#B9BDC4"/><rect x="-5" y="2" width="10" height="1.4" fill="#8D939B"/></g><g class="p p-rest"></g></g>
       <g class="bubble typing" transform="translate(17 -80)"><rect x="-11" y="-7" width="22" height="13" rx="6.5" fill="#FAF9F5" stroke="#E3E0D5"/><circle cx="-4.5" cy="-.5" r="1.7" fill="#B5532F"/><circle cx="0" cy="-.5" r="1.7" fill="#B5532F"/><circle cx="4.5" cy="-.5" r="1.7" fill="#B5532F"/></g>
       <g class="bubble alert" transform="translate(15 -82)"><circle r="8" fill="#B3261E"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">!</text></g>
@@ -126,6 +127,9 @@
   const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
   const rng = (a, b) => a + Math.random() * (b - a);
   const SPEED = 72, BRISK = 112; // world units per second: a calm walk, and a hurry (an agent that needs help)
+  // Office Helper (Sonic): top speed = SPEED (the default employee speed) x HELPER_MULT. Override before office.js loads with window.VAGENT_HELPER_SPEED_MULT.
+  const HELPER_MULT = Number(window.VAGENT_HELPER_SPEED_MULT) > 0 ? Number(window.VAGENT_HELPER_SPEED_MULT) : 20;
+  const HELPER_ACC = 9000, HELPER_DEC = 8000, ANIM_MAX = 300; // quick start; a gentler, constant braking that eases him to a near-standstill exactly at the destination // u/s² for his quick start and braking (the stop is exact: speed is capped by what is left of the path); legs never cycle faster than an ANIM_MAX walk
   // where a place is, in floor units. Seats also have an approach point in front of them (ap), the desk they belong to, and the arms they use.
   function dest(p) {
     if (p.t === 'desk') { const [x, y] = inv(...S.desks[p.i]); const ap = [[x, y - 70], [x - 40, y - 39], [x + 36, y - 39]].find((c) => !VNav.rawBlocked(S.nav, c[0], c[1])) || [x, y - 70]; // behind the chair, or from its side when something (the lead desk) is in the way
@@ -145,7 +149,7 @@
     st.setProperty(k > 0.75 && arms ? arms : '--as', 'inline');
   }
   const clearPose = (g) => PV.forEach((v) => g.style.removeProperty(v));
-  const clearGait = (g) => { g.classList.remove('walking'); g.style.removeProperty('--sl'); g.style.removeProperty('--sr'); const b = g.querySelector('.body'); if (b) b.style.transform = ''; };
+  const clearGait = (g) => { g.classList.remove('walking'); const fx = g.querySelector('.sfx'); if (fx) fx.setAttribute('opacity', '0'); g.style.removeProperty('--sl'); g.style.removeProperty('--sr'); const b = g.querySelector('.body'); if (b) b.style.transform = ''; };
 
   // the walker: one ticker moves everybody along their polyline at a constant speed
   const movers = new Set(), doorBusy = new Map(); let lastT = 0;
@@ -159,20 +163,39 @@
       if (m.door !== door) { if (st && st.by !== m && now - st.t < 400 && m.waits < 3) { m.wait = 0.3; m.waits++; return; } m.door = door; m.waits = 0; }
       doorBusy.set(door, { by: m, t: now }); sp *= 0.7;
     } else m.door = -1;
-    let rem = sp * dt;
+    if (m.sonic) { // quick start, and brake so the last bit of the path is covered exactly (never overshoots, never teleports)
+      const left = m.total - m.trav, want = Math.min(sp, Math.sqrt(2 * 0.6 * HELPER_DEC * left)); // v = sqrt(2 a s) with a = 60% of the braking limit, so he can always follow it and glides to a near-standstill right at the end
+      m.v = m.v < want ? Math.min(want, m.v + HELPER_ACC * dt) : Math.max(want, m.v - HELPER_DEC * dt); sp = m.v;
+    }
+    let rem = sp * dt; const r0 = rem;
     while (rem > 0 && m.i < pts.length - 1) { const L = m.segL[m.i] - m.off; if (rem >= L) { rem -= L; m.i++; m.off = 0; } else { m.off += rem; rem = 0; } }
+    m.trav += r0 - rem;
     const end = m.i >= pts.length - 1, k = end ? pts.length - 2 : m.i, a = pts[k], b = pts[k + 1], L = m.segL[k] || 1, t = end ? 1 : m.off / L;
     m.x = a[0] + (b[0] - a[0]) * t; m.y = a[1] + (b[1] - a[1]) * t;
     const sdx = 0.8 * ((b[0] - a[0]) - (b[1] - a[1])); if (Math.abs(sdx) > 0.25 * L) flip(g, sdx < 0 ? -1 : 1); // face the way we walk
-    m.phase += sp * dt / 26 * Math.PI; // one stride is about 26 units: legs lift in turn and the body bobs on every step (updated ~12x a second: restyling the figures every frame costs more than it shows)
-    if ((m.gait -= dt) <= 0) { m.gait = 0.08; const s = Math.sin(m.phase), q = (v) => (Math.round(v * 3) / 3).toFixed(1); g.style.setProperty('--sl', q(Math.max(0, s) * -5)); g.style.setProperty('--sr', q(Math.max(0, -s) * -5)); m.body.style.transform = `translateY(${q(-Math.abs(s) * 2.4)}px)`; }
-    const [sx, sy] = proj(m.x, m.y); g._pos = [sx, sy]; g.setAttribute('transform', tr(sx, sy));
+    const asp = m.sonic ? Math.min(sp, ANIM_MAX) : sp;
+    m.phase += asp * dt / 26 * Math.PI; // one stride is about 26 units: legs lift in turn and the body bobs on every step (updated ~12x a second: restyling the figures every frame costs more than it shows)
+    if ((m.gait -= dt) <= 0) { m.gait = m.sonic ? 0.05 : 0.08; const s = Math.sin(m.phase), q = (v) => (Math.round(v * 3) / 3).toFixed(1), amp = m.sonic ? 9 : 5;
+      g.style.setProperty('--sl', q(Math.max(0, s) * -amp)); g.style.setProperty('--sr', q(Math.max(0, -s) * -amp));
+      m.body.style.transform = `translateY(${q(-Math.abs(s) * (m.sonic ? 3.4 : 2.4))}px)` + (m.sonic ? ` rotate(${((g._flip < 0 ? -1 : 1) * 10 * Math.min(1, sp / (SPEED * HELPER_MULT))).toFixed(1)}deg)` : ''); } // Sonic leans into the run
+    const [sx, sy] = proj(m.x, m.y); if (m.sonic) sonicFx(m, g._pos ? sx - g._pos[0] : 0, g._pos ? sy - g._pos[1] : 0, sp); g._pos = [sx, sy]; g.setAttribute('transform', tr(sx, sy));
     if (end) { movers.delete(m); g._mv = null; clearGait(g); m.done(); }
+  }
+  // Sonic's speed effects: blue streaks behind him and a soft glow, growing with speed and gone when he stops. One element set, updated per frame.
+  // Trails on/off (for performance testing): open the office with ?trails=off, or call sonicTrails(false) / sonicTrails(true) in the console.
+  let TRAILS = !/[?&]trails=(off|0|false)(&|$)/.test(location.search);
+  window.sonicTrails = (on) => { TRAILS = on !== false; if (!TRAILS) document.querySelectorAll('.sfx').forEach((e) => e.setAttribute('opacity', '0')); return TRAILS; };
+  function sonicFx(m, dx, dy, sp) {
+    const fx = m.fx; if (!fx || !TRAILS) return; const k = Math.max(0, Math.min(1, (sp - SPEED * 2) / (SPEED * HELPER_MULT * 0.5)));
+    fx.root.setAttribute('opacity', k.toFixed(2)); if (k <= 0.01 || (!dx && !dy)) return;
+    fx.dir.setAttribute('transform', `translate(0 -34) rotate(${(Math.atan2(-dy, -dx) * 180 / Math.PI).toFixed(0)})`);
+    fx.lines.forEach((l, i) => l.setAttribute('x2', (-10 - (28 + i * 9) * (0.4 + 0.6 * k) * (1 + (i % 2) * 0.5)).toFixed(0)));
   }
   function moveTick() { const now = performance.now(), dt = Math.min(0.1, (now - lastT) / 1000); lastT = now; for (const m of [...movers]) step(m, dt, now); if (!movers.size) gsap.ticker.remove(moveTick); }
   function startWalk(g, pts, speed, done) {
     const segL = pts.slice(1).map((p, k) => dist(p, pts[k]));
-    const m = { g, pts, segL, i: 0, off: 0, speed, x: pts[0][0], y: pts[0][1], phase: 0, gait: 0, wait: 0, waits: 0, door: -1, body: g.querySelector('.body'), done };
+    const sonic = !!g.dataset.sonic, fxr = sonic && g.querySelector('.sfx');
+    const m = { sonic, v: 0, trav: 0, total: segL.reduce((a, b) => a + b, 0), fx: fxr ? { root: fxr, dir: fxr.querySelector('.sdir'), lines: [...fxr.querySelectorAll('.sl')] } : null, g, pts, segL, i: 0, off: 0, speed, x: pts[0][0], y: pts[0][1], phase: 0, gait: 0, wait: 0, waits: 0, door: -1, body: g.querySelector('.body'), done };
     g._mv = m; g.classList.add('walking'); movers.add(m); if (movers.size === 1) { lastT = performance.now(); gsap.ticker.add(moveTick); }
     if (DBG) dbgPath(pts);
   }
@@ -207,7 +230,7 @@
     const run = () => {
       walkL.appendChild(g); g.dataset.prop = ''; g.dataset.pose = '';
       const from = g._pos ? inv(g._pos[0], g._pos[1]) : d.ap || d.at, r = VNav.route(S.nav, from, d.ap || d.at);
-      const sp = (opt && opt.speed) || (g.classList.contains('help') ? BRISK : SPEED + (hash(g.dataset.key || '') % 17) - 8); // 'help' (a failed run) hurries
+      const sp = g.dataset.sonic ? SPEED * HELPER_MULT : (opt && opt.speed) || (g.classList.contains('help') ? BRISK : SPEED + (hash(g.dataset.key || '') % 17) - 8); // 'help' (a failed run) hurries
       if (DBG) (window.__paths ||= []).push({ pts: r.pts, hs: r.hs, he: r.he, key: g.dataset.key });
       if (r.pts.length < 2) r.pts.push(r.pts[0]);
       startWalk(g, r.pts, sp, () => (d.ap ? seatMove(g, d, true, done) : (flip(g, 1), done())));
@@ -514,7 +537,7 @@
   const walkAny = walk;
   if (DBG) { const h = document.createElement('div'); h.id = 'dev-hud'; h.style.cssText = 'position:fixed;left:50%;bottom:4px;transform:translateX(-50%);z-index:99;font:11px/1.4 monospace;background:#000c;color:#9f9;padding:4px 7px;border-radius:6px;pointer-events:none';
     document.body.appendChild(h); let n = 0, t0 = performance.now(); const tk = (t) => { n++; if (t - t0 >= 1000) { h.textContent = Math.round(n * 1000 / (t - t0)) + ' fps · ' + svg.querySelectorAll('*').length + ' nodes · ' + S.nav.rects.length + ' rects · detail ' + (lodNear ? 'on' : 'off'); n = 0; t0 = t; } requestAnimationFrame(tk); }; requestAnimationFrame(tk); }
-  if (DBG) window.__vo = { scene: () => S, els, places, dest, goTo, inv, proj, movers: () => movers.size };
+  if (DBG) window.__vo = { SPEED, HELPER_MULT, scene: () => S, els, places, dest, goTo, inv, proj, movers: () => movers.size };
 
   const where = (a) => { const x = D.departments.find((y) => y.id === a.dept); if (!x) return 'No department'; const t = x.teams.find((y) => y.id === a.team); return x.name + (t ? ' / ' + t.name : ''); };
   const dotColor = { working: '#3F7D4E', help: '#B3261E', idle: '#B5532F', off: '#B0AEA5' };
