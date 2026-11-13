@@ -680,7 +680,7 @@
       + leadRow
       + `<p class="label">Talk to ${esc(d.name)}</p>`
       + chatUI('agent:' + key, 'Ask it something…')
-      + `<div class="chips"><button class="pick" type="button" ${d.runnable ? 'data-say="start"' : flow ? `data-flow="${esc(flow.key)}"` : 'data-reset'}>▶ Start over</button></div>` + `<p class="help">${how}</p>`
+      + `<div class="chips"><button class="pick" type="button" ${d.runnable ? 'data-say="start"' : flow ? `data-flow="${esc(flow.key)}"` : 'data-reset'}>▶ Start over</button>${d.runnable && SNIPER(key) ? CHECK_SITE : ''}</div>` + `<p class="help">${how}</p>`
       + `<div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1"><label for="dept">Department</label><select class="input" id="dept">${opts}</select></div><div class="field" style="flex:1"><label for="team">Team</label><select class="input" id="team">${teamOpts(d.dept)}</select></div></div>`
       + `<details class="more"><summary>What it does (${d.steps.length} steps)</summary><ol class="steps">${steps}</ol></details>`
       + `<details class="more"><summary>Recent runs</summary><ul class="runs">${runs}</ul></details>`
@@ -720,7 +720,7 @@
     const leadPickOpts = '<option value="">— no lead —</option>' + team.map((a) => `<option value="${esc(a.key)}" ${a.key === d.lead_key ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
     open(`<div class="d-head"><span class="avatar">${leadAvatarSvg}</span><div><h2 class="d-title">${leadTitle}</h2><div class="d-sub">${team.length} employees · ${can} can take tasks${d.mission ? '<br>' + esc(d.mission) : ''}</div></div></div>
       ${isClient ? '' : `<div class="field"><label for="lead-pick">Lead</label><select class="input" id="lead-pick">${leadPickOpts}</select></div>`}
-      <p class="label">Talk to the lead</p>${chatUI(leadTo, 'Ask the ' + d.name + ' lead…')}<div class="chips"><button class="pick" type="button" ${leadHook ? 'data-say="start"' : 'data-reset'}>▶ Start over</button></div>
+      <p class="label">Talk to the lead</p>${chatUI(leadTo, 'Ask the ' + d.name + ' lead…')}<div class="chips"><button class="pick" type="button" ${leadHook ? 'data-say="start"' : 'data-reset'}>▶ Start over</button>${leadHook && SNIPER(leadAgent.key) ? CHECK_SITE : ''}</div>
       <form id="f-task" class="field"><label for="task">Give the lead a task</label><textarea class="input" id="task" name="t" required placeholder="Example: check vagent.online and report anything broken" ${focusTask ? 'autofocus' : ''}></textarea>
       <button class="btn primary" type="submit">Send to the team</button><p class="help">The lead sends it to every agent here that has a webhook, waits for them, and gives you one final result.</p></form>
       <div id="task-out"></div>
@@ -848,6 +848,8 @@
   }
 
   // Set just before opening a drawer: the chat there sends this message as soon as it is painted.
+  // The Sniper chat always offers "Check the website": the lead answers with the newest build's link (or that it is still building).
+  const SNIPER = (k) => !!k && ((D && D.departments) || []).some((x) => x.lead_key === k && /sniper/i.test(x.name)), CHECK_SITE = '<button class="pick" type="button" data-say="build: latest">🔗 Check the website</button>';
   let pendingSay = null, chatOpen = null; // chatOpen: the chat on screen, so a delivered website link shows at once
   const store = { get: (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v.slice(-30))); } catch {} } };
   const ACT = { create_department: (a) => 'Create department "' + a.name + '"', rename_department: (a) => 'Rename ' + a.department + ' to "' + a.name + '"', set_mission: (a) => 'New mission for ' + a.department + ': ' + a.mission, delete_department: (a) => 'Delete department ' + a.department,
