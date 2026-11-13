@@ -648,6 +648,43 @@
   const leadSvg = (c, s = 40) => `<svg aria-hidden="true" width="${s}" height="${s}" viewBox="-17 -79 34 34"><use href="#lead" style="color:${c}"/></svg>`;
   const deptName = (id) => (D.departments.find((d) => d.id === id) || {}).name;
 
+  // ── Website builder approvals (PM Tech) from the office, not only Telegram ──
+  // /api/approvals lists PM Tech's waiting client approvals (brief / designs / finished site / go live) and decides them the
+  // same way the client review page does. Shown in PM Tech's drawer and the Website builder department drawer; a toast
+  // tells you when a new one comes in (checked every 60 s).
+  const BUILDER_LEAD = (k) => !!k && ((D && D.departments) || []).some((x) => x.lead_key === k && /website/i.test(x.name));
+  const APPROVALS_BOX = '<div id="approvals" class="approvals"><p class="label">Waiting for your approval</p><p class="empty">Checking PM Tech…</p></div>';
+  const nice = (p) => String(p || '').replace(/^lead-/, '').replace(/-[a-z0-9]{5,8}$/, '').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  async function paintApprovals() {
+    const box = $('#approvals'); if (!box) return;
+    let r; try { r = await api('approvals'); } catch (x) { r = { list: [], error: x.message }; }
+    if (!$('#approvals')) return;
+    const list = r.list || [];
+    box.innerHTML = `<p class="label">Waiting for your approval${list.length ? ' (' + list.length + ')' : ''}</p>` + (list.length ? list.map((a) => `<div class="plan" data-ap="${a.id}">
+      <p class="label">${esc(a.stageName)} · ${esc(nice(a.project))} <small class="muted">${esc(ago(a.at))}</small></p>
+      <details><summary>What PM Tech says</summary><div class="result">${linkify(a.summary || '—')}</div></details>
+      <div class="row"><button class="btn primary" type="button" data-ap-ok="${a.id}">✓ Approve</button><button class="btn" type="button" data-ap-ch="${a.id}">Ask for changes</button><a class="btn" href="${esc(a.review)}" target="_blank" rel="noopener noreferrer">Open review page ↗</a></div>
+      <form class="field" data-ap-form="${a.id}" style="display:none"><label class="sr" for="apf${a.id}">What should change</label><textarea class="input" id="apf${a.id}" name="f" required placeholder="What should PM Tech change?"></textarea><button class="btn primary" type="submit">Send changes</button></form>
+    </div>`).join('') : `<p class="empty">${r.error ? 'Could not reach PM Tech: ' + esc(r.error) : 'Nothing waiting. PM Tech asks here (and on Telegram) when a brief, design, site or go-live needs your OK.'}</p>`);
+    const decide = async (id, decision, feedback, btn) => {
+      if (btn) btn.disabled = true;
+      try { const x = await api('approvals', { body: { id: Number(id), decision, feedback } }); if (x.ok === false) throw new Error(x.error || 'Not accepted'); toast(decision === 'approve' ? 'Approved: PM Tech carries on' : 'Changes sent to PM Tech'); approvalsSeen.delete(Number(id)); }
+      catch (e) { toast(e.message); if (btn) btn.disabled = false; return; }
+      paintApprovals();
+    };
+    box.onclick = (e) => {
+      const ok = e.target.closest('[data-ap-ok]'); if (ok) { if (confirm('Approve this for PM Tech? It moves on to the next stage.')) decide(ok.dataset.apOk, 'approve', '', ok); return; }
+      const ch = e.target.closest('[data-ap-ch]'); if (ch) { const f = box.querySelector(`[data-ap-form="${ch.dataset.apCh}"]`); const show = f.style.display === 'none'; f.style.display = show ? '' : 'none'; if (show) f.f.focus(); }
+    };
+    box.onsubmit = (e) => { const f = e.target.closest('[data-ap-form]'); if (!f) return; e.preventDefault(); const t = f.f.value.trim(); if (t) decide(f.dataset.apForm, 'changes', t, f.querySelector('button')); };
+  }
+  const approvalsSeen = new Set(); let approvalsPrimed = false;
+  async function checkApprovals() {
+    if (!D || D.role === 'client' || document.hidden) return;
+    let r; try { r = await api('approvals'); } catch { return; }
+    for (const a of r.list || []) { if (!approvalsSeen.has(a.id) && approvalsPrimed) toast('PM Tech needs your OK: ' + a.stageName + ' · ' + nice(a.project) + ' (open Website builder)'); approvalsSeen.add(a.id); }
+    approvalsPrimed = true;
+  }
   async function openAgent(key) {
     const a = D.agents.find((x) => x.key === key); if (!a) return;
     const avatarSvg = isHelper(a)
@@ -678,6 +715,7 @@
     inner.innerHTML = head
       + (d.canRun ? `<button class="btn primary" type="button" id="run-now">▶ Run now</button>` : '')
       + leadRow
+      + (BUILDER_LEAD(key) && D.role !== 'client' ? APPROVALS_BOX : '')
       + `<p class="label">Talk to ${esc(d.name)}</p>`
       + chatUI('agent:' + key, 'Ask it something…')
       + `<div class="chips"><button class="pick" type="button" ${d.runnable ? 'data-say="start"' : flow ? `data-flow="${esc(flow.key)}"` : 'data-reset'}>▶ Start over</button>${d.runnable && SNIPER(key) ? CHECK_SITE : ''}</div>` + `<p class="help">${how}</p>`
@@ -686,6 +724,7 @@
       + `<details class="more"><summary>Recent runs</summary><ul class="runs">${runs}</ul></details>`
       + `<div class="row"><a class="btn" href="${esc(d.link)}" target="_blank" rel="noopener">Open in n8n</a><button class="btn ${d.active ? 'danger' : ''}" type="button" id="toggle">${d.active ? 'Turn off' : 'Turn on'}</button></div>`;
     bindChat('agent:' + key, d.name);
+    paintApprovals();
     const rn = () => { const n = prompt('New name for this agent (empty = its n8n name):', d.name); if (n === null) return; api('agent', { body: { key, action: 'rename', name: n } }).then(async () => { toast('Renamed'); await load(); openAgent(key); }).catch((x) => toast(x.message)); };
     $('#rename').onclick = rn;
     const saveAssign = async () => { try { await api('agent', { body: { key, action: 'assign', deptId: $('#dept').value || null, teamId: $('#team').value || null } }); toast('Moved'); load(); } catch (x) { toast(x.message); } };
@@ -720,6 +759,7 @@
     const leadPickOpts = '<option value="">— no lead —</option>' + team.map((a) => `<option value="${esc(a.key)}" ${a.key === d.lead_key ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
     open(`<div class="d-head"><span class="avatar">${leadAvatarSvg}</span><div><h2 class="d-title">${leadTitle}</h2><div class="d-sub">${team.length} employees · ${can} can take tasks${d.mission ? '<br>' + esc(d.mission) : ''}</div></div></div>
       ${isClient ? '' : `<div class="field"><label for="lead-pick">Lead</label><select class="input" id="lead-pick">${leadPickOpts}</select></div>`}
+      ${!isClient && /website/i.test(d.name) ? APPROVALS_BOX : ''}
       <p class="label">Talk to the lead</p>${chatUI(leadTo, 'Ask the ' + d.name + ' lead…')}<div class="chips"><button class="pick" type="button" ${leadHook ? 'data-say="start"' : 'data-reset'}>▶ Start over</button>${leadHook && SNIPER(leadAgent.key) ? CHECK_SITE : ''}</div>
       <form id="f-task" class="field"><label for="task">Give the lead a task</label><textarea class="input" id="task" name="t" required placeholder="Example: check vagent.online and report anything broken" ${focusTask ? 'autofocus' : ''}></textarea>
       <button class="btn primary" type="submit">Send to the team</button><p class="help">The lead sends it to every agent here that has a webhook, waits for them, and gives you one final result.</p></form>
@@ -737,6 +777,7 @@
       <div class="row"><button class="btn" type="submit">Save</button><button class="btn danger" type="button" id="del-dept">Delete department</button></div></form>`}`, 'dept:' + d.id);
     let color = d.color;
     bindChat(leadTo, leadHook ? leadAgent.name : d.name + ' lead');
+    paintApprovals();
     if ($('#lead-pick')) $('#lead-pick').onchange = async (e) => {
       try { await api('departments', { body: { deptId: d.id, leadKey: e.target.value || '' } }); toast(e.target.value ? 'Lead set' : 'Lead cleared'); await load(); openDept(d.id, focusTask); } catch (x) { toast(x.message); }
     };
@@ -1052,6 +1093,7 @@
     try { await load(); } finally { loading = false; }
   };
   scheduledLoad();
+  setTimeout(checkApprovals, 4000); setInterval(checkApprovals, 60000);
   setInterval(() => { if (!document.hidden) scheduledLoad(); }, 8000);
   setInterval(() => { if (document.hidden) scheduledLoad(); }, 30000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduledLoad(); });

@@ -15,6 +15,7 @@
 - `functions/hook/build.js` — POST /hook/build (X-VAgent-Secret) → upsert `vagent_builds` (website build stage for the Office Helper errand).
 - `functions/hook/daily.js` — POST /hook/daily (no session, header `X-VAgent-Secret` = WEBHOOK_SECRET) → row in `vagent_daily`. How agents report into the office instead of Telegram.
 - `functions/api/daily.js` — GET /api/daily → last 30 reports (owner session). Office: 📋 button in the top bar → `openDaily()` drawer.
+- `functions/api/approvals.js` — GET waiting PM Tech client approvals / POST {id, decision: approve|changes, feedback} (owners only). Reads the n8n data table `web_projects` (rows `status=waiting`, last 3 days, newest per project+stage) on the n8n of the Website builder lead (Boudy's, via the stored key), decides by POSTing {p, t, decision, feedback, name} to that n8n's `/webhook/review-decision` — the same thing the client review page does, so PM Tech wakes up and carries on. Nothing on Boudy's n8n was changed. Office: "Waiting for your approval" cards (office.js `paintApprovals`, Approve / Ask for changes / Open review page) in PM Tech's drawer and the Website builder department drawer; `checkApprovals` every 60 s toasts new ones.
 - `functions/_lib.js` — sql() over Neon HTTPS, password check, signed session cookie, AES-GCM encrypt/decrypt, json().
 - `functions/_n8n.js` — n8n helpers: instances(), call(), workflow summaries (cached in DB 2 min), classify status.
 - `functions/_middleware.js` — guards /office and /api/* (sets `data.owner`); signed-in users skip sign-in page.
