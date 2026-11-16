@@ -1,5 +1,5 @@
 // Voice Receptionist panel. VoiceAgent.mount(element, businessId): hold the button, speak, hear the answer.
-// mic (MediaRecorder) -> POST /api/voice (audio + history) -> reply spoken with speechSynthesis.
+// mic (MediaRecorder) -> POST /api/voice (audio + history) -> reply spoken by /api/tts (Groq Orpheus), browser voice as fallback.
 (function () {
   const MAX_HISTORY = 12;
   const MIN_MS = 500;
@@ -10,17 +10,59 @@
     return (window.MediaRecorder && c.find((m) => MediaRecorder.isTypeSupported(m))) || '';
   }
 
-  function speak(text, onEnd) {
+  // Voice: server TTS (/api/tts, Groq Orpheus, <=200 chars per call so long replies are split by sentence) played with one shared
+  // Audio element; if the server voice is not available it falls back to the browser's own voice.
+  const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+  const player = new Audio();
+  let token = 0;
+  function prime() { try { player.src = SILENT; player.play().catch(() => {}); } catch (e) {} } // unlocks audio on Safari (runs inside the button press)
+  function stopSpeech() { token++; try { player.pause(); } catch (e) {} if (window.speechSynthesis) speechSynthesis.cancel(); }
+  function chunks(text) {
+    const out = []; let cur = '';
+    for (const p of (text.match(/[^.!?\u061F\n]+[.!?\u061F]*/g) || [text]).map((x) => x.trim()).filter(Boolean)) {
+      if ((cur + ' ' + p).trim().length <= 190) cur = (cur + ' ' + p).trim(); else { if (cur) out.push(cur); cur = p.slice(0, 190); }
+    }
+    if (cur) out.push(cur);
+    return out;
+  }
+  async function fetchAudio(text) {
+    const r = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }), credentials: 'same-origin' });
+    if (!r.ok) throw new Error('tts ' + r.status);
+    return URL.createObjectURL(await r.blob());
+  }
+  function playUrl(url) {
+    return new Promise((resolve, reject) => {
+      player.onended = () => { URL.revokeObjectURL(url); resolve(); };
+      player.onerror = () => { URL.revokeObjectURL(url); reject(new Error('play')); };
+      player.src = url; player.play().catch(reject);
+    });
+  }
+  function browserSpeak(text, onEnd) {
     const ss = window.speechSynthesis;
     if (!ss) { onEnd && onEnd(); return; }
     ss.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    const ar = /[؀-ۿ]/.test(text);
+    const ar = /[\u0600-\u06FF]/.test(text);
     u.lang = ar ? 'ar-SA' : 'en-US';
     const v = ss.getVoices().find((x) => x.lang && x.lang.toLowerCase().startsWith(ar ? 'ar' : 'en'));
     if (v) u.voice = v;
     u.onend = u.onerror = () => onEnd && onEnd();
     ss.speak(u);
+  }
+  async function speak(text, onEnd) {
+    stopSpeech();
+    const my = token, parts = chunks(text);
+    try {
+      let next = fetchAudio(parts[0]);
+      for (let i = 0; i < parts.length; i++) {
+        const url = await next;
+        if (my !== token) { URL.revokeObjectURL(url); return; }
+        if (i + 1 < parts.length) next = fetchAudio(parts[i + 1]);
+        await playUrl(url);
+        if (my !== token) return;
+      }
+      onEnd && onEnd();
+    } catch (e) { if (my === token) browserSpeak(text, onEnd); }
   }
 
   function mount(el, businessId, ctx) {
@@ -49,15 +91,16 @@
       const d = document.createElement('div'); d.className = 'va-msg ' + who; d.textContent = text; log.appendChild(d); log.scrollTop = log.scrollHeight;
     };
     const release = () => { if (stream) stream.getTracks().forEach((t) => t.stop()); stream = null; };
-    const cleanup = () => { alive = false; clearInterval(watch); try { if (rec && rec.state === 'recording') rec.stop(); } catch (e) {} release(); if (window.speechSynthesis) speechSynthesis.cancel(); if (stopPrev === cleanup) stopPrev = null; };
+    const cleanup = () => { alive = false; clearInterval(watch); try { if (rec && rec.state === 'recording') rec.stop(); } catch (e) {} release(); stopSpeech(); if (stopPrev === cleanup) stopPrev = null; };
     stopPrev = cleanup;
     const watch = setInterval(() => { if (!el.isConnected) cleanup(); }, 1000); // drawer closed -> stop mic + voice
 
     async function start(e) {
       e.preventDefault();
       if (busy || rec) return;
+      prime();
       if (!navigator.mediaDevices || !window.MediaRecorder) { say('This browser cannot record. Use Chrome, Edge or Safari.'); return; }
-      if (window.speechSynthesis) speechSynthesis.cancel();
+      stopSpeech();
       try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
       catch (err) { say('Allow the microphone to talk to it.'); return; }
       if (!alive) { release(); return; }
@@ -105,13 +148,13 @@
     btn.addEventListener('contextmenu', (e) => e.preventDefault());
     btn.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) start(e); });
     btn.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') stop(); });
-    reset.addEventListener('click', () => { history = []; log.innerHTML = ''; if (window.speechSynthesis) speechSynthesis.cancel(); say('Hold the button and talk'); });
+    reset.addEventListener('click', () => { history = []; log.innerHTML = ''; stopSpeech(); say('Hold the button and talk'); });
     el.querySelectorAll('.va-tab').forEach((t) => t.addEventListener('click', () => {
       const manage = t.dataset.t === 'manage';
       el.querySelectorAll('.va-tab').forEach((x) => x.classList.toggle('on', x === t));
       el.querySelector('[data-pane=call]').hidden = manage;
       const mp = el.querySelector('[data-pane=manage]'); mp.hidden = !manage;
-      if (manage) { stop(); if (window.speechSynthesis) speechSynthesis.cancel(); if (window.VoiceAdmin && ctx) VoiceAdmin.mount(mp, ctx); }
+      if (manage) { stop(); stopSpeech(); if (window.VoiceAdmin && ctx) VoiceAdmin.mount(mp, ctx); }
       else loadBiz();
     }));
   }
