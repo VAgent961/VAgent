@@ -656,7 +656,7 @@
     try {
       D = await api('office');
       document.body.dataset.role = D.role || 'owner';
-      if (D.role !== 'client') $('#btn-clients').style.display = '';
+      if (D.role !== 'client') { $('#btn-clients').style.display = ''; $('#btn-voice').style.display = ''; }
       $('#live-dot').className = 'dot ' + (D.errors.length ? 'err' : 'on'); $('#live-text').textContent = 'Live · ' + hhmm(new Date());
       render(); handleBuilds();
     } catch (e) { $('#live-dot').className = 'dot err'; $('#live-text').textContent = 'Offline, retrying'; }
@@ -1055,6 +1055,7 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && current) close(); });
   $('#drawer-close').onclick = close; scrim.onclick = close;
   $('#btn-daily').onclick = openDaily;
+  $('#btn-voice').onclick = () => VoiceAdmin.open({ open, api, toast, esc, ago, inner });
   $('#btn-settings').onclick = openSettings; $('#btn-task').onclick = openCEO; $('#btn-clients').onclick = openClients;
   const tick = () => { const n = new Date(); const h = $('#clock-h'), m = $('#clock-m'); if (h) { h.setAttribute('transform', 'rotate(' + ((n.getHours() % 12) * 30 + n.getMinutes() / 2) + ')'); m.setAttribute('transform', 'rotate(' + n.getMinutes() * 6 + ')'); } };
   tick(); setInterval(tick, 30000);
