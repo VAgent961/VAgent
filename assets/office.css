@@ -250,3 +250,8 @@ a.pick{display:inline-flex;align-items:center;text-decoration:none;color:inherit
 @keyframes vaPulse{from{transform:scale(1);opacity:.7}to{transform:scale(1.6);opacity:0}}
 .va-reset{background:none;border:0;color:var(--muted);font-size:12.5px;text-decoration:underline;cursor:pointer}
 @media (prefers-reduced-motion:reduce){.va-btn.on .va-ring{animation:none;opacity:.5}.va-btn{transition:none}}
+.va-tabs{display:flex;gap:6px;margin:4px 0 12px;border-bottom:1px solid var(--line)}
+.va-tab{flex:1;min-height:40px;padding:0 8px;border:0;border-bottom:2px solid transparent;background:none;font-size:13px;color:var(--muted);cursor:pointer}
+.va-tab.on{color:var(--ink);border-bottom-color:var(--clay);font-weight:600}
+.va-h{font-family:Newsreader,serif;font-weight:500;font-size:18px;margin:4px 0 8px}
+.va-pane[hidden]{display:none}

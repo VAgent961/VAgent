@@ -23,21 +23,23 @@
     ss.speak(u);
   }
 
-  function mount(el, businessId) {
+  function mount(el, businessId, ctx) {
     if (!el) return;
     if (stopPrev) stopPrev();
-    el.innerHTML = '<div class="va"><div class="va-log" aria-live="polite"></div>'
+    el.innerHTML = '<div class="va-tabs" role="tablist"><button class="va-tab on" type="button" role="tab" data-t="call">Test Call</button><button class="va-tab" type="button" role="tab" data-t="manage">Manage Businesses &amp; Orders</button></div><div class="va-pane" data-pane="call"><div class="va"><div class="va-log" aria-live="polite"></div>'
       + '<p class="va-state" role="status">Hold the button and talk</p>'
       + '<button class="va-btn" type="button" aria-label="Hold to talk"><span class="va-ring"></span><svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2Z"/></svg></button>'
-      + '<button class="va-reset" type="button">Start a new call</button></div>';
+      + '<button class="va-reset" type="button">Start a new call</button></div></div><div class="va-pane" data-pane="manage" hidden></div>';
     el.querySelector('.va').insertAdjacentHTML('afterbegin', '<select class="input va-biz" aria-label="Business" hidden></select>');
     const biz = el.querySelector('.va-biz');
-    fetch('/api/businesses', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : [])).then((rows) => {
-      if (!Array.isArray(rows) || !rows.length || !alive) return;
+    const loadBiz = () => fetch('/api/businesses', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : [])).then((rows) => {
+      if (!Array.isArray(rows) || !alive) return;
+      biz.hidden = !rows.length;
+      if (!rows.length) return;
       biz.innerHTML = rows.map((b) => '<option value="' + b.id.replace(/"/g, '') + '">' + b.name.replace(/[<&]/g, '') + '</option>').join('');
-      if (rows.some((b) => b.id === businessId)) biz.value = businessId; else businessId = rows[0].id;
-      biz.hidden = false;
+      if (rows.some((b) => b.id === businessId)) biz.value = businessId; else { businessId = rows[0].id; history = []; log.innerHTML = ''; }
     }).catch(() => {});
+    loadBiz();
     biz.onchange = () => { businessId = biz.value; history = []; log.innerHTML = ''; say('Hold the button and talk'); };
     const log = el.querySelector('.va-log'), state = el.querySelector('.va-state'), btn = el.querySelector('.va-btn'), reset = el.querySelector('.va-reset');
     let history = [], rec = null, chunks = [], stream = null, t0 = 0, busy = false, alive = true;
@@ -104,6 +106,14 @@
     btn.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) start(e); });
     btn.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') stop(); });
     reset.addEventListener('click', () => { history = []; log.innerHTML = ''; if (window.speechSynthesis) speechSynthesis.cancel(); say('Hold the button and talk'); });
+    el.querySelectorAll('.va-tab').forEach((t) => t.addEventListener('click', () => {
+      const manage = t.dataset.t === 'manage';
+      el.querySelectorAll('.va-tab').forEach((x) => x.classList.toggle('on', x === t));
+      el.querySelector('[data-pane=call]').hidden = manage;
+      const mp = el.querySelector('[data-pane=manage]'); mp.hidden = !manage;
+      if (manage) { stop(); if (window.speechSynthesis) speechSynthesis.cancel(); if (window.VoiceAdmin && ctx) VoiceAdmin.mount(mp, ctx); }
+      else loadBiz();
+    }));
   }
 
   window.VoiceAgent = { mount };

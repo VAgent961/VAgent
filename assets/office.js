@@ -656,7 +656,7 @@
     try {
       D = await api('office');
       document.body.dataset.role = D.role || 'owner';
-      if (D.role !== 'client') { $('#btn-clients').style.display = ''; $('#btn-voice').style.display = ''; }
+      if (D.role !== 'client') $('#btn-clients').style.display = '';
       $('#live-dot').className = 'dot ' + (D.errors.length ? 'err' : 'on'); $('#live-text').textContent = 'Live · ' + hhmm(new Date());
       render(); handleBuilds();
     } catch (e) { $('#live-dot').className = 'dot err'; $('#live-text').textContent = 'Offline, retrying'; }
@@ -709,7 +709,7 @@
       + `<details class="more"><summary>What it does (${d.steps.length} steps)</summary><ol class="steps">${steps}</ol></details>`
       + `<details class="more"><summary>Recent runs</summary><ul class="runs">${runs}</ul></details>`
       + `<div class="row"><a class="btn" href="${esc(d.link)}" target="_blank" rel="noopener">Open in n8n</a><button class="btn ${d.active ? 'danger' : ''}" type="button" id="toggle">${d.active ? 'Turn off' : 'Turn on'}</button></div>`;
-    if (VOICE && window.VoiceAgent) VoiceAgent.mount(inner.querySelector('#voice-mount'), 'demo-cafe'); else bindChat('agent:' + key, d.name);
+    if (VOICE && window.VoiceAgent) VoiceAgent.mount(inner.querySelector('#voice-mount'), 'demo-cafe', { api, toast, esc, ago }); else bindChat('agent:' + key, d.name);
     const rn = () => { const n = prompt('New name for this agent (empty = its n8n name):', d.name); if (n === null) return; api('agent', { body: { key, action: 'rename', name: n } }).then(async () => { toast('Renamed'); await load(); openAgent(key); }).catch((x) => toast(x.message)); };
     $('#rename').onclick = rn;
     const saveAssign = async () => { try { await api('agent', { body: { key, action: 'assign', deptId: $('#dept').value || null, teamId: $('#team').value || null } }); toast('Moved'); load(); } catch (x) { toast(x.message); } };
@@ -1055,7 +1055,6 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && current) close(); });
   $('#drawer-close').onclick = close; scrim.onclick = close;
   $('#btn-daily').onclick = openDaily;
-  $('#btn-voice').onclick = () => VoiceAdmin.open({ open, api, toast, esc, ago, inner });
   $('#btn-settings').onclick = openSettings; $('#btn-task').onclick = openCEO; $('#btn-clients').onclick = openClients;
   const tick = () => { const n = new Date(); const h = $('#clock-h'), m = $('#clock-m'); if (h) { h.setAttribute('transform', 'rotate(' + ((n.getHours() % 12) * 30 + n.getMinutes() / 2) + ')'); m.setAttribute('transform', 'rotate(' + n.getMinutes() * 6 + ')'); } };
   tick(); setInterval(tick, 30000);
