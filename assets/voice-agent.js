@@ -49,20 +49,24 @@
     u.onend = u.onerror = () => onEnd && onEnd();
     ss.speak(u);
   }
-  async function speak(text, onEnd) {
+  // onStart(ok) fires right before the first sound, so the caller can show the text at the very same moment.
+  async function speak(text, onEnd, onStart) {
     stopSpeech();
     const my = token, parts = chunks(text);
+    let started = false;
+    const go = (ok) => { if (!started) { started = true; onStart && onStart(ok); } };
     try {
       let next = fetchAudio(parts[0]);
       for (let i = 0; i < parts.length; i++) {
         const url = await next;
-        if (my !== token) { URL.revokeObjectURL(url); return; }
+        if (my !== token) { URL.revokeObjectURL(url); go(false); return; }
         if (i + 1 < parts.length) next = fetchAudio(parts[i + 1]);
+        go(true);
         await playUrl(url);
         if (my !== token) return;
       }
       onEnd && onEnd();
-    } catch (e) { if (my === token) browserSpeak(text, onEnd); }
+    } catch (e) { if (my === token) { go(true); browserSpeak(text, onEnd); } else go(false); }
   }
 
   function mount(el, businessId, ctx) {
@@ -133,12 +137,17 @@
         const j = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(j.error || 'Something went wrong');
         if (!alive) return;
-        if (j.transcript) { bubble('me', j.transcript); history.push({ role: 'user', content: j.transcript }); }
-        bubble('ai', j.reply); history.push({ role: 'assistant', content: j.reply });
-        history = history.slice(-MAX_HISTORY);
-        if (j.order_saved) bubble('note', '✓ Order saved');
-        say('Speaking…');
-        speak(j.reply, () => { if (alive) say('Hold the button and talk'); });
+        // Thinking… stays until the voice is ready; then the text and the sound start together.
+        await new Promise((res) => speak(j.reply, () => { if (alive) say('Hold the button and talk'); }, (ok) => {
+          if (ok && alive) {
+            if (j.transcript) { bubble('me', j.transcript); history.push({ role: 'user', content: j.transcript }); }
+            bubble('ai', j.reply); history.push({ role: 'assistant', content: j.reply });
+            history = history.slice(-MAX_HISTORY);
+            if (j.order_saved) bubble('note', '✓ Order saved');
+            say('Speaking…');
+          }
+          res();
+        }));
       } catch (err) { if (alive) say(err.message); }
       busy = false; btn.disabled = false;
     }
