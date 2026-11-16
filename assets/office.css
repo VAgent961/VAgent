@@ -255,3 +255,8 @@ a.pick{display:inline-flex;align-items:center;text-decoration:none;color:inherit
 .va-tab.on{color:var(--ink);border-bottom-color:var(--clay);font-weight:600}
 .va-h{font-family:Newsreader,serif;font-weight:500;font-size:18px;margin:4px 0 8px}
 .va-pane[hidden]{display:none}
+.va-prod{border:1px solid var(--line2);border-radius:12px;background:#fff;padding:10px;margin-bottom:10px}
+.va-prodhead,.va-prop{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.va-prodhead .input,.va-prop .input{min-height:40px;padding:6px 10px;font-size:13.5px;min-width:0}.va-prodhead [data-name],.va-prop [data-k]{flex:1.3}.va-price,.va-prop [data-v]{flex:1}
+.va-x{width:32px;height:32px;flex:none;border-radius:50%;border:1px solid var(--line2);background:none;color:var(--muted);font-size:18px;line-height:1;cursor:pointer}.va-x:hover{color:var(--clay);border-color:var(--clay)}
+#va-addprod{margin:2px 0 8px}

@@ -23,15 +23,58 @@
       });
     }
 
+    // profile_context is saved as JSON text: {"general_rules": "...", "products": [{"name","price","props":{"Colors":"..."}}]}.
+    // Older plain-text profiles open as General Rules with no products.
+    function parse(txt) {
+      try {
+        const j = JSON.parse(txt);
+        if (j && typeof j === 'object' && !Array.isArray(j) && ('general_rules' in j || Array.isArray(j.products))) {
+          return { rules: String(j.general_rules || ''), products: (j.products || []).map((p) => ({ name: String(p.name || ''), price: p.price == null ? '' : String(p.price), props: Object.entries(p.props || {}).map(([k, v]) => [k, String(v)]) })) };
+        }
+      } catch (e) { /* plain text */ }
+      return { rules: txt || '', products: [] };
+    }
+
+    const KEYS = ['Colors', 'Stock', 'Size', 'Storage', 'Brand', 'Description', 'Warranty'];
+    const propRow = (k, v) => `<div class="va-prop"><input class="input" data-k list="va-keys" placeholder="Property (e.g. Colors)" value="${esc(k)}" maxlength="40"><input class="input" data-v placeholder="Value (e.g. Black, Blue)" value="${esc(v)}" maxlength="200"><button class="va-x" type="button" data-rmprop aria-label="Remove property">×</button></div>`;
+    const prodCard = (p) => `<div class="va-prod"><div class="va-prodhead"><input class="input" data-name placeholder="Product name (e.g. iPhone 16)" value="${esc(p.name)}" maxlength="80"><input class="input va-price" data-price placeholder="Price (e.g. $999)" value="${esc(p.price)}" maxlength="30"><button class="va-x" type="button" data-rmprod aria-label="Remove product">×</button></div><div class="va-props">${p.props.map(([k, v]) => propRow(k, v)).join('')}</div><button class="pick" type="button" data-addprop>+ Add property</button></div>`;
+
     function form(b) {
+      const init = b ? parse(b.profile_context) : { rules: '', products: [] };
       show(back + `<h3 class="va-h">${b ? 'Edit ' + esc(b.name) : 'Add new business'}</h3>
-        <div class="field"><label for="va-name">Business name</label><input class="input" id="va-name" maxlength="80" value="${b ? esc(b.name) : ''}" placeholder="e.g. Café Zaytoun"></div>
-        <div class="field"><label for="va-ctx">What the receptionist knows</label><textarea class="input" id="va-ctx" rows="14" maxlength="8000" placeholder="Location, opening hours, delivery rules, the full menu with prices (USD), booking rules, payment methods…">${b ? esc(b.profile_context) : ''}</textarea></div>
-        <p class="help">It only uses this text. If something is missing it tells the customer the team will call back, so put every price and rule here.</p>
+        <div class="field"><label for="va-name">Business name</label><input class="input" id="va-name" maxlength="80" value="${b ? esc(b.name) : ''}" placeholder="e.g. Tech Store Hamra"></div>
+        <div class="field"><label for="va-rules">General Rules &amp; Info</label><textarea class="input" id="va-rules" rows="6" maxlength="3000" placeholder="Location, opening hours, delivery rules, payment methods, tone of voice…">${esc(init.rules)}</textarea></div>
+        <p class="label" style="margin:14px 0 6px">Inventory Builder</p>
+        <datalist id="va-keys">${KEYS.map((k) => `<option value="${k}">`).join('')}</datalist>
+        <div id="va-prods"></div>
+        <button class="btn" type="button" id="va-addprod">+ Add Product</button>
+        <p class="help">The receptionist only knows what is here. Anything missing, it tells the customer the team will call back.</p>
         <div class="row"><button class="btn primary" type="button" id="va-save">Save</button>${b ? '<button class="btn danger" type="button" id="va-del">Delete business</button>' : ''}</div>`);
       $('#va-back').onclick = list;
+      const box = $('#va-prods');
+      const read = () => [...box.querySelectorAll('.va-prod')].map((c) => ({
+        name: c.querySelector('[data-name]').value.trim(), price: c.querySelector('[data-price]').value.trim(),
+        props: [...c.querySelectorAll('.va-prop')].map((r) => [r.querySelector('[data-k]').value.trim(), r.querySelector('[data-v]').value.trim()]),
+      }));
+      const draw = (list2) => { box.innerHTML = list2.map(prodCard).join(''); };
+      draw(init.products);
+      $('#va-addprod').onclick = () => { const cur = read(); cur.push({ name: '', price: '', props: [] }); draw(cur); const n = box.querySelectorAll('[data-name]'); n[n.length - 1].focus(); };
+      box.onclick = (e) => {
+        const card = e.target.closest('.va-prod'); if (!card) return;
+        if (e.target.closest('[data-rmprod]')) { card.remove(); return; }
+        if (e.target.closest('[data-addprop]')) { card.querySelector('.va-props').insertAdjacentHTML('beforeend', propRow('', '')); const k = card.querySelectorAll('[data-k]'); k[k.length - 1].focus(); return; }
+        const rp = e.target.closest('[data-rmprop]'); if (rp) rp.closest('.va-prop').remove();
+      };
       $('#va-save').onclick = async () => {
-        const body = { name: $('#va-name').value, profile_context: $('#va-ctx').value };
+        const products = read().filter((p) => p.name).map((p) => {
+          const props = {}; p.props.forEach(([k, v]) => { if (k && v) props[k] = v; });
+          const o = { name: p.name }; if (p.price) o.price = p.price; if (Object.keys(props).length) o.props = props; return o;
+        });
+        const rules = $('#va-rules').value.trim();
+        if (!rules && !products.length) { toast('Add some rules or at least one product.'); return; }
+        const profile_context = JSON.stringify({ general_rules: rules, products });
+        if (profile_context.length > 8000) { toast('Too much text (' + profile_context.length + '/8000). Shorten it.'); return; }
+        const body = { name: $('#va-name').value, profile_context };
         try { if (b) await api('businesses', { method: 'PUT', body: { ...body, id: b.id } }); else await api('businesses', { body }); toast('Saved'); list(); }
         catch (e) { toast(e.message); }
       };
