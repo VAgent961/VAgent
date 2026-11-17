@@ -29,6 +29,7 @@ const steps = [
   "CREATE TABLE IF NOT EXISTS voice_orders (id bigserial PRIMARY KEY, business_id text NOT NULL REFERENCES businesses(id) ON DELETE CASCADE, customer_details text, order_summary text, at timestamptz DEFAULT now())",
   "ALTER TABLE voice_orders ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'order'",
   "CREATE TABLE IF NOT EXISTS voice_rate (k text NOT NULL, bucket bigint NOT NULL, n int NOT NULL DEFAULT 0, PRIMARY KEY (k, bucket))",
+  "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS active boolean NOT NULL DEFAULT true",
   "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS orders_seen_at timestamptz NOT NULL DEFAULT now()",
 ];
 for (const s of steps) await sql(s);

@@ -71,3 +71,14 @@ export async function proxyTts(request, env) {
     return json({ error: 'Voice not available' }, 503);
   }
 }
+
+// Public endpoints must stop when the owner switched the agent off (businesses.active = false). Returns a Response when offline, else null.
+export async function offlineResponse(env, request) {
+  const bid = new URL(request.url).searchParams.get('business_id') || '';
+  if (!/^[a-z0-9-]{1,40}$/i.test(bid)) return null; // proxyVoice answers bad ids itself
+  try {
+    const r = await sql(env, 'SELECT active FROM businesses WHERE id = $1', [bid]);
+    if (r.length && r[0].active === false) return json({ error: 'This voice agent is currently offline.', offline: true }, 403);
+  } catch { /* if the lookup fails, do not block */ }
+  return null;
+}
