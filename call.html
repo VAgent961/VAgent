@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Call</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <meta name="theme-color" content="#FAF9F5">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/call.css">
+</head>
+<body>
+  <!--
+    PUBLIC CALL PAGE:  /call.html?id=<business id>   (no login)
+
+    EMBEDDING IN ANOTHER WEBSITE (an <iframe>) — the iframe MUST carry allow="microphone", otherwise the browser
+    silently blocks the microphone and the call button will not work:
+
+      <iframe src="https://vagent.online/call.html?id=BUSINESS_ID" allow="microphone"
+              style="border:0;width:100%;max-width:420px;height:520px" title="Call us"></iframe>
+
+    The page talks only to /api/public-business, /api/public-voice and /api/public-tts (same origin as this page),
+    which check the request origin and rate-limit per visitor.
+  -->
+  <main class="card">
+    <p class="eyebrow">AI assistant</p>
+    <h1 id="title">Call</h1>
+    <p class="sub" id="sub">Hold the button and talk. It answers in Lebanese Arabic or English.</p>
+    <div id="mount"></div>
+    <p class="note" id="note"></p>
+    <p class="fine">Your voice is sent to an AI assistant to answer you. Powered by VAgent.</p>
+  </main>
+  <script src="/assets/voice-agent.js"></script>
+  <script>
+    (function () {
+      // Embedding reminder (also see the comment above): the parent page must set allow="microphone" on the iframe.
+      var id = new URLSearchParams(location.search).get('id') || '';
+      var title = document.getElementById('title'), note = document.getElementById('note'), mount = document.getElementById('mount');
+      var embedded = window.top !== window.self;
+      function stop(msg) { title.textContent = 'Not available'; document.getElementById('sub').textContent = msg; }
+      if (!/^[a-z0-9-]{1,40}$/i.test(id)) return stop('This call link is not valid.');
+      fetch('/api/public-business?id=' + encodeURIComponent(id)).then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); }).then(function (b) {
+        title.textContent = 'Call ' + b.name;
+        document.title = 'Call ' + b.name;
+        VoiceAgent.mount(mount, b.id, { public: true });
+        if (embedded && navigator.permissions && navigator.permissions.query) {
+          navigator.permissions.query({ name: 'microphone' }).then(function (p) {
+            if (p.state === 'denied') note.textContent = 'The microphone is blocked here. If this page is inside another website, that site must embed it with allow="microphone".';
+          }).catch(function () {});
+        }
+      }).catch(function (e) { stop(e === 404 ? 'We could not find this business.' : 'Please try again in a moment.'); });
+    })();
+  </script>
+</body>
+</html>

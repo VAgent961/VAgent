@@ -15,6 +15,7 @@
   const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
   const player = new Audio();
   let token = 0;
+  let voiceUrl = '/api/voice', ttsUrl = '/api/tts'; // public mode (call.html) uses the open, rate-limited /api/public-* endpoints
   function prime() { try { player.src = SILENT; player.play().catch(() => {}); } catch (e) {} } // unlocks audio on Safari (runs inside the button press)
   function stopSpeech() { token++; try { player.pause(); } catch (e) {} if (window.speechSynthesis) speechSynthesis.cancel(); }
   function chunks(text) {
@@ -26,7 +27,7 @@
     return out;
   }
   async function fetchAudio(text) {
-    const r = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }), credentials: 'same-origin' });
+    const r = await fetch(ttsUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }), credentials: 'same-origin' });
     if (!r.ok) throw new Error('tts ' + r.status);
     return URL.createObjectURL(await r.blob());
   }
@@ -69,15 +70,18 @@
     } catch (e) { if (my === token) { go(true); browserSpeak(text, onEnd); } else go(false); }
   }
 
+  // ctx.public = true: the public call page (no tabs, no business picker, no manage panel, no login).
   function mount(el, businessId, ctx) {
     if (!el) return;
+    const pub = !!(ctx && ctx.public);
+    voiceUrl = pub ? '/api/public-voice' : '/api/voice'; ttsUrl = pub ? '/api/public-tts' : '/api/tts';
     if (stopPrev) stopPrev();
-    el.innerHTML = '<div class="va-tabs" role="tablist"><button class="va-tab on" type="button" role="tab" data-t="call">Test Call</button><button class="va-tab" type="button" role="tab" data-t="manage">Manage Businesses &amp; Orders</button></div><div class="va-pane" data-pane="call"><div class="va"><div class="va-log" aria-live="polite"></div>'
+    el.innerHTML = (pub ? '' : '<div class="va-tabs" role="tablist"><button class="va-tab on" type="button" role="tab" data-t="call">Test Call</button><button class="va-tab" type="button" role="tab" data-t="manage">Manage Businesses &amp; Orders</button></div>') + '<div class="va-pane" data-pane="call"><div class="va"><div class="va-log" aria-live="polite"></div>'
       + '<p class="va-state" role="status">Hold the button and talk</p>'
       + '<button class="va-btn" type="button" aria-label="Hold to talk"><span class="va-ring"></span><svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2Z"/></svg></button>'
-      + '<button class="va-reset" type="button">Start a new call</button></div></div><div class="va-pane" data-pane="manage" hidden></div>';
-    el.querySelector('.va').insertAdjacentHTML('afterbegin', '<select class="input va-biz" aria-label="Business" hidden></select>');
-    const biz = el.querySelector('.va-biz');
+      + '<button class="va-reset" type="button">Start a new call</button></div></div>' + (pub ? '' : '<div class="va-pane" data-pane="manage" hidden></div>');
+    if (!pub) el.querySelector('.va').insertAdjacentHTML('afterbegin', '<select class="input va-biz" aria-label="Business" hidden></select>');
+    const biz = el.querySelector('.va-biz') || document.createElement('select'); // detached in public mode
     const loadBiz = () => fetch('/api/businesses', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : [])).then((rows) => {
       if (!Array.isArray(rows) || !alive) return;
       const n = rows.reduce((t, b) => t + (b.unread || 0), 0), mt = el.querySelector('[data-t=manage]');
@@ -87,7 +91,7 @@
       biz.innerHTML = rows.map((b) => '<option value="' + b.id.replace(/"/g, '') + '">' + b.name.replace(/[<&]/g, '') + '</option>').join('');
       if (rows.some((b) => b.id === businessId)) biz.value = businessId; else { businessId = rows[0].id; history = []; log.innerHTML = ''; }
     }).catch(() => {});
-    loadBiz();
+    if (!pub) loadBiz();
     biz.onchange = () => { businessId = biz.value; history = []; log.innerHTML = ''; say('Hold the button and talk'); };
     const log = el.querySelector('.va-log'), state = el.querySelector('.va-state'), btn = el.querySelector('.va-btn'), reset = el.querySelector('.va-reset');
     let history = [], rec = null, chunks = [], stream = null, t0 = 0, busy = false, alive = true;
@@ -135,7 +139,7 @@
       fd.append('audio', blob, 'audio.' + (/mp4/.test(mime) ? 'mp4' : /ogg/.test(mime) ? 'ogg' : 'webm'));
       fd.append('history', JSON.stringify(history.slice(-10)));
       try {
-        const res = await fetch('/api/voice?business_id=' + encodeURIComponent(businessId), { method: 'POST', body: fd, credentials: 'same-origin' });
+        const res = await fetch(voiceUrl + '?business_id=' + encodeURIComponent(businessId), { method: 'POST', body: fd, credentials: 'same-origin' });
         const j = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(j.error || 'Something went wrong');
         if (!alive) return;

@@ -2,3 +2,9 @@
   Cache-Control: no-cache
 /*.html
   Cache-Control: no-cache
+/call.html
+  Permissions-Policy: microphone=(self)
+  Content-Security-Policy: frame-ancestors *
+/call
+  Permissions-Policy: microphone=(self)
+  Content-Security-Policy: frame-ancestors *

@@ -14,7 +14,8 @@
       try { rows = await api('businesses'); } catch (e) { $('#va-list').innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
       $('#va-list').innerHTML = rows.length ? rows.map((b) => `<div class="item" style="display:block" data-id="${esc(b.id)}">
         <b style="font-weight:600">${esc(b.name)}</b> <small style="color:var(--muted)">· ${b.orders} order${b.orders === 1 ? '' : 's'} · id ${esc(b.id)}</small>
-        <div class="chips"><button class="pick" type="button" data-orders>📋 Orders${b.unread > 0 ? ` <span class="va-count" title="${b.unread} new">${b.unread}</span>` : ''}</button><button class="pick" type="button" data-edit>✎ Edit</button></div></div>`).join('')
+        <div class="chips"><a class="pick" href="/call.html?id=${encodeURIComponent(b.id)}" target="_blank" rel="noopener noreferrer">📞 Call page ↗</a><button class="pick" type="button" data-orders>📋 Orders${b.unread > 0 ? ` <span class="va-count" title="${b.unread} new">${b.unread}</span>` : ''}</button><button class="pick" type="button" data-edit>✎ Edit</button></div>
+        <details class="more"><summary>Embed on a website</summary><p class="help">The iframe must have <b>allow="microphone"</b>, otherwise the browser blocks the mic.</p><textarea class="input" readonly rows="3" onclick="this.select()">${esc('<iframe src="' + location.origin + '/call.html?id=' + b.id + '" allow="microphone" style="border:0;width:100%;max-width:420px;height:520px" title="Call us"></iframe>')}</textarea></details></div>`).join('')
         : '<p class="empty">No businesses yet. Add your first one.</p>';
       el.querySelectorAll('[data-id]').forEach((el) => {
         const b = rows.find((x) => x.id === el.dataset.id);

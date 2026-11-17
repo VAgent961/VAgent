@@ -5,7 +5,8 @@ export async function onRequest({ request, env, next, data }) {
   const path = new URL(request.url).pathname;
   const isOffice = path === '/office' || path.startsWith('/office/') || path === '/office.html';
   const isLogin = path === '/' || path === '/index.html';
-  const isApi = path.startsWith('/api/') && path !== '/api/login' && path !== '/api/logout';
+  // /api/public-* are open on purpose (the public /call.html page); each one has its own Origin check + rate limit.
+  const isApi = path.startsWith('/api/') && path !== '/api/login' && path !== '/api/logout' && !path.startsWith('/api/public-');
   if (!isOffice && !isLogin && !isApi) return next();
   const session = await readSession(env, request);
   if (isApi && !session) return json({ error: 'Please sign in again.' }, 401);
