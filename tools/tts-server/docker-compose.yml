@@ -1,0 +1,23 @@
+# Self-hosted TTS for the Voice Receptionist (Piper, free, CPU only).
+# tts    = Piper HTTP server (voices live in ./voices, so put this folder on a ZFS dataset if you like)
+# gate   = Caddy: only requests with the header  X-TTS-Key: $TTS_KEY  get through (LAN: http://SERVER_IP:5050)
+# tunnel = Cloudflare Tunnel so the n8n VPS can reach it without opening any router port
+services:
+  tts:
+    build: .
+    restart: unless-stopped
+    volumes: ["./voices:/voices"]
+    command: python -m piper.http_server -m /voices/ar_JO-kareem-medium.onnx --data-dir /voices --host 0.0.0.0 --port 5000
+  gate:
+    image: caddy:2
+    restart: unless-stopped
+    environment: [TTS_KEY]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro"]
+    ports: ["5050:8080"]
+    depends_on: [tts]
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment: [TUNNEL_TOKEN]
+    depends_on: [gate]

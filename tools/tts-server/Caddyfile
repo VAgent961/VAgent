@@ -1,0 +1,5 @@
+:8080 {
+	@bad not header X-TTS-Key {$TTS_KEY}
+	respond @bad "unauthorized" 401
+	reverse_proxy tts:5000
+}
