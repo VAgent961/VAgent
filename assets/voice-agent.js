@@ -144,6 +144,7 @@
             bubble('ai', j.reply); history.push({ role: 'assistant', content: j.reply });
             history = history.slice(-MAX_HISTORY);
             if (j.order_saved) bubble('note', '✓ Order saved');
+            if (j.missed_saved) bubble('note', '📝 Request sent to the owner');
             say('Speaking…');
           }
           res();

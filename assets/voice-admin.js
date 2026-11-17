@@ -89,11 +89,11 @@
       $('#va-back').onclick = list;
       let rows;
       try { rows = await api('orders', { query: 'business_id=' + encodeURIComponent(b.id) }); } catch (e) { $('#va-orders').innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
-      $('#va-orders').innerHTML = rows.length ? rows.map((o) => `<div class="item" style="display:block" data-oid="${esc(o.id)}">
+      $('#va-orders').innerHTML = rows.length ? rows.map((o) => `<div class="item${o.kind === 'missed' ? ' va-missed' : ''}" style="display:block" data-oid="${esc(o.id)}">
         <small style="color:var(--muted)">${esc(ago(o.at))} · ${esc(new Date(o.at).toLocaleString())}</small>
-        <div style="font-weight:600;margin:2px 0">${esc(o.order_summary)}</div><div>${esc(o.customer_details || '')}</div>
+        ${o.kind === 'missed' ? '<span class="va-badge">Missed item</span>' : ''}<div style="font-weight:600;margin:2px 0">${esc(o.order_summary)}</div><div>${esc(o.customer_details || '')}</div>
         <div class="chips"><button class="pick" type="button" data-rm>Delete</button></div></div>`).join('')
-        : '<p class="empty">No orders yet. They appear here after a customer confirms one on a call.</p>';
+        : '<p class="empty">No orders yet. Confirmed orders and missed-item requests appear here after a call.</p>';
       el.querySelectorAll('[data-oid]').forEach((el) => {
         el.querySelector('[data-rm]').onclick = async () => {
           if (!confirm('Delete this order?')) return;

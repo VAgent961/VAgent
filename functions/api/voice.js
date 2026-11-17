@@ -27,7 +27,7 @@ export async function onRequestPost({ request, env }) {
     });
     const j = await r.json().catch(() => null);
     if (!r.ok || !j || typeof j.reply !== 'string') return json({ error: 'The receptionist is not answering right now' }, 502);
-    return json({ reply: j.reply, transcript: j.transcript || '', order_saved: !!j.order_saved });
+    return json({ reply: j.reply, transcript: j.transcript || '', order_saved: !!j.order_saved, missed_saved: !!j.missed_saved });
   } catch {
     return json({ error: 'The receptionist took too long. Try again.' }, 504);
   }

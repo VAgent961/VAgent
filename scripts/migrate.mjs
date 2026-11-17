@@ -27,6 +27,7 @@ const steps = [
   "CREATE TABLE IF NOT EXISTS vagent_daily (id bigserial PRIMARY KEY, title text, text text NOT NULL, source text, at timestamptz DEFAULT now())",
   "CREATE TABLE IF NOT EXISTS businesses (id text PRIMARY KEY, name text NOT NULL, profile_context text NOT NULL DEFAULT '', created_at timestamptz DEFAULT now())",
   "CREATE TABLE IF NOT EXISTS voice_orders (id bigserial PRIMARY KEY, business_id text NOT NULL REFERENCES businesses(id) ON DELETE CASCADE, customer_details text, order_summary text, at timestamptz DEFAULT now())",
+  "ALTER TABLE voice_orders ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'order'",
   `INSERT INTO businesses (id, name, profile_context) VALUES ('demo-cafe', 'Café Zaytoun (test)', 'Café Zaytoun, Hamra, Beirut. Open every day 8am-11pm. Phone 01 234 567. Delivery inside Beirut $2, free above $25. MENU (USD): Manakish zaatar 2.5, Manakish jebne 3.5, Manakish lahme 4.5, Falafel sandwich 3, Shawarma chicken sandwich 4.5, Shawarma meat sandwich 5, Fattoush 6, Tabbouleh 6, Hummus 5, Mixed grill plate 14, Lebanese coffee 1.5, Espresso 2, Cappuccino 3, Fresh orange juice 4, Lemonade with mint 3.5, Kunafa 5. Tables for bookings: 2-8 people, no booking needed for under 4. Cash and card accepted.') ON CONFLICT (id) DO NOTHING`,
 ];
 for (const s of steps) await sql(s);
