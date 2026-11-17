@@ -14,7 +14,7 @@
       try { rows = await api('businesses'); } catch (e) { $('#va-list').innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
       $('#va-list').innerHTML = rows.length ? rows.map((b) => `<div class="item" style="display:block" data-id="${esc(b.id)}">
         <b style="font-weight:600">${esc(b.name)}</b> <small style="color:var(--muted)">· ${b.orders} order${b.orders === 1 ? '' : 's'} · id ${esc(b.id)}</small>
-        <div class="chips"><button class="pick" type="button" data-orders>📋 Orders</button><button class="pick" type="button" data-edit>✎ Edit</button></div></div>`).join('')
+        <div class="chips"><button class="pick" type="button" data-orders>📋 Orders${b.unread > 0 ? ` <span class="va-count" title="${b.unread} new">${b.unread}</span>` : ''}</button><button class="pick" type="button" data-edit>✎ Edit</button></div></div>`).join('')
         : '<p class="empty">No businesses yet. Add your first one.</p>';
       el.querySelectorAll('[data-id]').forEach((el) => {
         const b = rows.find((x) => x.id === el.dataset.id);
@@ -85,6 +85,7 @@
     }
 
     async function orders(b) {
+      if (b.unread > 0) api('businesses', { method: 'PUT', body: { id: b.id, mark_seen: true } }).catch(() => {});
       show(back + `<h3 class="va-h">📋 ${esc(b.name)} orders</h3><div class="items" id="va-orders"><p class="empty">Loading…</p></div>`);
       $('#va-back').onclick = list;
       let rows;

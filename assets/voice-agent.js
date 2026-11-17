@@ -80,6 +80,8 @@
     const biz = el.querySelector('.va-biz');
     const loadBiz = () => fetch('/api/businesses', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : [])).then((rows) => {
       if (!Array.isArray(rows) || !alive) return;
+      const n = rows.reduce((t, b) => t + (b.unread || 0), 0), mt = el.querySelector('[data-t=manage]');
+      if (mt) mt.innerHTML = 'Manage Businesses &amp; Orders' + (n ? ' <span class="va-count">' + n + '</span>' : '');
       biz.hidden = !rows.length;
       if (!rows.length) return;
       biz.innerHTML = rows.map((b) => '<option value="' + b.id.replace(/"/g, '') + '">' + b.name.replace(/[<&]/g, '') + '</option>').join('');

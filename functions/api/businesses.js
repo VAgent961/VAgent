@@ -1,7 +1,7 @@
 import { sql, json } from '../_lib.js';
 
 // Voice AI clients (table `businesses`). Owners only (clients get 403). Session check is in _middleware.js.
-// GET -> list with order counts · POST {name, profile_context} · PUT {id, name, profile_context} · DELETE ?id= (also deletes its orders)
+// GET -> list with order counts + `unread` (orders/missed items saved since the owner last opened its Orders view) · POST {name, profile_context} · PUT {id, name, profile_context} · DELETE ?id= (also deletes its orders)
 const guard = (data) => (data.role !== 'owner' ? json({ error: 'Not allowed.' }, 403) : null);
 const fail = (e) => json({ error: String(e.message || e).slice(0, 200) }, 500);
 const clean = (b) => ({ name: String(b.name || '').trim().slice(0, 80), profile: String(b.profile_context || '').trim().slice(0, 8000) });
@@ -11,7 +11,8 @@ export async function onRequestGet({ env, data }) {
   const g = guard(data); if (g) return g;
   try {
     return json(await sql(env, `SELECT b.id, b.name, b.profile_context, b.created_at,
-      (SELECT count(*)::int FROM voice_orders o WHERE o.business_id = b.id) AS orders FROM businesses b ORDER BY b.created_at DESC`));
+      (SELECT count(*)::int FROM voice_orders o WHERE o.business_id = b.id) AS orders,
+      (SELECT count(*)::int FROM voice_orders o WHERE o.business_id = b.id AND o.at > b.orders_seen_at) AS unread FROM businesses b ORDER BY b.created_at DESC`));
   } catch (e) { return fail(e); }
 }
 
@@ -33,6 +34,9 @@ export async function onRequestPost({ request, env, data }) {
 export async function onRequestPut({ request, env, data }) {
   const g = guard(data); if (g) return g;
   const b = await request.json().catch(() => ({}));
+  if (b.mark_seen && b.id) { // the owner opened this business's Orders view: clear its badge
+    try { await sql(env, 'UPDATE businesses SET orders_seen_at = now() WHERE id = $1', [String(b.id)]); return json({ ok: true }); } catch (e) { return fail(e); }
+  }
   const { name, profile } = clean(b);
   if (!b.id || !name || !profile) return json({ error: 'Name and profile are needed.' }, 400);
   try {
