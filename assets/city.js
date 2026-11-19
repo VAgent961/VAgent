@@ -292,8 +292,9 @@
   }
   function mountUI() {
     const u = document.createElement('div'); u.className = 'vc-ui';
-    u.innerHTML = '<div class="vc-tabs" role="tablist" aria-label="Buildings"></div><div class="vc-floors" role="group" aria-label="Floors" hidden></div><div class="vc-zoom" role="group" aria-label="Camera"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button><button type="button" data-z="home" aria-label="Reset camera" title="Reset camera">⌂</button></div>';
+    u.innerHTML = '<div class="vc-tabs" role="tablist" aria-label="Buildings"></div><div class="vc-floors" role="group" aria-label="Floors" hidden></div><a class="vc-switch" data-old="1" href="?old=1">Original Office</a><div class="vc-zoom" role="group" aria-label="Camera"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button><button type="button" data-z="home" aria-label="Reset camera" title="Reset camera">⌂</button></div>';
     st.root.appendChild(u); st.ui = u;
+    { const l = $('.vc-switch', u), x = new URL(location.href); x.searchParams.delete('city'); x.searchParams.set('old', '1'); l.setAttribute('href', x.pathname + x.search + x.hash); }   // other query parameters are kept
     const bar = document.createElement('div'); bar.className = 'vc-bar'; bar.hidden = true; st.stage.appendChild(bar); st.bar = bar;
     const go = (t) => { if (t.dataset.go === 'city') showCity(true); else showBuilding(t.dataset.go, true); };
     u.addEventListener('click', (e) => { const t = e.target.closest('button'); if (!t) return;

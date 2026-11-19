@@ -78,3 +78,9 @@ body.city-on .stage>svg.fx-layer,body.city-on .stage>.zoom,body.city-on .stage>.
 .vc[data-view=floor] .vc-b:not(.open) .vc-pill{opacity:.0}
 .vc[data-view=floor] .vc-tabs{display:none}
 .vc[data-view=floor] .vc-zoom{bottom:14px}
+/* switch between the City (default) and the original office (?old=1) */
+.vc-switch{position:absolute;z-index:6;right:14px;top:14px;font:600 13px Inter,system-ui,sans-serif;color:#FAF9F5;background:rgba(30,30,33,.92);border:1px solid #3A3A40;border-radius:999px;min-height:36px;padding:0 14px;display:inline-flex;align-items:center;text-decoration:none;pointer-events:auto}
+.vc-switch:hover{background:#2A2A2E}.vc-switch:focus-visible{outline:2px solid #B5532F;outline-offset:2px}
+.stage>a.vc-switch{right:96px}
+.vc-ui>.vc-switch{right:14px}
+@media (max-width:760px){.vc-ui>.vc-switch{top:auto;bottom:62px;right:10px;min-height:34px;font-size:12px;padding:0 11px}.stage>a.vc-switch{right:84px;top:10px;min-height:32px;font-size:12px;padding:0 10px}}

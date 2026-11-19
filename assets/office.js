@@ -20,7 +20,7 @@
   let first = true, current = null;
   // building mode: floor === null shows the tower; a number shows that apartment (4 departments) in detail
   let V = { departments: [], agents: [] }, floor = null, bBoxes = [], busy = false; const PER = 4;
-  const CITY = /[?&]city=1(&|$)/.test(location.search) && !!window.VCity && !!window.VMove; let cityOn = false; // V Agent City (assets/city.js): three buildings + street; the old tower/floor view stays the default until the city is approved
+  const CITY = !/[?&]old=1(&|$)/.test(location.search) && !!window.VCity && !!window.VMove; let cityOn = false; // City is the default view; ?old=1 opens the original office (the switch only changes this page's URL, never data)
 
   async function api(path, opt = {}) {
     const r = await fetch('/api/' + path + (opt.query ? '?' + opt.query : ''), { method: opt.method || (opt.body ? 'POST' : 'GET'), headers: opt.body ? { 'Content-Type': 'application/json' } : {}, body: opt.body ? JSON.stringify(opt.body) : undefined });
@@ -42,7 +42,8 @@
   let free = $('#layer-free'), walkL = $('#layer-walk');
   // ---------- zoom + pan ----------
   const phoneMQ = window.matchMedia('(max-width:560px)'), vbOf = (o) => ((phoneMQ.matches || CITY) && o.vbCore ? o.vbCore : o.vb); // phones get the office alone, no floating-world margin
-  const stage = $('#stage'); let VB0 = { ...vbOf(S) }; const vb = { ...VB0 }, MAXZ = 5;
+  const stage = $('#stage'); if (!CITY && window.VCity) { const u = new URL(location.href); u.searchParams.delete('old'); u.searchParams.delete('city'); stage.insertAdjacentHTML('beforeend', `<a class="vc-switch" href="${u.pathname + u.search + u.hash}">Back to City</a>`); }
+  let VB0 = { ...vbOf(S) }; const vb = { ...VB0 }, MAXZ = 5;
   stage.insertAdjacentHTML('beforeend', '<div class="zoom" role="group" aria-label="Zoom the office"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button><button type="button" data-z="reset" aria-label="Fit the whole office" style="font-size:14px">⤢</button></div>');
   let lodNear = null, szW = 0, szH = 0;
   const lod = () => { if (!szW) { const r = svg.getBoundingClientRect(); szW = r.width; szH = r.height; if (!szW) return; }
@@ -706,7 +707,7 @@
       if (D.role !== 'client') $('#btn-clients').style.display = '';
       $('#live-dot').className = 'dot ' + (D.errors.length ? 'err' : 'on'); $('#live-text').textContent = 'Live · ' + hhmm(new Date());
       render(); handleBuilds();
-    } catch (e) { $('#live-dot').className = 'dot err'; $('#live-text').textContent = 'Offline, retrying'; }
+    } catch (e) { console.error(e); $('#live-dot').className = 'dot err'; $('#live-text').textContent = 'Offline, retrying'; }
     api('me').then((me) => { if (me.owners) renderOwners(me.owners); }).catch(() => {});
   }
 
