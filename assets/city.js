@@ -17,25 +17,19 @@
   // Marketing HQ: floor n = the n-th of these departments (matched by name; a missing one leaves its floor empty). Change here if the marketing teams are renamed.
   const MK_FLOORS = [/^marketing/i, /^content/i, /^paid/i, /^publishing/i, /^seo/i, /^client voice/i];
   const CITY_W = 3600, CITY_D = 2000 + DY;
+  Object.assign(BLD.mk, { st: 'orange', edge: '#EF8E3C' }); Object.assign(BLD.web, { st: 'cyan', edge: '#B53BAA' }); Object.assign(BLD.sn, { st: 'blue', edge: '#3A5DBE' });
+  VCityKit.init({ W: CITY_W, D: CITY_D, DY, FH, BLD });
   const P = (gx, gy, z) => [(gx - gy) * K, (gx + gy) * 0.5 - (z || 0)];
   const pp = (gx, gy, z) => P(gx, gy, z).map((n) => n.toFixed(1)).join(',');
-  function TREES() { return TREES0.map(([x, y]) => [x, y > 500 ? y + DY : y]); }
-  const TREES0 = [[120, 1300], [420, 1420], [250, 1620], [700, 1320], [900, 1500], [1250, 1300], [1500, 1650], [2100, 1350], [2400, 1700], [2800, 1380], [3200, 1560], [3400, 1300], [600, 1800], [1100, 1820], [2700, 1850], [3300, 1850], [60, 760], [800, 740], [1360, 740], [2380, 740], [3480, 740], [100, 120], [1000, 120], [2400, 120]];
-  function LAMPS() { const a = []; for (let x = 200; x < 3600; x += 400) a.push(x); return a; }
-  const LY = 1090 + DY, NLY = 784 + DY;   // south-side lamps (LY) and the lamps along the building-side kerb (NLY)
-  const NLAMPS = () => LAMPS().map((x) => x + 200).filter((x) => ![1500 + FW / 2, 300 + FW / 2, 2700 + FW / 2].some((d) => Math.abs(x - d) < 90));
   // ---------- street navigation (same VNav A* as the floors) ----------
-  // buildings, the middle of both roads (open only at the crosswalks), trees, lamps and the fountain block; sidewalks, crosswalks, the plaza and the park are walkable
+  // buildings, both roads (open only at the crosswalks), every tree/lamp/bench/bush/signal and the fountain block; sidewalks, crosswalks, the plaza and the park are walkable
   const cityNav = (() => {
-    const r = [], add = (a, b, c, d) => r.push([a, b, c, d]);
-    for (const b of ['mk', 'web', 'sn']) { const [x, y, w, d] = BLD[b].fp; add(x, y, x + w, y + d); }
-    for (const [x0, x1] of [[0, 520], [640, 1800], [1920, 3000], [3120, 3600]]) add(x0, 880 + DY, x1, 980 + DY);
-    add(1100, 0, 1220, 700 + DY); add(1100, 780 + DY, 1220, 880 + DY); add(1790, 1590 + DY, 1810, 1610 + DY);
-    for (const [x, y] of TREES()) add(x - 12, y - 12, x + 12, y + 12);
-    for (const x of LAMPS()) add(x - 5, LY - 5, x + 5, LY + 5);
-    for (const x of NLAMPS()) add(x - 5, NLY - 5, x + 5, NLY + 5);
-    for (const b of ['mk', 'web', 'sn']) for (const sx of [-130, 130]) { const gx = BLD[b].door + sx, gy = BLD[b].fp[1] + BLD[b].fp[3] + 22; add(gx - 20, gy - 8, gx + 20, gy + 8); }
-    for (const x of [1010, 2210, 60]) add(x - 6, 1290 + DY - 6, x + 6, 1290 + DY + 6);
+    const r = [], add = (a, b, c, d) => r.push([a, b, c, d]), w = VCityKit.world(), cws = VCityKit.crossings().slice().sort((a, b) => a - b);
+    for (const b of ORDER) { const [x, y, fw, d] = BLD[b].fp; add(x, y, x + fw, y + d); }
+    let x0 = 0; for (const c of cws) { add(x0, w.MR0 + 4, c - 46, w.MR1 - 4); x0 = c + 46; } add(x0, w.MR0 + 4, CITY_W, w.MR1 - 4);
+    add(w.SX0 + 4, 0, w.SX1 - 4, w.MR0 - 116); add(w.SX0 + 4, w.MR0 - 36, w.SX1 - 4, w.MR0);   // the side street (open only at its crossing)
+    add(1690, 1560 + DY, 1910, 1640 + DY);   // fountain
+    for (const i of VCityKit.scenery()) add(i.bb[0], i.bb[1], i.bb[2], i.bb[3]);
     return { W: CITY_W, D: CITY_D, rects: r, doors: [] };
   })();
   const doorPt = (b) => [BLD[b].door, BLD[b].fp[1] + BLD[b].fp[3] + 30];   // sidewalk in front of the entrance
@@ -51,103 +45,53 @@
   const st = { H: null, D: { agents: [], departments: [] }, view: 'city', b: null, n: 1, svg: null, root: null, bar: null, vb: { x: 0, y: 0, w: 1000, h: 700 }, busy: false };
 
   // ---------- drawing: shared bits ----------
-  const rect = (x, y, w, h, fill, extra) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" ${extra || ''}/>`;
-  const defs = () => `<defs>
-    <linearGradient id="vc-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9CC4E4"/><stop offset=".62" stop-color="#E4EEF3"/><stop offset="1" stop-color="#F5EEDC"/></linearGradient>
-    <linearGradient id="vc-glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BFDFF2"/><stop offset=".5" stop-color="#7FA9C6"/><stop offset="1" stop-color="#5A86A6"/></linearGradient>
-    <linearGradient id="vc-glass-on" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE9A8"/><stop offset="1" stop-color="#F2BE5B"/></linearGradient>
-    <linearGradient id="vc-wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3EFE4"/><stop offset="1" stop-color="#E4DFD0"/></linearGradient>
-    <linearGradient id="vc-floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C9B79B"/><stop offset="1" stop-color="#B09C7C"/></linearGradient>
-    <linearGradient id="vc-shine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".32"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
-    <radialGradient id="vc-pool" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFE7A6" stop-opacity=".55"/><stop offset="1" stop-color="#FFE7A6" stop-opacity="0"/></radialGradient>
-    <pattern id="vc-grass" width="60" height="60" patternUnits="userSpaceOnUse"><rect width="60" height="60" fill="#8DB478"/><circle cx="12" cy="16" r="2" fill="#7CA567"/><circle cx="40" cy="44" r="2.4" fill="#9CC287"/><circle cx="50" cy="12" r="1.6" fill="#7CA567"/></pattern>
-    <pattern id="vc-asphalt" width="48" height="48" patternUnits="userSpaceOnUse"><rect width="48" height="48" fill="#4A4D55"/><circle cx="6" cy="9" r="1.1" fill="#5A5D66"/><circle cx="30" cy="20" r="1.3" fill="#3D4048"/><circle cx="18" cy="38" r="1" fill="#5A5D66"/><circle cx="41" cy="43" r="1.2" fill="#3D4048"/><path d="M4 26 q10 -4 20 1" stroke="#42454D" stroke-width=".8" fill="none"/></pattern>
-    <pattern id="vc-pave" width="40" height="24" patternUnits="userSpaceOnUse"><rect width="40" height="24" fill="#D3CFC4"/><path d="M0 .5h40M20 .5v12M0 12.5h40M0 12.5v-0M40 12.5" stroke="#C2BDB0" stroke-width="1"/><path d="M0 12.5h40M0 24h40M0 12v12" stroke="#C2BDB0" stroke-width="1"/></pattern>
-    <pattern id="vc-wood" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="40" height="40" fill="#C2AE90"/><path d="M0 10h40M0 24h40M0 36h40" stroke="#B29E80" stroke-width="1"/></pattern>
-  </defs>`;
-  // hull of two translated rectangles = the cast shadow on the ground
-  function hull(pts) { pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]); const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); const lo = [], up = [];
-    for (const p of pts) { while (lo.length > 1 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
-    for (const p of pts.slice().reverse()) { while (up.length > 1 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); } return lo.slice(0, -1).concat(up.slice(0, -1)); }
   const quad = (a, b, c, d, fill, extra) => `<polygon points="${[a, b, c, d].map((p) => pp(p[0], p[1], p[2])).join(' ')}" fill="${fill}" ${extra || ''}/>`;
   const plane = (gx, gy) => { const o = P(gx, gy, 0); return `translate(${o[0].toFixed(1)} ${o[1].toFixed(1)})`; };
-
-  // ---------- drawing: the city ----------
+  const defs = () => VCityKit.defs();
+  // ---------- drawing: the city (procedural low-poly isometric art, assets/citykit.js) ----------
   function drawCity() {
-    let s = `<rect x="-4600" y="-1600" width="9600" height="5600" fill="url(#vc-sky)"/>`;
-    s += `<g class="vc-clouds">${[[-1400, -700, 1], [200, -1000, 1.3], [1800, -760, .9]].map(([x, y, k], i) => `<g class="vc-cloud c${i}" transform="translate(${x} ${y}) scale(${k})"><ellipse cx="0" cy="0" rx="150" ry="34" fill="#fff" opacity=".7"/><ellipse cx="-70" cy="-22" rx="80" ry="30" fill="#fff" opacity=".7"/><ellipse cx="60" cy="-28" rx="90" ry="34" fill="#fff" opacity=".7"/></g>`).join('')}</g>`;
-    s += quad([-80, -80], [CITY_W + 80, -80], [CITY_W + 80, CITY_D + 80], [-80, CITY_D + 80], '#6E8F5C') + quad([0, 0], [CITY_W, 0], [CITY_W, CITY_D], [0, CITY_D], 'url(#vc-grass)');
-    // roads + sidewalks
-    const road = (x0, y0, x1, y1) => quad([x0, y0], [x1, y0], [x1, y1], [x0, y1], 'url(#vc-asphalt)');
-    const walk = (x0, y0, x1, y1) => quad([x0, y0], [x1, y0], [x1, y1], [x0, y1], 'url(#vc-pave)');
-    s += walk(0, 690 + DY, CITY_W, 1190 + DY) + road(0, 800 + DY, CITY_W, 1060 + DY) + walk(1040, 0, 1280, 700 + DY) + road(1100, 0, 1220, 800 + DY);
-    s += `<polyline points="${[[0, 930 + DY], [CITY_W, 930 + DY]].map((p) => pp(p[0], p[1])).join(' ')}" stroke="#E9D27A" stroke-width="3" stroke-dasharray="40 30" fill="none"/>`;
-    s += `<polyline points="${[[1160, 0], [1160, 800 + DY]].map((p) => pp(p[0], p[1])).join(' ')}" stroke="#E9D27A" stroke-width="3" stroke-dasharray="40 30" fill="none"/>`;
-    { const L = (ax, ay, bx, by, c, w, d) => `<polyline points="${[[ax, ay], [bx, by]].map((q) => pp(q[0], q[1])).join(' ')}" stroke="${c}" stroke-width="${w}" ${d ? 'stroke-dasharray="' + d + '"' : ''} fill="none"/>`;
-      s += L(0, 800 + DY, CITY_W, 800 + DY, '#E6E2D6', 5) + L(0, 1060 + DY, CITY_W, 1060 + DY, '#E6E2D6', 5) + L(0, 812 + DY, CITY_W, 812 + DY, '#F2F0EA', 2) + L(0, 1048 + DY, CITY_W, 1048 + DY, '#F2F0EA', 2) + L(1100, 0, 1100, 800 + DY, '#E6E2D6', 5) + L(1220, 0, 1220, 800 + DY, '#E6E2D6', 5);
-      for (const [a, b] of [[40, 520], [1280, 1800], [1920, 3000], [3120, 3560]]) for (let x = a; x <= b; x += 74) s += L(x, 815 + DY, x, 852 + DY, '#F2F0EA', 2.2); }
-    for (const cx of [300 + FW / 2, 1500 + FW / 2, 2700 + FW / 2]) for (let k = -50; k < 60; k += 20) s += quad([cx + k - 6, 808 + DY], [cx + k + 6, 808 + DY], [cx + k + 6, 1052 + DY], [cx + k - 6, 1052 + DY], '#F2F0EA', 'opacity=".9"');
-    for (let k = 710 + DY; k < 780 + DY; k += 16) s += quad([1104, k], [1216, k], [1216, k + 8], [1104, k + 8], '#F2F0EA', 'opacity=".9"');
-    // park
-    s += quad([60, 1240 + DY], [3540, 1240 + DY], [3540, 1940 + DY], [60, 1940 + DY], '#9CC287', 'opacity=".55"');
-    s += quad([300, 1480 + DY], [3300, 1480 + DY], [3300, 1540 + DY], [300, 1540 + DY], '#D8D2C2') + quad([1500, 1300 + DY], [2100, 1300 + DY], [2100, 1900 + DY], [1500, 1900 + DY], '#D8D2C2', 'opacity=".9"');
-    // shadows (light from the upper left: they fall to the right and down)
-    for (const id of ORDER) { const b = BLD[id], [x, y, w, d] = b.fp, sx = b.h * 0.55, sy = b.h * 0.22, pts = [[x, y], [x + w, y], [x + w, y + d], [x, y + d]]; const all = pts.concat(pts.map((p) => [p[0] + sx, p[1] + sy])).map((p) => P(p[0], p[1]));
-      s += `<polygon points="${hull(all).map((p) => p.map((n) => n.toFixed(1)).join(',')).join(' ')}" fill="#1B2A22" opacity=".22"/>`; }
+    let s = VCityKit.ground();
+    st.decor = st.decor || VCityKit.decor();
+    for (const id of ORDER) { const b = BLD[id], [x, y, w, d] = b.fp; s += VCityKit.shadowOf(x, y, w, d, b.h, id); }   // cast shadows: long, hard, to the south-west
+    for (const dd of st.decor) s += dd.shadow;
     st.cityStatic = s; return s;
   }
-  // depth-sorted scenery + buildings; agents are added by update()
+  // parked vehicles in the outer lanes + the kit's scenery (trees, lamps, benches, bushes, traffic lights)
   function sceneryItems() {
-    const it = [];
-    for (const [x, y] of TREES()) it.push({ k: x + y, y, h: Math.round(x / 7) % 3 === 0 ? `<g transform="translate(${pp(x, y)})"><ellipse cx="6" cy="3" rx="26" ry="10" fill="#1B2A22" opacity=".25"/><rect x="-3" y="-30" width="6" height="32" fill="#5E4430"/><polygon points="0,-130 26,-62 -26,-62" fill="#3F6B47"/><polygon points="0,-104 32,-34 -32,-34" fill="#4B7C52"/><polygon points="0,-78 36,-14 -36,-14" fill="#5A8E5E"/></g>` : `<g transform="translate(${pp(x, y)})"><ellipse cx="6" cy="3" rx="30" ry="12" fill="#1B2A22" opacity=".25"/><rect x="-4" y="-46" width="8" height="48" fill="#6B4D35"/><ellipse cx="0" cy="-84" rx="42" ry="50" fill="#4E7A45"/><ellipse cx="-14" cy="-74" rx="30" ry="36" fill="#5F9055"/><ellipse cx="16" cy="-98" rx="24" ry="28" fill="#6EA064"/></g>` });
-    for (const x of LAMPS()) { it.push({ k: x + LY, y: LY, h: `<g transform="translate(${pp(x, LY)})"><ellipse cx="0" cy="0" rx="46" ry="18" fill="url(#vc-pool)" class="vc-lamp"/><rect x="-2.5" y="-120" width="5" height="120" fill="#3B3F47"/><path d="M0 -120 q22 0 26 14" stroke="#3B3F47" stroke-width="4" fill="none"/><ellipse cx="26" cy="-104" rx="9" ry="4" fill="#FFE7A6"/></g>` });
-      if (NLAMPS().includes(x + 200)) it.push({ k: x + 200 + NLY, y: NLY, h: `<g transform="translate(${pp(x + 200, NLY)})"><rect x="-2.5" y="-110" width="5" height="110" fill="#3B3F47"/><ellipse cx="0" cy="-114" rx="10" ry="5" fill="#FFE7A6"/></g>` }); }
-    it.push({ k: 1800 + 1600 + DY, y: 1600 + DY, h: `<g transform="translate(${pp(1800, 1600 + DY)})"><ellipse cx="0" cy="0" rx="120" ry="60" fill="#B9B3A3"/><ellipse cx="0" cy="-6" rx="104" ry="52" fill="#6BB3D8"/><ellipse class="vc-ripple" cx="0" cy="-6" rx="70" ry="34" fill="none" stroke="#fff" stroke-width="3" opacity=".6"/><rect x="-6" y="-70" width="12" height="64" fill="#CFC9BB"/><ellipse cx="0" cy="-72" rx="28" ry="12" fill="#B9B3A3"/><path class="vc-jet" d="M0 -72 q-24 -36 -40 0 M0 -72 q24 -36 40 0 M0 -72 v-38" stroke="#E7F6FF" stroke-width="3.5" fill="none" stroke-linecap="round"/></g>` });
-    for (const [x, y] of [[700, 1500 + DY], [1100, 1500 + DY], [2500, 1500 + DY], [2900, 1500 + DY]]) it.push({ k: x + y, y, h: `<g transform="translate(${pp(x, y)})"><rect x="-44" y="-22" width="88" height="10" fill="#8A6446"/><rect x="-44" y="-44" width="88" height="8" fill="#9A7253"/><rect x="-40" y="-12" width="6" height="14" fill="#3B3F47"/><rect x="34" y="-12" width="6" height="14" fill="#3B3F47"/></g>` });
-    for (const id of ORDER) { const b = BLD[id]; for (const sx of [-130, 130]) { const gx = b.door + sx, gy = b.fp[1] + b.fp[3] + 22; it.push({ k: gx + gy, y: gy, h: `<g transform="translate(${pp(gx, gy)})"><ellipse cx="4" cy="2" rx="22" ry="8" fill="#1B2A22" opacity=".25"/><rect x="-16" y="-12" width="32" height="13" rx="2" fill="#8A6446"/><ellipse cx="0" cy="-18" rx="17" ry="11" fill="#4E7A45"/><ellipse cx="-5" cy="-23" rx="10" ry="8" fill="#6EA064"/><circle cx="7" cy="-21" r="3" fill="#E0687A"/><circle cx="-9" cy="-17" r="2.6" fill="#F0C75E"/></g>` }); } }
-    for (const [x, y, t] of [[1010, 1290 + DY - 556 + 556 - 120, 'ONE WAY'], [2210, 1290 + DY, 'P'], [60, 1300 + DY, 'STOP']].map((q) => [q[0], 1290 + DY, q[2]])) it.push({ k: x + y, y, h: `<g transform="translate(${pp(x, y)})"><rect x="-1.5" y="-62" width="3" height="62" fill="#55534D"/><rect x="-16" y="-78" width="32" height="18" rx="3" fill="${t === 'STOP' ? '#C23B2E' : '#2F6F9F'}"/><text y="-65" text-anchor="middle" font-size="${t.length > 3 ? 7 : 11}" font-weight="700" fill="#fff" font-family="Inter,sans-serif">${t}</text></g>` });
-    for (const [x, y, c] of [[410, 833 + DY, '#2F6F9F'], [484, 833 + DY, '#E9E4D6'], [1405, 833 + DY, '#B5532F'], [1627, 833 + DY, '#6B6F78'], [2330, 833 + DY, '#3F7D58'], [3250, 833 + DY, '#D9A441']]) it.push({ k: x + y, y, h: `<g transform="translate(${pp(x, y)})"><g transform="matrix(${K} .5 ${-K} .5 0 0) scale(.8)">${carSvg(c)}</g></g>` });
-    it.push({ k: 1700 + 1380 + DY, y: 1380 + DY, h: `<g class="vc-ceo" transform="translate(${pp(1700, 1380 + DY)})" tabindex="0" role="button" aria-label="Talk to the CEO" style="cursor:pointer"><ellipse cx="0" cy="2" rx="26" ry="9" fill="#000" opacity=".28"/><g transform="scale(${M * 1.1})"><use href="#ceo"/></g><g transform="translate(0 -72)"><rect x="-34" y="-14" width="68" height="26" rx="13" fill="#141413" opacity=".9"/><text y="4" text-anchor="middle" font-size="15" font-weight="700" fill="#E9C46A" font-family="Inter,sans-serif">CEO</text></g></g>` });
+    const w = VCityKit.world(), it = VCityKit.scenery().map((i) => ({ bb: i.bb, h: i.h })), K8 = (x, y, a, kind, col) => { const o = P(x, y); return { bb: [x - 40, y - 18, x + 40, y + 18], h: `<g transform="translate(${o[0].toFixed(1)} ${o[1].toFixed(1)})">${VCityKit.vehicleAt(kind, col, a * Math.PI / 180)}</g>` }; };
+    for (const [x, kind, col] of [[380, 'compact', '#2F7F7A'], [470, 'taxi', '#E9B93A'], [1430, 'van', '#EDEDE8'], [1560, 'suv', '#A8342F'], [2350, 'sedan', '#B8BEC6'], [3250, 'pickup', '#3F6B4F']]) it.push(K8(x, w.RYC - 97, 180, kind, col));
+    for (const [x, kind, col] of [[220, 'sedan', '#2E4A7A'], [780, 'van', '#EDEDE8'], [1700, 'taxi', '#E9B93A'], [2600, 'suv', '#4A4F57'], [3300, 'compact', '#C9B896']]) it.push(K8(x, w.RYC + 97, 0, kind, col));
     return it;
   }
   // A building = stacked floor groups (.vc-fl, bottom to top) + roof group (.vc-top) + one slab per floor level (.vc-slab, shown under the open floor) + a host (.vc-host) where the ORIGINAL office scene is mounted.
   // Cutaway = the floors above the open one fade out, the open one is replaced by the real office, the floors below stay as structure.
   function buildingSvg(id) {
-    const b = BLD[id], [x, y, w, d] = b.fp, h = b.h, fl = b.floors, fh = FH, c = b.wall, S = [], NP = 8;
-    const south = `<g transform="${plane(x, y + d)} matrix(${K} .5 0 1 0 0)">`, east = `<g transform="${plane(x + w, y)} matrix(${-K} .5 0 1 0 0)">`;
+    const b = BLD[id], [x, y, w, d] = b.fp, h = b.h, fl = b.floors, fh = FH, S = [];
+    const south = `<g transform="${plane(x, y + d)} matrix(${K} .5 0 1 0 0)">`, dx = b.door - x;
     S.push(`<g class="vc-b" data-b="${id}" tabindex="0" role="button" aria-label="${b.name}" style="cursor:pointer">`);
-    const pw = w / NP, dx = b.door - x;
     for (let f = 0; f < fl; f++) {
-      const z0 = f * fh, z1 = z0 + fh, v0 = z0 + fh * 0.22, v1 = z1 - fh * 0.2;
-      S.push(`<g class="vc-fl" data-b="${id}" data-f="${f + 1}">`);
-      S.push(quad([x, y + d, z0], [x + w, y + d, z0], [x + w, y + d, z1], [x, y + d, z1], c[1]), quad([x + w, y, z0], [x + w, y + d, z0], [x + w, y + d, z1], [x + w, y, z1], c[2]));
-      S.push(south);
-      for (let k = 0; k < NP; k++) { if (f === 0 && Math.abs(k * pw + pw / 2 - dx) < 80) continue; S.push(`<rect class="vc-win" data-b="${id}" data-f="${f + 1}" x="${(k * pw + 9).toFixed(1)}" y="${-v1}" width="${(pw - 18).toFixed(1)}" height="${(v1 - v0).toFixed(1)}" rx="3" fill="url(#vc-glass)"/><rect x="${(k * pw + 9).toFixed(1)}" y="${-v1}" width="${(pw - 18).toFixed(1)}" height="${(v1 - v0).toFixed(1)}" rx="3" fill="url(#vc-shine)"/><rect x="${(k * pw + 9).toFixed(1)}" y="${-v0 - 3}" width="${(pw - 18).toFixed(1)}" height="3" fill="#8F8A7B"/>`); }
-      S.push(`<rect x="0" y="${-z1}" width="${w}" height="5" fill="#A39E8F"/>`);
-      if (f === 0) S.push(`<rect x="${dx - 46}" y="-66" width="92" height="66" fill="#27313B"/><rect x="${dx - 41}" y="-61" width="39" height="61" fill="url(#vc-glass)"/><rect x="${dx + 2}" y="-61" width="39" height="61" fill="url(#vc-glass)"/><rect x="${dx - 56}" y="-84" width="112" height="14" fill="${b.col}"/><text x="${dx}" y="-73.5" text-anchor="middle" font-size="9" font-weight="700" fill="#fff" font-family="Inter,sans-serif" letter-spacing="1">${b.short.toUpperCase()}</text><rect x="${dx - 60}" y="-4" width="120" height="4" fill="#9A9586"/>`);
-      S.push('</g>', east);
-      const nd = 8, pd = d / nd; for (let k = 0; k < nd; k++) S.push(`<rect x="${(k * pd + 9).toFixed(1)}" y="${-v1}" width="${(pd - 18).toFixed(1)}" height="${(v1 - v0).toFixed(1)}" rx="3" fill="url(#vc-glass)" opacity=".85"/>`);
-      S.push(`<rect x="0" y="${-z1}" width="${d}" height="5" fill="#8E897B"/></g></g>`);
+      const z0 = f * fh, z1 = z0 + fh;
+      S.push(`<g class="vc-fl" data-b="${id}" data-f="${f + 1}">`, VCityKit.faces(x, y, w, d, z0, z1, b.st, { b: id, f: f + 1 }, f === 0));
+      if (f === 0) S.push(south, `<rect x="${dx - 50}" y="-70" width="100" height="70" fill="#1D2433"/><rect x="${dx - 45}" y="-65" width="43" height="65" fill="#9BD3F0"/><rect x="${dx + 2}" y="-65" width="43" height="65" fill="#7FBBE0"/><rect x="${dx - 60}" y="-90" width="120" height="16" fill="#1D2433"/><text x="${dx}" y="-78" text-anchor="middle" font-size="10" font-weight="700" fill="#FAF9F5" font-family="Inter,sans-serif" letter-spacing="1.2">${b.short.toUpperCase()}</text><rect x="${dx - 70}" y="-4" width="140" height="4" fill="#CFC6AC"/>`, '</g>');
+      S.push('</g>');
     }
     for (let f = 1; f <= fl; f++) { const z = (f - 1) * fh;   // slab under floor f: the concrete the open office sits on (+ its visible edge)
-      S.push(`<g class="vc-slab" data-f="${f}">${quad([x, y, z], [x + w, y, z], [x + w, y + d, z], [x, y + d, z], '#BDB7A8')}${quad([x, y + d, z - 6], [x + w, y + d, z - 6], [x + w, y + d, z + 3], [x, y + d, z + 3], '#A39E8F')}${quad([x + w, y, z - 6], [x + w, y + d, z - 6], [x + w, y + d, z + 3], [x + w, y, z + 3], '#8E897B')}</g>`); }
+      S.push(`<g class="vc-slab" data-f="${f}">${quad([x, y, z], [x + w, y, z], [x + w, y + d, z], [x, y + d, z], '#C9C2AE')}${quad([x, y + d, z - 6], [x + w, y + d, z - 6], [x + w, y + d, z + 3], [x, y + d, z + 3], '#B0A88F')}${quad([x + w, y, z - 6], [x + w, y + d, z - 6], [x + w, y + d, z + 3], [x + w, y, z + 3], '#8F8870')}</g>`); }
     S.push(`<g class="vc-host" data-b="${id}"></g>`);
-    S.push(`<g class="vc-top" data-b="${id}">`);
-    S.push(quad([x, y, h], [x + w, y, h], [x + w, y + d, h], [x, y + d, h], c[0]), quad([x, y + d, h], [x + w, y + d, h], [x + w, y + d, h - 12], [x, y + d, h - 12], '#8F8A7B'));
-    S.push(south, `<rect x="${w / 2 - 170}" y="${-(h - 12) + 10}" width="340" height="36" rx="6" fill="${b.col}"/><text x="${w / 2}" y="${-(h - 12) + 36}" text-anchor="middle" font-family="Newsreader,Georgia,serif" font-size="27" font-weight="600" fill="#FAF9F5">${b.short.toUpperCase()}</text>`, '</g>');
-    for (const [rx, ry, rw, rd] of [[x + 60, y + 80, 140, 110], [x + w - 230, y + 120, 120, 100], [x + 90, y + d - 330, 160, 120]]) { S.push(quad([rx, ry, h], [rx + rw, ry, h], [rx + rw, ry + rd, h], [rx, ry + rd, h], '#9AA0A8'), quad([rx, ry + rd, h], [rx + rw, ry + rd, h], [rx + rw, ry + rd, h + 24], [rx, ry + rd, h + 24], '#B7BCC3'), quad([rx + rw, ry, h], [rx + rw, ry + rd, h], [rx + rw, ry + rd, h + 24], [rx + rw, ry, h + 24], '#8E949C'), quad([rx, ry, h + 24], [rx + rw, ry, h + 24], [rx + rw, ry + rd, h + 24], [rx, ry + rd, h + 24], '#C9CED4')); }
-    const tp = P(x + w * 0.5, y + d * 0.35, h); S.push(`<line x1="${tp[0]}" y1="${tp[1]}" x2="${tp[0]}" y2="${tp[1] - 90}" stroke="#55534D" stroke-width="3"/><circle class="vc-blink" cx="${tp[0]}" cy="${tp[1] - 92}" r="5" fill="#E24B3B"/>`);
+    S.push(`<g class="vc-top" data-b="${id}">`, VCityKit.roof(x, y, w, d, h, b.edge, id === 'mk' ? 1 : id === 'web' ? 2 : 3), VCityKit.crown(x, y, w, d, h, b.edge));
+    S.push(south, `<rect x="${w / 2 - 175}" y="${-(h - 14) + 6}" width="350" height="38" rx="6" fill="#171B26"/><text x="${w / 2}" y="${-(h - 14) + 33}" text-anchor="middle" font-family="Newsreader,Georgia,serif" font-size="28" font-weight="600" fill="#FAF9F5">${b.short.toUpperCase()}</text>`, '</g>');
     S.push('</g>');
     S.push(bandsSvg(id));
     const lp = P(x + w / 2, y + d / 2, h + 130); S.push(`<g class="vc-pill" data-b="${id}" transform="translate(${lp[0].toFixed(1)} ${lp[1].toFixed(1)}) scale(1.7)"><rect x="-210" y="-34" width="420" height="68" rx="34" fill="#141413" opacity=".92"/><circle cx="-172" cy="0" r="12" fill="${b.col}"/><text class="t1" x="-148" y="-4" font-size="26" font-weight="700" fill="#FAF9F5" font-family="Inter,sans-serif">${b.short}</text><text class="t2" x="-148" y="24" font-size="19" fill="#C9C6BC" font-family="Inter,sans-serif"></text></g>`);
     S.push('</g>');
-    return { k: x + y + d, y: y + d, h: S.join('') };
+    return { bb: [x, y, x + w, y + d], h: S.join(''), z: h + 260 };
   }
-  // sorted scenery + buildings; the cars drive between the "behind the road" and "in front of the road" items
+  // sorted scenery + decorative blocks + the three department buildings (painter's order by footprint); the cars drive between the "behind the road" and "in front of the road" items
   function drawCityAll() {
-    const items = sceneryItems().concat(ORDER.map(buildingSvg)).sort((a, b) => a.k - b.k), RY = 930 + DY;
-    const back = items.filter((i) => (i.y === undefined ? 0 : i.y) < RY).map((i) => i.h).join(''), front = items.filter((i) => (i.y === undefined ? 0 : i.y) >= RY).map((i) => i.h).join('');
-    return defs() + `<g id="vc-world">${st.cityStatic || drawCity()}<g id="vc-sorted">${back}<g id="vc-cars" pointer-events="none"></g>${front}</g><g id="vc-cityag"></g><g id="vc-tilepark" display="none"></g></g>`;
+    const base = st.cityStatic || drawCity(), items = VCityKit.depthSort(sceneryItems().concat(st.decor.map((q) => ({ bb: q.bb, h: q.h, z: q.z }))).concat(ORDER.map(buildingSvg))), RY = VCityKit.world().RYC;
+    const wrap = (i) => { const z = i.z === undefined ? 150 : i.z, sb = [P(i.bb[0], i.bb[3])[0], P(i.bb[0], i.bb[1], z)[1], P(i.bb[2], i.bb[1])[0], P(i.bb[2], i.bb[3])[1] + 30].map((n) => n.toFixed(0)).join(','); return `<g class="vc-it" data-sb="${sb}">${i.h}</g>`; };
+    const back = items.filter((i) => i.bb[3] < RY).map(wrap).join(''), front = items.filter((i) => i.bb[3] >= RY).map(wrap).join('');
+    return defs() + `<g id="vc-world">${base}<g id="vc-sorted">${back}<g id="vc-cars" pointer-events="none"></g>${front}</g><g id="vc-cityag"></g><g id="vc-tilepark" display="none"></g></g>`;
   }
   // clickable floor bands on a building's south face (only active in the building view, see city.css)
   function bandsSvg(id) {
@@ -159,7 +103,11 @@
 
   // ---------- camera: ONE world camera (the svg viewBox). City -> building -> floor are only different framings of it ----------
   let lodQ = false;
-  function setVB() { const v = st.vb; st.svg.setAttribute('viewBox', `${v.x.toFixed(1)} ${v.y.toFixed(1)} ${v.w.toFixed(1)} ${v.h.toFixed(1)}`);
+  // zoomed in (building / floor view) the items outside the camera are not drawn at all; the city overview draws everything
+  let cullQ = false;
+  function cull() { cullQ = false; if (!st.svg) return; const items = st.items || (st.items = [...st.svg.querySelectorAll('.vc-it')].map((e) => ({ e, b: e.dataset.sb.split(',').map(Number), on: true }))), v = st.vb, m = 260, all = st.view === 'city' && v.w > CITY_BOX.w * 0.5;
+    for (const it of items) { const vis = all || (it.b[2] > v.x - m && it.b[0] < v.x + v.w + m && it.b[3] > v.y - m && it.b[1] < v.y + v.h + m); if (vis !== it.on) { it.on = vis; it.e.style.display = vis ? '' : 'none'; } } }
+  function setVB() { const v = st.vb; st.svg.setAttribute('viewBox', `${v.x.toFixed(1)} ${v.y.toFixed(1)} ${v.w.toFixed(1)} ${v.h.toFixed(1)}`); if (!cullQ) { cullQ = true; requestAnimationFrame(cull); }
     if (st.view === 'floor' && st.lodFn && !lodQ) { lodQ = true; requestAnimationFrame(() => { lodQ = false; if (st.view === 'floor' && st.lodFn) st.lodFn(); }); } }
   function fitTo(box, animate) {
     const r = st.svg.getBoundingClientRect(), asp = (r.width || 1000) / (r.height || 700); let w = box.w, h = box.h; if (w / h < asp) w = h * asp; else h = w / asp;
@@ -170,7 +118,7 @@
   function boxOf(id) { const b = BLD[id], [x, y, w, d] = b.fp, l = P(x, y + d)[0], r = P(x + w, y)[0], t = P(x, y, b.h + 200)[1], bt = P(x + w, y + d)[1] + 150; return { x: l - 100, y: t, w: r - l + 200, h: bt - t }; }
   // the open floor: the original scene's rectangle in world coordinates (+ a little ground so the building stays readable)
   const tileBox = (id, n) => { const t = tileRect(id, n); return t ? { x: t.x - 20, y: t.y - 20, w: t.w + 40, h: t.h + 40 } : boxOf(id); };
-  const CITY_BOX = { x: -1700, y: -700, w: 5000, h: 3500 };
+  const CITY_BOX = { x: -1500, y: -780, w: 5200, h: 3100 };
   function frame(animate) { fitTo(st.view === 'floor' ? tileBox(st.b, st.n) : st.view === 'bld' ? boxOf(st.b) : CITY_BOX, animate); }
   function zoom(k, cx, cy) { if (st.cam) st.cam.kill(); const v = st.vb, r = st.svg.getBoundingClientRect(); const fx = cx === undefined ? 0.5 : (cx - r.left) / r.width, fy = cy === undefined ? 0.5 : (cy - r.top) / r.height; const nw = Math.max(380, Math.min(CITY_BOX.w * 1.2, v.w / k)), nh = nw * v.h / v.w; v.x += (v.w - nw) * fx; v.y += (v.h - nh) * fy; v.w = nw; v.h = nh; setVB(); }
   function bindCamera() {
@@ -204,6 +152,7 @@
     st.svg.querySelectorAll('.vc-b').forEach((bg) => { const id = bg.dataset.b, me = open && id === st.b; bg.classList.toggle('open', me);
       bg.querySelectorAll('.vc-fl').forEach((f) => { const n = +f.dataset.f; f.classList.toggle('gone', me && n > st.n); f.classList.toggle('cut', me && n === st.n); });
       bg.querySelectorAll('.vc-slab').forEach((s) => s.classList.toggle('on', me && +s.dataset.f === st.n)); });
+    st.svg.querySelectorAll('.vc-shd[data-b]').forEach((e) => e.classList.toggle('off', open && e.dataset.b === st.b));
     st.svg.dataset.view = st.view; if (st.scene && st.scene.isConnected) { if (!open && st.scene.parentNode !== park()) park().appendChild(st.scene); }
   }
 
@@ -239,7 +188,7 @@
     g.addEventListener('click', (e) => { e.stopPropagation(); if (st.H.openAgent) st.H.openAgent(a.key); }); return { g, px: null, py: null, ph: 0, hl };
   }
   function streetDraw(list) {
-    if (!st.svg) return; const layer = $('#vc-cityag', st.svg); if (!layer) return; const seen = new Set(); st.peds = list.filter((s) => s.a).map((s) => { const q = [s.x, s.y]; return q; });
+    if (!st.svg) return; const layer = $('#vc-cityag', st.svg); if (!layer) return; const seen = new Set(); { const now = performance.now(), pv = st.pv || (st.pv = {}); st.peds = list.filter((s) => s.a).map((s) => { const o = pv[s.key], dtp = o ? Math.max(0.016, (now - o[2]) / 1000) : 0, vx = o ? (s.x - o[0]) / dtp : 0, vy = o ? (s.y - o[1]) / dtp : 0; pv[s.key] = [s.x, s.y, now]; return [s.x, s.y, vx, vy]; }); }
     for (const s of list) {
       if (!s.a) continue; seen.add(s.key); let f = figs.get(s.key); if (!f || !f.g.isConnected) { f = mkFig(s.a); figs.set(s.key, f); layer.appendChild(f.g); }
       const p = P(s.x, s.y), dx = f.px === null ? 0 : p[0] - f.px, dy = f.py === null ? 0 : p[1] - f.py, mv = Math.hypot(dx, dy); f.px = p[0]; f.py = p[1];
@@ -274,7 +223,7 @@
     if (!st.svg) return; const byB = assign(st.D, st.H);
     for (const b of ORDER) { const list = byB[b], w = list.filter((a) => a.status === 'working').length;
       const pill = st.svg.querySelector(`.vc-pill[data-b="${b}"]`); if (pill) pill.querySelector('.t2').textContent = list.length + ' agent' + (list.length === 1 ? '' : 's') + ' · ' + w + ' working';
-      st.svg.querySelectorAll(`.vc-win[data-b="${b}"]`).forEach((r) => { const f = +r.dataset.f; const on = b === 'mk' ? byB.mkFloors[f - 1].agents.some((a) => a.status === 'working') : w > 0; r.setAttribute('fill', on ? 'url(#vc-glass-on)' : 'url(#vc-glass)'); }); }
+      st.svg.querySelectorAll(`.vc-win[data-b="${b}"]`).forEach((r) => { const f = +r.dataset.f; const on = b === 'mk' ? byB.mkFloors[f - 1].agents.some((a) => a.status === 'working') : w > 0; r.setAttribute('fill-opacity', on ? '.4' : '0'); }); }
   }
 
   // ---------- UI ----------
@@ -316,51 +265,56 @@
       else if (st.view === 'floor' && BLD[st.b].floors > 1 && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); changeFloor(st.n + (e.key === 'ArrowUp' ? 1 : -1)); } });
   }
   // ---------- traffic: cars follow fixed lanes, turn smoothly at the junction, obey the lights, keep their distance and stop for people on the crossings ----------
-  const RYC = 930 + DY, YE = RYC + 55, YW = RYC - 55, XS = 1125, XN = 1195;   // east-bound / west-bound lane y, south-bound / north-bound lane x
+  const RYC = 930 + DY, YE = RYC + 32, YW = RYC - 32, XS = 1125, XN = 1195;   // east-bound / west-bound inner-lane y, south-bound / north-bound lane x
   const ROUTES = [
-    [[-80, YE], [XN - 40, YE], [XN, YE - 40], [XN, 30]],                   // east, left turn, north up the side street
-    [[XS, 30], [XS, YW - 40], [XS - 40, YW], [-80, YW]],                   // down the side street, right turn, west
+    [[-80, YE], [XN - 40, YE], [XN, YE - 40], [XN, -860]],                 // east, left turn, north up the side street
+    [[XS, -860], [XS, YW - 40], [XS - 40, YW], [-80, YW]],                 // down the side street, right turn, west
     [[-80, YE], [CITY_W + 80, YE]], [[CITY_W + 80, YW], [-80, YW]],         // straight along the main road
-    [[CITY_W + 80, YW], [XN + 40, YW], [XN, YW - 40], [XN, 30]],           // west, right turn, north
+    [[CITY_W + 80, YW], [XN + 40, YW], [XN, YW - 40], [XN, -860]],         // west, right turn, north
   ];
-  const CAR_COL = ['#B5532F', '#2F6F9F', '#E9E4D6', '#3F7D58', '#D9A441', '#6B6F78'];
+  const FLEET = [['sedan', '#2E4A7A'], ['suv', '#B8BEC6'], ['compact', '#A8342F'], ['van', '#EDEDE8'], ['taxi', '#E9B93A'], ['pickup', '#3F6B4F'], ['sedan', '#4A4F57'], ['compact', '#2F7F7A'], ['suv', '#EDEDE8'], ['van', '#EDEDE8'], ['sedan', '#C9B896'], ['pickup', '#D9D9D4']];
   let cars = [], lastT = 0, clock = 0;
-  const XW = [...ORDER.map((id) => [BLD[id].door - 60, BLD[id].door + 60, 800 + DY, 1060 + DY]), [1100, 1220, 700 + DY, 780 + DY]];   // crosswalk zones [x0, x1, y0, y1]
-  // a car is drawn as a small isometric box (stacked slices in grid space), so it looks right at any heading
-  const carSvg = (c) => { const sl = (L, W, z0, z1, side, top, o) => { let s = ''; for (let z = z0; z < z1; z += 3) s += `<rect x="${-L / 2 + o}" y="${-W / 2}" width="${L}" height="${W}" transform="translate(0 ${-z})" fill="${side}"/>`; return s + `<rect x="${-L / 2 + o}" y="${-W / 2}" width="${L}" height="${W}" transform="translate(0 ${-z1})" fill="${top}"/>`; };
-    return `<rect x="-44" y="-20" width="88" height="40" fill="#000" opacity=".25"/>${sl(76, 34, 4, 14, c, c, 0)}${sl(36, 30, 14, 24, '#9DBFD4', '#C7DFEC', -4)}<rect x="34" y="-12" width="5" height="6" fill="#FFE7A6" transform="translate(0 -9)"/><rect x="-40" y="-12" width="5" height="6" fill="#D0392B" transform="translate(0 -9)"/>`; };
+  const XW = [...VCityKit.crossings().map((c) => [c - 60, c + 60, 800 + DY, 1060 + DY]), [1100, 1220, 800 + DY - 116, 800 + DY - 36]];   // crosswalk zones [x0, x1, y0, y1]
   // route geometry: points along the polyline, corners rounded
   function lane(r) { const pts = []; for (let i = 0; i < r.length - 1; i++) { const a = r[i], b = r[i + 1], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 20)); for (let k = 0; k < n; k++) pts.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]); } pts.push(r[r.length - 1]);
     for (let it = 0; it < 3; it++) for (let i = 1; i < pts.length - 1; i++) pts[i] = [(pts[i - 1][0] + pts[i][0] * 2 + pts[i + 1][0]) / 4, (pts[i - 1][1] + pts[i][1] * 2 + pts[i + 1][1]) / 4];
     const acc = [0]; for (let i = 1; i < pts.length; i++) acc.push(acc[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])); return { pts, acc, len: acc[acc.length - 1] }; }
   function laneAt(L, s) { let i = 1; while (i < L.acc.length - 1 && L.acc[i] < s) i++; const t = (s - L.acc[i - 1]) / Math.max(1e-6, L.acc[i] - L.acc[i - 1]), a = L.pts[i - 1], b = L.pts[i]; return { x: a[0] + (b[0] - a[0]) * t, y: a[1] + (b[1] - a[1]) * t, ang: Math.atan2(b[1] - a[1], b[0] - a[0]) }; }
   // main road green 9 s, then the side street green 7 s (1 s all-red between)
-  const lightEW = () => ((clock % 18) < 9 ? 'g' : 'r');
+  const lightEW = () => ((clock % 18) < 9 ? 'g' : 'r'), seenSig = ['', ''];
   const lightNS = () => { const t = clock % 18; return t >= 10 && t < 17 ? 'g' : 'r'; };
   function mkCars() {
-    const g = $('#vc-cars', st.svg); if (!g) return; cars = []; let ci = 0;
-    ROUTES.map(lane).forEach((L, ri) => { const n = ri < 2 || ri === 4 ? 1 : 2; for (let k = 0; k < n; k++) { const el = document.createElementNS(NS, 'g'); el.innerHTML = `<g>${carSvg(CAR_COL[ci++ % CAR_COL.length])}</g>`; g.appendChild(el);
-      cars.push({ L, s: ((k + 0.3 * ri) * L.len / (n + 0.6)) % L.len, v: 0, vmax: 95 + (ci * 17) % 40, el, in: el.firstChild }); } });
+    const g = $("#vc-cars", st.svg); if (!g) return; cars = []; st.cars = cars; let ci = 0;
+    ROUTES.map(lane).forEach((L, ri) => { const n = [2, 2, 3, 3, 2][ri]; for (let k = 0; k < n; k++) { const el = document.createElementNS(NS, 'g'), [kind, col] = FLEET[ci++ % FLEET.length]; el.innerHTML = '<g></g>'; g.appendChild(el);
+      let sp0 = ((k + 0.3 * ri) * L.len / (n + 0.6)) % L.len; for (let t = 0; t < 60; t++) { const q = laneAt(L, sp0); if (!cars.some((o) => { const r = laneAt(o.L, o.s); return Math.hypot(r.x - q.x, r.y - q.y) < 170; })) break; sp0 = (sp0 + 83) % L.len; }   // never start inside another car
+      cars.push({ L, ri, s: sp0, v: 0, vmax: 90 + (ci * 17) % 40 - (kind === 'bus' ? 25 : 0), len: VCityKit.VEH[kind] * 0.8, kind, col, ang: laneAt(L, sp0).ang, hb: -1, el, in: el.firstChild }); } });
   }
   function carStep(dt) {
-    const lg = lightEW(), ln = lightNS(), peds = st.peds || [];
+    const lg = lightEW(), ln = lightNS(), peds = (st.peds || []).flatMap((q) => { const k = (v) => Math.max(-140, Math.min(140, v * 0.7)); return [[q[0], q[1]], [q[0] + k(q[2] || 0), q[1] + k(q[3] || 0)]]; });
     for (const c of cars) { const p = laneAt(c.L, c.s), dx = Math.cos(p.ang), dy = Math.sin(p.ang); let target = c.vmax;
       if (Math.abs(laneAt(c.L, Math.min(c.L.len, c.s + 40)).ang - p.ang) > 0.15) target = Math.min(target, 45);   // slow into a turn
       // lights: the stop line is just before the junction box (x 1100..1220, y between the two lanes' outer edges)
-      const ew = Math.abs(dx) > 0.7, inBand = p.y > YW - 60 && p.y < YE + 60, dist = ew ? (dx > 0 ? 1100 - p.x : p.x - 1220) : (dy > 0 ? YW - 60 - p.y : p.y - (YE + 60));
-      if ((ew ? inBand : p.x > 1080 && p.x < 1240) && dist > -4 && dist < 100 && (ew ? lg : ln) !== 'g') target = Math.min(target, Math.max(0, (dist - 8) * 1.2));
-      for (const o of cars) { if (o === c) continue; const q = laneAt(o.L, o.s), rx = q.x - p.x, ry = q.y - p.y, d = Math.hypot(rx, ry); if (d > 130 || d < 1) continue; if ((rx * dx + ry * dy) / d > 0.75) target = Math.min(target, Math.max(0, (d - 84) * 1.4)); }
-      for (const a of peds) { const rx = a[0] - p.x, ry = a[1] - p.y, d = Math.hypot(rx, ry), ah = rx * dx + ry * dy, lat = Math.abs(rx * -dy + ry * dx);   // a person in the car's lane ahead (corridor 36 wide) or very close in any direction: stop
-        if ((ah > -10 && ah < 150 && lat < 36) || d < 52) target = Math.min(target, Math.max(0, (ah - 52) * 1.5)); }
+      const ew = Math.abs(dx) > 0.7, inBand = p.y > YW - 40 && p.y < YE + 40, dist = ew ? (dx > 0 ? 1018 - p.x : p.x - 1302) : (dy > 0 ? 800 + DY - 122 - p.y : p.y - (YE + 60));
+      if ((ew ? inBand : p.x > 1080 && p.x < 1240) && dist > -4 && dist < 100 && (ew ? lg : ln) !== 'g') target = Math.min(target, Math.max(0, (dist - c.len / 2 - 10) * 1.2));
+      for (const o of cars) { if (o === c) continue; const q = laneAt(o.L, o.s), rx = q.x - p.x, ry = q.y - p.y, d = Math.hypot(rx, ry); const gap = (c.len + o.len) / 2 + 26; if (d > gap + 80 || d < 1) continue; if ((rx * dx + ry * dy) / d > 0.75) target = Math.min(target, Math.max(0, (d - gap) * 1.4)); }
+      for (const a of peds) { const rx = a[0] - p.x, ry = a[1] - p.y, d = Math.hypot(rx, ry), ah = rx * dx + ry * dy, lat = Math.abs(rx * -dy + ry * dx), half = c.len / 2;   // a person in the car's lane ahead (corridor 36 wide): stop 22 before the bumper; already underneath: creep out
+        if (ah > half - 4 && ah < 150 + half && lat < 36) target = Math.min(target, Math.max(0, (ah - half - 22) * 1.5)); else if (d < half + 14) target = Math.max(Math.min(target, 40), 28); }
       // crossings: if anyone is on (or about to step onto) a crosswalk, the car holds at its edge
-      for (const z of XW) { if (!peds.some((q) => q[0] > z[0] - 40 && q[0] < z[1] + 40 && q[1] > z[2] - 50 && q[1] < z[3] + 50)) continue; const dist = Math.abs(dx) > 0.7 ? (dx > 0 ? z[0] - p.x : p.x - z[1]) : (dy > 0 ? z[2] - p.y : p.y - z[3]);
-        if (dist > -6 && dist < 140 && (Math.abs(dx) > 0.7 ? p.y > z[2] - 60 && p.y < z[3] + 60 : p.x > z[0] - 60 && p.x < z[1] + 60)) target = Math.min(target, Math.max(0, (dist - 28) * 1.5)); }
+      for (const z of XW) { if (!peds.some((q) => q[0] > z[0] - 60 && q[0] < z[1] + 60 && q[1] > z[2] - 70 && q[1] < z[3] + 70)) continue; const dist = Math.abs(dx) > 0.7 ? (dx > 0 ? z[0] - p.x : p.x - z[1]) : (dy > 0 ? z[2] - p.y : p.y - z[3]);
+        if (dist > 4 && dist < 220 && (Math.abs(dx) > 0.7 ? p.y > z[2] - 60 && p.y < z[3] + 60 : p.x > z[0] - 60 && p.x < z[1] + 60)) target = Math.min(target, Math.max(0, (dist - c.len / 2 - 34) * 1.5)); }
+      // turning across traffic: the left turn waits for oncoming west-bound cars, the side-street turn waits for west-bound cars in its lane
+      if (c.ri === 0 && p.x < 1100 && p.x > 900 && cars.some((o) => (o.ri === 3 || o.ri === 4) && laneAt(o.L, o.s).x > 1060 && laneAt(o.L, o.s).x < 1460)) target = Math.min(target, Math.max(0, (1096 - p.x - c.len / 2) * 1.5));
+      if (c.ri === 1 && p.y > 1150 && p.y < YW - 50 && cars.some((o) => o.ri === 3 && laneAt(o.L, o.s).x > 1020 && laneAt(o.L, o.s).x < 1400)) target = Math.min(target, Math.max(0, (YW - 70 - p.y - c.len / 2) * 1.5));
       c.v += Math.max(-220 * dt, Math.min(60 * dt, target - c.v)); if (c.v < 0) c.v = 0; c.s += c.v * dt; if (c.s >= c.L.len) { c.s = 0; c.v = Math.min(c.v, 40); }
       const q = laneAt(c.L, c.s), sp = P(q.x, q.y), fade = Math.min(1, c.s / 60, (c.L.len - c.s) / 60);
+      { let da = q.ang - c.ang; da = Math.atan2(Math.sin(da), Math.cos(da)); c.ang += da * Math.min(1, dt * 12); }
+      const vb = st.vb, vis = sp[0] > vb.x - 220 && sp[0] < vb.x + vb.w + 220 && sp[1] > vb.y - 260 && sp[1] < vb.y + vb.h + 220;   // cars off-camera are simulated but not drawn
+      if (!vis) { if (c.on !== false) { c.on = false; c.el.style.display = 'none'; } continue; } if (c.on === false) { c.on = true; c.el.style.display = ''; }
       c.el.setAttribute('transform', `translate(${sp[0].toFixed(1)} ${sp[1].toFixed(1)})`); c.el.setAttribute('opacity', Math.max(0, fade).toFixed(2));
-      c.in.setAttribute('transform', `matrix(${K} .5 ${-K} .5 0 0) rotate(${(q.ang * 180 / Math.PI).toFixed(1)}) scale(.8)`); }
+      { const hb = Math.round(c.ang / (Math.PI * 2) * 120); if (hb !== c.hb) { c.hb = hb; c.in.innerHTML = VCityKit.vehicleAt(c.kind, c.col, c.ang); } }; }
   }
-  function tick(t) { requestAnimationFrame(tick); watchTick(t); const dt = Math.min(0.1, lastT ? (t - lastT) / 1000 : 0.016); lastT = t; if (document.hidden) return; clock += dt; carStep(dt); }
+  function tick(t) { requestAnimationFrame(tick); watchTick(t); const dt = Math.min(0.1, lastT ? (t - lastT) / 1000 : 0.016); lastT = t; if (document.hidden) return; clock += dt; carStep(dt);
+    const m = clock % 18, ew = m < 8 ? 'g' : m < 9 ? 'y' : 'r', ns = m >= 10 && m < 16 ? 'g' : m >= 16 && m < 17 ? 'y' : 'r'; if (ew !== seenSig[0] || ns !== seenSig[1]) { seenSig[0] = ew; seenSig[1] = ns; VCityKit.setSignals(st.svg, ew, ns); } }
   function mount(H) {
     st.H = H; st.stage = H.stage; const old = st.stage.querySelector('#vc-root'); if (old) old.remove();
     const wrap = document.createElement('div'); wrap.id = 'vc-root'; wrap.className = 'vc'; st.stage.appendChild(wrap); st.root = wrap;

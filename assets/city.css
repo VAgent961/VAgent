@@ -84,3 +84,9 @@ body.city-on .stage>svg.fx-layer,body.city-on .stage>.zoom,body.city-on .stage>.
 .stage>a.vc-switch{right:96px}
 .vc-ui>.vc-switch{right:14px}
 @media (max-width:760px){.vc-ui>.vc-switch{top:auto;bottom:62px;right:10px;min-height:34px;font-size:12px;padding:0 11px}.stage>a.vc-switch{right:84px;top:10px;min-height:32px;font-size:12px;padding:0 10px}}
+/* ---- reference look: warm sunlight over the world, shadows follow the cutaway ---- */
+.vc{background:#B7BAA2}
+.vc::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(210deg,rgba(255,236,190,.2),rgba(255,236,190,0) 48%,rgba(43,31,74,.2));transition:opacity .6s}
+.vc[data-view=floor]::before{opacity:0}
+.vc-ui{z-index:2}
+.vc-shd.off{display:none}
