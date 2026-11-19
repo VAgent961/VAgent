@@ -197,7 +197,7 @@
 
   // ---------- the world ----------
   const WORLD = () => { const DY = C.DY; return { MR0: 800 + DY, MR1: 1060 + DY, RYC: 930 + DY, BR0: -170, BR1: 50, SX0: 1100, SX1: 1220, YN: -1000 }; };
-  const CW = () => [C.BLD.mk.door, 1060, 1260, C.BLD.web.door, C.BLD.sn.door];   // main-road crossings (x centres)
+  const CW = () => [C.BLD.mk.door, 1060, 1260, C.BLD.web.door, C.BLD.sn.door, C.BLD.cv.door];   // main-road crossings (x centres)
   function ground() {
     const { MR0, MR1, RYC, BR0, BR1, SX0, SX1, YN } = WORLD(); let s = '';
     s += flat(-2600, -2200, C.W + 2600, C.D + 1400, '#B7BAA2') + flat(-900, YN - 60, C.W + 400, C.D, 'url(#k-pave)');
@@ -205,7 +205,7 @@
     const gaps = CW().map((c) => [c - 60, c + 60]);
     const strip = (y0, y1) => { let x = 0; for (const [a, b] of gaps.concat([[C.W + 1, C.W + 2]])) { if (a > x) s += flat(x, y0, Math.min(a, C.W), y1, 'url(#k-grass)'); x = b; } };
     strip(MR0 - 60, MR0 - 26); strip(MR1 + 26, MR1 + 60);
-    for (const id of ['mk', 'web', 'sn']) { const [fx, , fw] = C.BLD[id].fp; s += flat(fx - 52, 90, fx - 8, MR0 - 70, 'url(#k-grass)') + flat(fx + fw + 8, 90, fx + fw + 52, MR0 - 70, 'url(#k-grass)'); }
+    for (const id of ['mk', 'web', 'sn', 'cv']) { const [fx, , fw] = C.BLD[id].fp; s += flat(fx - 52, 90, fx - 8, MR0 - 70, 'url(#k-grass)') + flat(fx + fw + 8, 90, fx + fw + 52, MR0 - 70, 'url(#k-grass)'); }
     s += flat(60, MR1 + 120, C.W - 60, C.D - 40, 'url(#k-grass)') + flat(300, MR1 + 350, C.W - 300, MR1 + 410, '#EDE5CF') + flat(1500, MR1 + 170, 2100, C.D - 100, '#EDE5CF');
     // asphalt
     s += flat(-900, MR0, C.W + 400, MR1, 'url(#k-asph)') + flat(-900, BR0, C.W + 400, BR1, 'url(#k-asph)') + flat(SX0, YN, SX1, MR0, 'url(#k-asph)');
@@ -232,20 +232,20 @@
   function treeList() {
     const { MR0, MR1, SX0, SX1 } = WORLD(), t = [], cws = CW(), okx = (x) => cws.every((c) => Math.abs(x - c) > 80) && !(x > 1000 && x < 1330), ok2 = (x) => cws.every((c) => Math.abs(x - c) > 80);
     let i = 0; for (let x = 70; x < C.W; x += 150) if (okx(x)) t.push([x + (i++ % 2) * 20, MR0 - 43, i % 3 === 0 ? 'c' : 'r']);
-    for (let x = 130; x < C.W - 60; x += 160) if (ok2(x) && !(x > 1000 && x < 1330)) t.push([x, MR1 + 43, i++ % 3 === 1 ? 'c' : 'r']);
-    for (const id of ['mk', 'web', 'sn']) { const [fx, , fw] = C.BLD[id].fp; for (let y = 200; y < MR0 - 120; y += 190) { t.push([fx - 30, y, i++ % 2 ? 'c' : 'r']); t.push([fx + fw + 30, y + 60, i++ % 2 ? 'c' : 'r']); } }
-    for (const [x, y] of [[300, 1980], [520, 2200], [900, 2050], [1250, 2300], [2400, 2050], [2750, 2250], [3150, 2050], [3400, 2300], [150, 2300], [1150, 1980], [2150, 2350]]) t.push([x, y + 0, 'r']);
+    for (let x = 130; x < C.W - 60; x += 160) if (ok2(x) && !(x > 1000 && x < 1330) && !(x > 2040 && x < 2180)) t.push([x, MR1 + 43, i++ % 3 === 1 ? 'c' : 'r']);
+    for (const id of ['mk', 'web', 'sn', 'cv']) { const [fx, , fw] = C.BLD[id].fp; for (let y = 200; y < MR0 - 120; y += 190) { t.push([fx - 30, y, i++ % 2 ? 'c' : 'r']); t.push([fx + fw + 30, y + 60, i++ % 2 ? 'c' : 'r']); } }
+    for (const [x, y] of [[300, 1980], [520, 2200], [900, 2050], [1250, 2300], [3300, 2050], [3500, 2300], [3900, 2050], [4200, 2300], [4500, 2050], [4650, 2300], [3700, 2350], [150, 2300], [1150, 1980]]) t.push([x, y + 0, 'r']);
     return t;
   }
   function scenery() {
     const { MR0, MR1, SX0, SX1 } = WORLD(), it = [];
     for (const [x, y, k] of treeList()) it.push({ bb: [x - 14, y - 14, x + 14, y + 14], h: k === 'c' ? conifer(x, y, 1.35) : roundTree(x, y, 1.35) });
-    for (const x of [200, 600, 1400, 1800, 2200, 2600, 3000, 3400]) { it.push({ bb: [x - 4, MR0 - 20, x + 4, MR0 - 12], h: lamp(x, MR0 - 16) }); }
-    for (const x of [400, 800, 1500, 2000, 2500, 3250]) { it.push({ bb: [x - 4, MR1 + 12, x + 4, MR1 + 20], h: lamp(x, MR1 + 16) }); }
-    for (const [x, y] of [[700, MR0 - 43], [1500, MR1 + 43], [2500, MR1 + 43], [2900, MR0 - 43], [1000, MR1 + 43]]) it.push({ bb: [x - 14, y - 6, x + 14, y + 6], h: bench(x, y) });
-    for (const id of ['mk', 'web', 'sn']) { const b = C.BLD[id]; for (const sx of [-130, 130]) { const gx = b.door + sx, gy = b.fp[1] + b.fp[3] + 40; it.push({ bb: [gx - 12, gy - 6, gx + 12, gy + 6], h: bush(gx - 8, gy) + bush(gx + 8, gy + 2) }); } }
+    for (const x of [200, 600, 1400, 1800, 2200, 2600, 3000, 3400, 3800, 4200, 4600]) { it.push({ bb: [x - 4, MR0 - 20, x + 4, MR0 - 12], h: lamp(x, MR0 - 16) }); }
+    for (const x of [400, 800, 1500, 2000, 2500, 3250, 3700, 4100, 4500]) { it.push({ bb: [x - 4, MR1 + 12, x + 4, MR1 + 20], h: lamp(x, MR1 + 16) }); }
+    for (const [x, y] of [[700, MR0 - 43], [1500, MR1 + 43], [2500, MR1 + 43], [2900, MR0 - 43], [1000, MR1 + 43], [3800, MR0 - 43], [4300, MR1 + 43]]) it.push({ bb: [x - 14, y - 6, x + 14, y + 6], h: bench(x, y) });
+    for (const id of ['mk', 'web', 'sn', 'cv']) { const b = C.BLD[id]; for (const sx of [-130, 130]) { const gx = b.door + sx, gy = b.fp[1] + b.fp[3] + 40; it.push({ bb: [gx - 12, gy - 6, gx + 12, gy + 6], h: bush(gx - 8, gy) + bush(gx + 8, gy + 2) }); } }
     for (const [x, y, ax] of [[SX0 - 38, MR0 - 36, 'ew'], [SX1 + 38, MR0 - 36, 'ns'], [SX0 - 38, MR1 + 36, 'ns'], [SX1 + 38, MR1 + 36, 'ew']]) it.push({ bb: [x - 4, y - 4, x + 4, y + 4], h: signal(x, y, ax) });
-    for (const x of [60, 3540]) for (let y = 1300; y < 1700; y += 400) it.push({ bb: [x - 4, y - 4, x + 4, y + 4], h: '' });
+    for (const x of [60, 4740]) for (let y = 1300; y < 1700; y += 400) it.push({ bb: [x - 4, y - 4, x + 4, y + 4], h: '' });
     return it;
   }
   // decorative city blocks (no data, never interactive): the dense skyline behind and beside the three department buildings
@@ -255,7 +255,8 @@
       [1320, -560, 320, 260, 13, 'blue', '#4A4A52', { n: 3, inset: 0.2 }], [1700, -620, 300, 300, 11, 'orange', '#EF8E3C'], [2080, -540, 300, 240, 14, 'red', '#5B5A62'], [1340, -880, 280, 220, 9, 'orange', '#EF8E3C'], [1720, -900, 260, 230, 12, 'blue', '#4A4A52'], [2100, -900, 280, 260, 8, 'cyan', '#B53BAA'],
       [2650, -560, 300, 260, 12, 'cyan', '#B53BAA', { n: 3, inset: 0.2 }], [3020, -600, 300, 300, 15, 'orange', '#EF8E3C'], [3380, -540, 200, 240, 9, 'blue', '#4A4A52'], [2680, -880, 280, 230, 10, 'red', '#5B5A62'], [3060, -900, 300, 260, 13, 'blue', '#4A4A52', { n: 3, inset: 0.18 }],
       [-620, -560, 280, 260, 11, 'orange', '#EF8E3C'], [-290, -540, 260, 240, 9, 'cyan', '#B53BAA'], [-600, -200, 260, 300, 13, 'red', '#5B5A62', { n: 3, inset: 0.2 }], [-300, -180, 240, 260, 7, 'blue', '#4A4A52'], [-600, 300, 260, 280, 8, 'orange', '#EF8E3C'], [-300, 260, 250, 300, 6, 'cyan', '#B53BAA'], [-600, 700, 260, 280, 7, 'blue', '#4A4A52'], [-300, 660, 250, 300, 5, 'red', '#5B5A62'],
-      [30, 260, 180, 280, 6, 'teal', '#EF8E3C'], [30, 640, 180, 300, 4, 'orange', '#EF8E3C'], [3440, 240, 140, 260, 5, 'cyan', '#B53BAA'], [3440, 620, 140, 280, 4, 'red', '#5B5A62'],
+      [30, 260, 180, 280, 6, 'teal', '#EF8E3C'], [30, 640, 180, 300, 4, 'orange', '#EF8E3C'], [4640, 240, 140, 260, 5, 'cyan', '#B53BAA'], [4640, 620, 140, 280, 4, 'red', '#5B5A62'],
+      [3860, -560, 300, 260, 12, 'orange', '#EF8E3C', { n: 3, inset: 0.2 }], [4230, -600, 300, 300, 14, 'blue', '#4A4A52'], [4590, -540, 220, 240, 9, 'cyan', '#B53BAA'], [3880, -880, 280, 230, 10, 'red', '#5B5A62'], [4250, -900, 300, 260, 12, 'orange', '#EF8E3C'], [4620, -880, 220, 230, 8, 'blue', '#4A4A52'],
     ];
     return T.map(([x, y, w, d, n, st, edge, up], i) => { const t = tower({ x, y, w, d, n, st, edge, up, seed: i }); return { bb: t.bbox, h: t.h, z: t.top + 90, shadow: shadowOf(x, y, w, d, t.top, null) }; });
   }

@@ -463,7 +463,7 @@
     furn += glass(fx, 0, fx, 425, 74, [0.55, 0.8]) + glass(fx, 425, W, 425, 74) +
       use('chair', fx + 230, 96) + box(fx + 164, 114, fx + 296, 176, 30, GRAPH) + box(fx + 156, 106, fx + 304, 184, 4, OAK, 30) +
       use('tallplant', fx + 400, 40) + use('plant', fx + 40, 380) + armchair(fx + 90, 270) + armchair(fx + 250, 270);
-    furn += `<g transform="${onPlaneY(fx + 140, 425, 66)}"><rect x="0" y="-14" width="140" height="22" rx="4" fill="#141413" stroke="#55555C" stroke-width="1"/><text x="70" y="2" text-anchor="middle" font-size="11" font-weight="600" letter-spacing="2" fill="#D6D4CC">CEO OFFICE</text></g>`;
+    furn += `<g transform="${onPlaneY(fx + 140, 425, 66)}"><rect x="0" y="-14" width="140" height="22" rx="4" fill="#141413" stroke="#55555C" stroke-width="1"/><text x="70" y="2" text-anchor="middle" font-size="11" font-weight="600" letter-spacing="2" fill="#D6D4CC">${opts && opts.noCeo ? 'MEETING ROOM' : 'CEO OFFICE'}</text></g>`;
 
     // Messenger corner (y 435–555): small desk, sign, partition glass
     const helperX = fx + 220, helperY = 495;

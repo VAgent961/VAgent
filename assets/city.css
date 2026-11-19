@@ -90,3 +90,18 @@ body.city-on .stage>svg.fx-layer,body.city-on .stage>.zoom,body.city-on .stage>.
 .vc[data-view=floor]::before{opacity:0}
 .vc-ui{z-index:2}
 .vc-shd.off{display:none}
+
+/* CEO villa (assets/villa.js): the living room is only drawn while the villa is open; a few gentle loops (transform/opacity only) */
+.vc-b:not(.open) .vc-in{display:none}
+.vc-in .vv-glow{animation:vvGlow 3.4s ease-in-out infinite}
+.vc-in .vv-tick{animation:vvTick 16s linear infinite}
+.vc-in .vv-fire{animation:vvFire 1.3s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
+.vc-in .vv-tail{animation:vvWag .7s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:0% 60%}
+.vc-in .vv-steam{animation:vvSteam 2.6s ease-in-out infinite}
+@keyframes vvGlow{0%,100%{opacity:1}50%{opacity:.6}}
+@keyframes vvTick{from{transform:translateX(0)}to{transform:translateX(-330px)}}
+@keyframes vvFire{0%,100%{transform:scale(1,1)}50%{transform:scale(1.06,.9)}}
+@keyframes vvWag{from{transform:rotate(-14deg)}to{transform:rotate(16deg)}}
+@keyframes vvSteam{0%,100%{opacity:.25}50%{opacity:.8}}
+.vc-in .vc-ceo:hover .tag rect{fill:#4A3B1C}
+@media (prefers-reduced-motion:reduce){.vc-in *{animation:none!important}}

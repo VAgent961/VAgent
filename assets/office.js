@@ -301,7 +301,7 @@
   function leave(g) { stopWander(g); if (window.gsap) gsap.to(g, { opacity: 0, duration: 0.5, onComplete: () => g.remove() }); else g.remove(); }
 
   function renderRooms() {
-    const cs = svg.querySelector("#ceo-slot"); if (cs && !cs.firstChild) cs.innerHTML = '<g class="ceo-g" tabindex="0" role="button" aria-label="Talk to the CEO"><g transform="scale(1.25)"><use href="#ceo"/></g><g class="tag" transform="translate(0 -104)"><rect x="-64" y="-13" width="128" height="24" rx="12" fill="#2B2416"/><text y="3" text-anchor="middle" fill="#E9C46A" font-size="12" font-weight="600">CEO · Talk to me</text></g></g>';
+    const cs = svg.querySelector("#ceo-slot"); if (cs && !cs.firstChild && !CITY) cs.innerHTML = '<g class="ceo-g" tabindex="0" role="button" aria-label="Talk to the CEO"><g transform="scale(1.25)"><use href="#ceo"/></g><g class="tag" transform="translate(0 -104)"><rect x="-64" y="-13" width="128" height="24" rx="12" fill="#2B2416"/><text y="3" text-anchor="middle" fill="#E9C46A" font-size="12" font-weight="600">CEO · Talk to me</text></g></g>';
     renderDepts();
     S.rooms.forEach((r, i) => {
       const d = V.departments[i], slot = svg.querySelector(`.lead-slot[data-room="${i}"]`), screen = svg.querySelector(`.room-screen[data-room="${i}"]`);
@@ -404,7 +404,7 @@
 
   function buildScene() {
     const key = 'F' + floor + ':' + V.departments.map((d) => d.id).join(',') + (V.tag || ''); if (key === sceneKey) return;
-    sceneKey = key; S = VScene.build(V.departments, undefined, V.esc ? { esc: V.esc } : undefined);
+    sceneKey = key; S = VScene.build(V.departments, undefined, V.esc || CITY ? Object.assign(V.esc ? { esc: V.esc } : {}, CITY ? { noCeo: true } : {}) : undefined);   // City: the CEO lives in his villa, so his office on every floor is just a meeting room
     for (const k of Object.keys(els)) { els[k].remove(); delete els[k]; delete places[k]; }
     svg.innerHTML = S.inner; setOutside(S); free = $('#layer-free'); walkL = $('#layer-walk'); if (DBG) dbgScene();
     VB0 = { ...vbOf(S) }; Object.assign(vb, VB0); setVB();
