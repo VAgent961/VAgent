@@ -1,0 +1,80 @@
+/* V Agent City (assets/city.js). Active with office.html?city=1 (body.city-mode). */
+body.city-mode .stage>svg.fx-layer-x,body.city-mode .stage>svg.fx-layer,body.city-mode .stage>.zoom,body.city-mode .stage>.legend-btn,body.city-mode #legend,body.city-mode #floornav,body.city-mode #floor-badge{visibility:hidden!important;position:absolute!important;width:0!important;height:0!important;pointer-events:none!important;overflow:hidden}
+.vc{position:absolute;inset:0;touch-action:none;cursor:grab;background:#9CC4E4;user-select:none;-webkit-user-select:none}
+.vc>svg#vc-svg{width:100%;height:100%;display:block}
+.vc .vc-ag{cursor:pointer;transition:opacity .25s}.vc .vc-ag:focus{outline:none}
+.vc .vc-ring{display:none}.vc .vc-ag.sel .vc-ring{display:inline;animation:vcring 1.4s ease-in-out infinite}
+@keyframes vcring{0%,100%{opacity:1}50%{opacity:.35}}
+.vc .vc-b:focus{outline:none}.vc .vc-b:hover .vc-pill rect:first-child{fill:#B5532F}
+.vc-cloud{animation:vcdrift 90s linear infinite alternate}.vc-cloud.c1{animation-duration:130s}.vc-cloud.c2{animation-duration:110s}
+@keyframes vcdrift{from{transform:translateX(0)}to{transform:translateX(260px)}}
+.vc-blink{animation:vcblink 1.6s steps(1) infinite}@keyframes vcblink{50%{opacity:.15}}
+.vc-lamp{animation:vcglow 4s ease-in-out infinite}@keyframes vcglow{50%{opacity:.7}}
+.vc-ripple{animation:vcrip 2.4s ease-out infinite;transform-box:fill-box;transform-origin:center}@keyframes vcrip{from{transform:scale(.7);opacity:.7}to{transform:scale(1.15);opacity:0}}
+.vc-jet{animation:vcjet 1.8s ease-in-out infinite;transform-box:fill-box;transform-origin:bottom}@keyframes vcjet{50%{transform:scaleY(1.12)}}
+.vc-steps.up{animation:vcup 1.1s linear infinite}.vc-steps.dn{animation:vcdn 1.1s linear infinite}
+@keyframes vcup{to{stroke-dashoffset:-28}}@keyframes vcdn{to{stroke-dashoffset:28}}
+.vc-ui{position:absolute;inset:0;pointer-events:none;font:500 13px Inter,system-ui,sans-serif;color:#FAF9F5}
+.vc-ui>*{pointer-events:auto}
+.vc-tabs{position:absolute;top:14px;left:14px;right:70px;display:flex;flex-wrap:wrap;gap:6px}
+.vc-tabs button,.vc-floors button,.vc-zoom button,.vc-btns button{font:inherit;color:#FAF9F5;background:rgba(30,30,33,.92);border:1px solid #3A3A40;border-radius:999px;min-height:36px;padding:0 14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.vc-tabs button:hover,.vc-floors button:hover,.vc-zoom button:hover,.vc-btns button:hover{background:#2A2A2E}
+.vc-tabs button.on{background:#FAF9F5;color:#141413;border-color:#FAF9F5}
+.vc-tabs button i{width:10px;height:10px;border-radius:50%;background:var(--c,#888)}
+.vc-tabs button small{opacity:.7;font-weight:600}
+.vc-floors{position:absolute;left:14px;top:62px;display:flex;flex-direction:column;gap:5px;max-height:calc(100% - 200px);overflow:auto}
+.vc-floors[hidden],.vc-card[hidden]{display:none}
+.vc-h{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#141413;background:rgba(250,249,245,.85);border-radius:999px;padding:3px 10px;align-self:flex-start}
+.vc-floors button{border-radius:12px;justify-content:flex-start;width:170px;padding:0 10px}
+.vc-floors button b{width:24px;height:24px;border-radius:50%;background:#B5532F;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex:none}
+.vc-floors button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:left}.vc-floors button em{opacity:.55;font-style:normal}
+.vc-floors button.on{background:#FAF9F5;color:#141413;border-color:#FAF9F5}
+.vc-zoom{position:absolute;right:14px;bottom:14px;display:flex;flex-direction:column;gap:6px}
+.vc-zoom button{width:44px;height:44px;padding:0;justify-content:center;font-size:20px;border-radius:12px}
+.vc-card{position:absolute;left:14px;bottom:14px;width:min(340px,calc(100% - 90px));background:rgba(20,20,19,.94);border:1px solid #3A3A40;border-radius:16px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.vc-ch{display:flex;justify-content:space-between;align-items:center;gap:8px}.vc-ch b{font:600 17px Newsreader,Georgia,serif}
+.vc-ch button{background:none;border:0;color:#C9C6BC;font-size:22px;cursor:pointer;line-height:1;min-width:32px;min-height:32px}
+.vc-loc,.vc-sub{margin:6px 0 0;color:#D6D4CC;font-size:12.5px;display:flex;align-items:center;gap:7px}.vc-sub{color:#A8A69C}
+.vc-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.vc-btns button{min-height:32px;font-size:12px;padding:0 11px}.vc-btns button.on{background:#B5532F;border-color:#B5532F}
+.vc .sd{display:inline-block;width:9px;height:9px;border-radius:50%;flex:none}.vc .sd.working{background:#3FD07A}.vc .sd.idle{background:#E9E4D6}.vc .sd.help{background:#E24B3B}.vc .sd.off{background:#8A8A85}
+@media (max-width:760px){
+  .vc-tabs{right:14px;top:10px;left:10px}.vc-tabs button{min-height:34px;padding:0 10px;font-size:12px}
+  .vc-floors{top:auto;left:10px;right:64px;bottom:10px;flex-direction:row;max-height:none;overflow-x:auto;overflow-y:hidden}.vc-floors .vc-h{display:none}
+  .vc-floors button{width:auto;flex:none;border-radius:999px}.vc-floors button span{display:none}
+  .vc-card{left:10px;bottom:60px;width:calc(100% - 20px)}
+  .vc[data-view=mk] .vc-card{bottom:60px}.vc-zoom{right:10px;bottom:10px;flex-direction:row}.vc-zoom button{width:40px;height:40px}
+}
+@media (prefers-reduced-motion:reduce){.vc-cloud,.vc-blink,.vc-lamp,.vc-ripple,.vc-jet,.vc-steps{animation:none}}
+/* ---- city -> building -> floor (original office) ---- */
+body.city-on #floornav,body.city-on #floor-badge{display:none!important}
+.vc .vc-bands{display:none}.vc[data-view=bld] .vc-bands{display:inline}
+.vc-band{cursor:pointer}.vc-band rect{fill:rgba(255,255,255,0);stroke:rgba(20,20,19,.35);stroke-width:3;transition:fill .15s}
+.vc-band:hover rect{fill:rgba(255,255,255,.38)}
+.vc[data-view=bld] .vc-b{cursor:default}
+.vc-bar{position:absolute;top:14px;left:14px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:6px;font:500 13px Inter,system-ui,sans-serif;color:#FAF9F5;max-width:calc(100% - 140px)}
+.vc-bar[hidden]{display:none}
+.vc-bar button{font:inherit;color:#FAF9F5;background:rgba(30,30,33,.92);border:1px solid #3A3A40;border-radius:999px;min-height:36px;padding:0 14px;cursor:pointer}
+.vc-bar button:hover:not(:disabled){background:#2A2A2E}.vc-bar button:disabled{opacity:.4;cursor:default}
+.vc-here{background:#FAF9F5;color:#141413;border-radius:999px;min-height:36px;padding:0 14px;display:inline-flex;align-items:center;font-weight:600}
+.vc-esc{display:inline-flex;gap:6px}
+.vc-bar.esc::after{content:attr(data-esc);position:fixed;left:50%;top:40%;transform:translateX(-50%);background:rgba(20,20,19,.88);color:#FAF9F5;padding:10px 18px;border-radius:999px;font-weight:600;pointer-events:none}
+@media (max-width:760px){.vc-bar{top:8px;left:8px;max-width:calc(100% - 16px)}.vc-bar button,.vc-here{min-height:32px;padding:0 10px;font-size:12px}}
+.vc-floors button span small{display:block;font-size:11px;opacity:.7;font-weight:500}
+.vc-floors button{height:auto;padding-top:5px;padding-bottom:5px}
+.vc-floors button span{white-space:normal}
+@media (max-width:760px){.vc-floors{bottom:58px;right:10px}.vc-card{bottom:110px}}
+/* escalator in the original scene (Marketing HQ floors) */
+.esc-flow.up{animation:escup .9s linear infinite}.esc-flow.dn{animation:escdn .9s linear infinite}
+@keyframes escup{to{stroke-dashoffset:-30}}@keyframes escdn{to{stroke-dashoffset:30}}
+@media (prefers-reduced-motion:reduce){.esc-flow{animation:none}}
+/* ---- unified world: cutaway (one continuous scene, the camera is the svg viewBox) ---- */
+body.city-on .stage>svg.fx-layer,body.city-on .stage>.zoom,body.city-on .stage>.legend-btn,body.city-on #legend{display:none!important}
+.vc-fl{transition:opacity .6s ease}.vc-fl.gone{opacity:0;pointer-events:none}.vc-fl.cut{display:none}
+.vc-b .vc-top{transition:opacity .6s ease}.vc-b.open .vc-top{opacity:0;pointer-events:none}
+.vc-slab{display:none}.vc-slab.on{display:inline}
+.vc .vc-b.open{cursor:default}.vc .vc-b.open .vc-fl:not(.gone):not(.cut){cursor:pointer}
+.vc .vc-b.open .vc-fl:not(.gone):not(.cut):hover{filter:brightness(1.07)}
+.vc-b.open .vc-pill{display:none}
+.vc[data-view=floor] .vc-b:not(.open) .vc-pill{opacity:.0}
+.vc[data-view=floor] .vc-tabs{display:none}
+.vc[data-view=floor] .vc-zoom{bottom:14px}

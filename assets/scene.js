@@ -314,7 +314,35 @@
     let tops = ''; for (let k = 0; k < n; k++) tops += use('bel' + (k % 5), x + 30 + k * 100, y + 12, '', 30) + use('bel4', x + 72 + k * 100, y + 20, '', 30);
     return ch + box(x, y, x + n * 100, y + 36, 30, GRAPH) + box(x - 3, y - 3, x + n * 100 + 3, y + 39, 3, OAK, 30) + tops + pn;
   };
-  function build(depts, look) {
+  // ---- escalator (opt-in: build(depts, look, { esc: { up, down, hole } })) ----
+  // A pair of ramps in the lobby strip in front of the room, side by side, both running along +x: the UP ramp rises toward +x, the DOWN ramp falls toward +x.
+  // Riders board at the west end (x = xa - 24) and step off at the east end (x = xb + 24); between the ends the floor is an opening (hole) except on the ground floor.
+  // The nav treats the whole unit as furniture; geo gives the agent code the portal points and the ramp geometry (floor units, height h).
+  const ESC_H = 64;
+  function escalator(D, o) {
+    const xa = 700, xb = 1000, W = 40, y0 = D - 200, y1 = y0 + W, y2 = y1 + 20, y3 = y2 + W, H = ESC_H, cU = (y0 + y1) / 2, cD = (y2 + y3) / 2;
+    const hole = !!o.hole, up = o.up !== false, dn = o.down !== false;
+    const geo = { xa, xb, H, laneUp: cU, laneDn: cD, hole, up, down: dn, board: { up: [xa - 24, cU], down: [xa - 24, cD] }, arrive: { up: [xb + 24, cU], down: [xb + 24, cD] }, rect: [xa - 4, y0 - 4, xb + 4, y3 + 4] };
+    let fl = '';
+    if (hole) fl += `<rect x="${xa}" y="${y0 - 6}" width="${xb - xa}" height="${y3 - y0 + 12}" fill="#050506"/><rect x="${xa}" y="${y0 - 6}" width="${xb - xa}" height="${y3 - y0 + 12}" fill="none" stroke="#C9A227" stroke-opacity=".6" stroke-width="3"/>`;
+    fl += `<g font-family="Inter,sans-serif" font-weight="700" font-size="17" letter-spacing="2" fill="#E7B38F" opacity=".8"><text x="${xa - 112}" y="${cU + 6}">UP ▲</text><text x="${xa - 112}" y="${cD + 6}">DOWN ▼</text></g>`;
+    fl += `<rect x="${xa - 40}" y="${y0 - 2}" width="32" height="${W + 4}" fill="#C9A227" opacity=".18"/><rect x="${xa - 40}" y="${y2 - 2}" width="32" height="${W + 4}" fill="#C9A227" opacity=".18"/><rect x="${xb + 8}" y="${y0 - 2}" width="32" height="${W + 4}" fill="#C9A227" opacity=".18"/><rect x="${xb + 8}" y="${y2 - 2}" width="32" height="${W + 4}" fill="#C9A227" opacity=".18"/>`;
+    const ramp = (ya, yb, rises, cls) => {
+      const hA = rises ? 0 : H, hB = rises ? H : 0; let r = '';
+      r += poly(STEEL[2], P(xa, yb, 0), P(xb, yb, 0), P(xb, yb, hB), P(xa, yb, hA));
+      if (rises) r += poly(STEEL[1], P(xb, ya, 0), P(xb, yb, 0), P(xb, yb, hB), P(xb, ya, hB));
+      r += poly('#2E3037', P(xa, ya, hA), P(xb, ya, hB), P(xb, yb, hB), P(xa, yb, hA));
+      for (let x = xa + 10; x < xb; x += 20) { const h = hA + (hB - hA) * (x - xa) / (xb - xa); r += `<polyline points="${pts(P(x, ya, h), P(x, yb, h))}" fill="none" stroke="#565A63" stroke-width="2"/>`; }
+      const hm = (a, b) => hA + (hB - hA) * (a - xa) / (xb - xa);
+      r += `<polyline class="esc-flow ${cls}" points="${pts(P(xa, (ya + yb) / 2, hA + 0.5), P(xb, (ya + yb) / 2, hB + 0.5))}" fill="none" stroke="#9AA0A9" stroke-width="5" stroke-dasharray="3 12" opacity=".9"/>`;
+      r += gpane(P(xa, yb, hA), P(xb, yb, hB), P(xb, yb, hB + 34), P(xa, yb, hA + 34), 0.26);
+      r += `<polyline points="${pts(P(xa, yb, hA + 34), P(xb, yb, hB + 34))}" fill="none" stroke="#C9CED6" stroke-width="3"/>`;
+      return r;
+    };
+    let fu = ''; if (up) fu += ramp(y0, y1, true, 'up'); if (dn) fu += ramp(y2, y3, false, 'dn');
+    return { floor: fl, furn: fu, geo };
+  }
+  function build(depts, look, opts) {
     REC = []; DOORS = []; OVER = '';
     // Pick the grid: as close to a square floorplan as possible, but never at the cost of holes in the grid
     // (four rooms are a 2x2, not three in a row plus a gap). Departments fill left to right, then a new row.
@@ -466,6 +494,8 @@
     // daylight: a soft warm patch on the floor under every outer window
     for (let x = 120; x < fx - 160; x += 330) floor += `<polygon points="${x},0 ${x + 160},0 ${x + 290},260 ${x + 130},260" fill="url(#dayg)"/>`;
     for (let y = 120; y < D - 200; y += 360) floor += `<polygon points="0,${y} 0,${y + 190} 260,${y + 320} 260,${y + 130}" fill="url(#dayh)"/>`;
+    const escU = opts && opts.esc && D - ROOM_D >= 200 ? escalator(D, opts.esc) : null;
+    if (escU) { floor += escU.floor; furn += escU.furn; REC.push(escU.geo.rect); }
     const wd = WORLD(), frames = [], exits = [];
     if (wd) { for (let x = 290, k = 0; x < fx - 220; x += 330, k++) frames.push(wd.frame(x, 40 + (k % 3) * 8, 46, 30, ['#B5532F', '#3A6EA5', '#4B8B5A'][k % 3])); exits.push(wd.exitSign(70), wd.exitSign(fx - 70)); }
     back = `${wd ? wd.slab(W, D) : poly('#141416', P(0, D), P(W, D), P(W, D, -18), P(0, D, -18)) + poly('#0F0F11', P(W, 0), P(W, D), P(W, D, -18), P(W, 0, -18))}
@@ -491,7 +521,7 @@
     const vb = wd ? { x: minX - 330, y: -120, w: maxX - minX + 660, h: P(W, D)[1] + dep + 150 + 120 } : vbCore; // the whole floating building
     const outside = wd ? wd.platform(W, D, -30) + wd.mist(W, D, -30) : '', outsideTop = wd ? wd.gate(380, D, -30, 'VAGENT HQ') + wd.core(W, -30) : '';
     const inner = `${defsFor(look || LOOK)}<g id="layer-back">${back}${furn}<g id="ceo-slot" transform="translate(${f(ceo[0])} ${f(ceo[1])})"></g><g id="helper-slot" transform="translate(${f(helper[0])} ${f(helper[1])})"></g></g><g id="layer-desks">${deskSvg}</g><g id="layer-free"></g><g id="layer-over">${OVER}</g><g id="layer-walk"></g>`;
-    return { inner, outside, outsideTop, vb, vbCore, desks, deskRoom, rooms, hot, cafe, cafeIdx, spotProp, spotRoom, ceo, helper, nav };
+    return { inner, outside, outsideTop, vb, vbCore, desks, deskRoom, rooms, hot, cafe, cafeIdx, spotProp, spotRoom, ceo, helper, nav, esc: escU ? escU.geo : null, gate: [380, D - 60], gateOut: [380, D + 70] };
   }
   window.VScene = { build, people: PEOPLE_CFG.length, looks: LOOKS, look: LOOK, defsFor };
 })();

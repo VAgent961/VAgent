@@ -20,6 +20,7 @@
   let first = true, current = null;
   // building mode: floor === null shows the tower; a number shows that apartment (4 departments) in detail
   let V = { departments: [], agents: [] }, floor = null, bBoxes = [], busy = false; const PER = 4;
+  const CITY = /[?&]city=1(&|$)/.test(location.search) && !!window.VCity && !!window.VMove; let cityOn = false; // V Agent City (assets/city.js): three buildings + street; the old tower/floor view stays the default until the city is approved
 
   async function api(path, opt = {}) {
     const r = await fetch('/api/' + path + (opt.query ? '?' + opt.query : ''), { method: opt.method || (opt.body ? 'POST' : 'GET'), headers: opt.body ? { 'Content-Type': 'application/json' } : {}, body: opt.body ? JSON.stringify(opt.body) : undefined });
@@ -40,12 +41,12 @@
   setOutside(S);
   let free = $('#layer-free'), walkL = $('#layer-walk');
   // ---------- zoom + pan ----------
-  const phoneMQ = window.matchMedia('(max-width:560px)'), vbOf = (o) => (phoneMQ.matches && o.vbCore ? o.vbCore : o.vb); // phones get the office alone, no floating-world margin
+  const phoneMQ = window.matchMedia('(max-width:560px)'), vbOf = (o) => ((phoneMQ.matches || CITY) && o.vbCore ? o.vbCore : o.vb); // phones get the office alone, no floating-world margin
   const stage = $('#stage'); let VB0 = { ...vbOf(S) }; const vb = { ...VB0 }, MAXZ = 5;
   stage.insertAdjacentHTML('beforeend', '<div class="zoom" role="group" aria-label="Zoom the office"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button><button type="button" data-z="reset" aria-label="Fit the whole office" style="font-size:14px">⤢</button></div>');
   let lodNear = null, szW = 0, szH = 0;
   const lod = () => { if (!szW) { const r = svg.getBoundingClientRect(); szW = r.width; szH = r.height; if (!szW) return; }
-    const near = Math.min(szW / vb.w, szH / vb.h) >= 0.34; if (near !== lodNear) { lodNear = near; svg.style.setProperty('--dt', near ? 'inline' : 'none'); svg.style.setProperty('--dl', near ? 'none' : 'inline'); svg.dataset.lod = near ? 'near' : 'far'; }
+    const near = Math.min(szW / vb.w, szH / vb.h) >= (CITY ? 0.06 : 0.34); if (near !== lodNear) { lodNear = near; svg.style.setProperty('--dt', near ? 'inline' : 'none'); svg.style.setProperty('--dl', near ? 'none' : 'inline'); svg.dataset.lod = near ? 'near' : 'far'; }
     if (!cullQ) { cullQ = true; requestAnimationFrame(cull); } };
   // zoomed in: desks outside the view are not drawn at all (a phone never paints the whole floor at full detail)
   let cullQ = false;
@@ -54,11 +55,12 @@
   if (window.ResizeObserver) new ResizeObserver(() => { szW = 0; lod(); }).observe(stage);
   stage.insertAdjacentHTML('beforeend', '<button type="button" class="legend-btn" aria-expanded="false" aria-controls="legend">Legend</button><div class="legend" id="legend" hidden><p><i class="sd working"></i>Working at a desk</p><p><i class="sd idle"></i>Resting in the lounge or café</p><p><i class="sd help"></i>Needs help (last run failed)</p><p><i class="sd off"></i>Turned off</p><p class="muted">Zoom in to see rooms, signs and desk details.</p></div><div class="floor-badge" id="floor-badge" hidden></div>');
   stage.addEventListener('click', (e) => { const b = e.target.closest('.legend-btn'); if (!b) return; const l = $('#legend'); l.hidden = !l.hidden; b.setAttribute('aria-expanded', String(!l.hidden)); });
-  const setVB = () => { const v = vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h; svg.setAttribute('viewBox', v); if (bgL) { bgL.setAttribute('viewBox', v); topL.setAttribute('viewBox', v); } lod(); };
+  const setVB = () => { if (CITY) { svg.setAttribute('viewBox', VB0.x + ' ' + VB0.y + ' ' + VB0.w + ' ' + VB0.h); szW = 0; lod(); return; } const v = vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h; svg.setAttribute('viewBox', v); if (bgL) { bgL.setAttribute('viewBox', v); topL.setAttribute('viewBox', v); } lod(); };
   setVB();
   const clampVB = () => { vb.w = Math.min(VB0.w, Math.max(VB0.w / MAXZ, vb.w)); vb.h = vb.w * VB0.h / VB0.w; vb.x = Math.min(VB0.x + VB0.w - vb.w, Math.max(VB0.x, vb.x)); vb.y = Math.min(VB0.y + VB0.h - vb.h, Math.max(VB0.y, vb.y)); };
   const view = () => { const r = svg.getBoundingClientRect(), s = Math.min(r.width / vb.w, r.height / vb.h); return { s, ox: r.left + (r.width - vb.w * s) / 2, oy: r.top + (r.height - vb.h * s) / 2 }; };
   const zoomAt = (cx, cy, f, smooth) => {
+    if (CITY) return; // city mode: the camera belongs to the city (assets/city.js)
     const v = view(), px = vb.x + (cx - v.ox) / v.s, py = vb.y + (cy - v.oy) / v.s, nw = Math.min(VB0.w, Math.max(VB0.w / MAXZ, vb.w / f)), k = nw / vb.w;
     const to = { x: px - (px - vb.x) * k, y: py - (py - vb.y) * k, w: nw, h: nw * VB0.h / VB0.w };
     if (smooth && window.gsap) gsap.to(vb, { ...to, duration: 0.35, ease: 'power2.out', onUpdate: () => { clampVB(); setVB(); } }); else { Object.assign(vb, to); clampVB(); setVB(); }
@@ -70,6 +72,7 @@
   svg.addEventListener('dblclick', (e) => { if (!e.target.closest('.agent,.lead,.add-room')) zoomAt(e.clientX, e.clientY, 1.8, true); });
   const ptrs = new Map(); let pan = null, pinch = null, dragged = false;
   svg.addEventListener('pointerdown', (e) => {
+    if (CITY) return;
     ptrs.set(e.pointerId, [e.clientX, e.clientY]); dragged = false;
     if (ptrs.size === 1) pan = { x: e.clientX, y: e.clientY, vx: vb.x, vy: vb.y };
     if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) }; pan = null; }
@@ -365,6 +368,7 @@
   }
   // select an apartment in the tower: floors above lift away, the camera drops onto it, then the apartment opens
   function selectFloor(k) {
+    if (CITY) return;
     if (busy || k < 0 || k >= floorCount()) return;
     const fls = [...svg.querySelectorAll('.fl')], box = bBoxes[k];
     if (floor !== null || !window.gsap || !fls.length || !box) return enterFloor(k);
@@ -377,11 +381,13 @@
   }
   function enterFloor(k) { floor = Math.max(0, Math.min(floorCount() - 1, k)); sceneKey = ''; render(); }
   function stepFloor(d) {
+    if (CITY) return;
     if (floor === null || busy) return; const k = floor + d; if (k < 0 || k >= floorCount()) return;
     if (!window.gsap) return enterFloor(k);
     busy = true; gsap.to(svg, { opacity: 0, duration: 0.18, onComplete: () => { enterFloor(k); gsap.to(svg, { opacity: 1, duration: 0.3, onComplete: () => { busy = false; } }); } });
   }
   function showTower() {
+    if (CITY) return;
     if (floor === null || busy) return; floor = null; sceneKey = ''; render();
     if (window.gsap) { gsap.set(svg, { opacity: 1 }); gsap.from(svg.querySelectorAll('.fl'), { y: -420, opacity: 0, duration: 0.5, stagger: 0.07, ease: 'power2.out' }); }
   }
@@ -396,8 +402,8 @@
   });
 
   function buildScene() {
-    const key = 'F' + floor + ':' + V.departments.map((d) => d.id).join(','); if (key === sceneKey) return;
-    sceneKey = key; S = VScene.build(V.departments);
+    const key = 'F' + floor + ':' + V.departments.map((d) => d.id).join(',') + (V.tag || ''); if (key === sceneKey) return;
+    sceneKey = key; S = VScene.build(V.departments, undefined, V.esc ? { esc: V.esc } : undefined);
     for (const k of Object.keys(els)) { els[k].remove(); delete els[k]; delete places[k]; }
     svg.innerHTML = S.inner; setOutside(S); free = $('#layer-free'); walkL = $('#layer-walk'); if (DBG) dbgScene();
     VB0 = { ...vbOf(S) }; Object.assign(vb, VB0); setVB();
@@ -415,7 +421,31 @@
     box.innerHTML = '<span class="depts-h">Departments</span>' + ((floor === null ? D.departments : V.departments).map((d, i) => `<button type="button" class="dept-btn" data-room-i="${i}" data-dept="${d.id}"><span class="dd" style="background:${d.color}"></span><span class="dn">${esc(d.name)}</span><span class="dc">${count(d.id)}${busy(d.id) ? ' · ' + busy(d.id) + ' working' : ''}</span></button>`).join('') || '<p class="empty">No departments yet.</p>') + '<button type="button" class="dept-btn add" id="dept-add">+ New department</button>';
   }
 
+  // V Agent City = outer navigation layer (assets/city.js). A floor is rendered by the ORIGINAL scene (buildScene/sceneRender) with that floor's department + agents.
+  // hooks for assets/vmove.js: it decides WHERE a travelling agent is; these let it use the original agent element, walker (goTo/step) and poses.
+  const vmHooks = {
+    isHelper, agent: (k) => D.agents.find((x) => x.key === k) || null, el: (k) => { const g = els[k]; return g && g.isConnected ? g : null; },
+    take: (k) => { const g = els[k]; if (!g || !g.isConnected) return null; g._managed = true; stopWander(g); cancelMove(g); g._seat = null; clearPose(g); g.dataset.pose = ''; g.dataset.prop = ''; delete places[k]; return g; },
+    release: (k) => { const g = els[k]; if (g) g._managed = false; },
+    spawn: (a, xy) => { let g = els[a.key]; if (g && !g.isConnected) { delete els[a.key]; g = null; } if (!g) { g = els[a.key] = makeAgent(a); updateAgent(g, a); } g._managed = true; walkL.appendChild(g); clearPose(g); g.dataset.pose = ''; vmHooks.put(g, xy[0], xy[1], 0, 1); flip(g, 1); return g; },
+    despawn: (k) => { const g = els[k]; if (g) { cancelMove(g); stopWander(g); g.remove(); } delete els[k]; delete places[k]; },
+    walk: (g, xy, done, opt) => goTo(g, { at: xy }, opt || null, done), stop: (g) => cancelMove(g), flip: (g, d) => flip(g, d), pose: (g) => clearPose(g), say: (g, t) => { if (g) say(g, t); },
+    posOf: (g) => (g._pos ? inv(g._pos[0], g._pos[1]) : null),
+    put: (g, x, y, h, op) => { const [sx, sy] = proj(x, y); g._pos = [sx, sy]; g.setAttribute('transform', tr(sx, sy - h)); g.style.opacity = op; },
+    speedOf: (k) => { const a = D.agents.find((x) => x.key === k); return a && isHelper(a) ? SPEED * HELPER_MULT : SPEED + (hash(k) % 17) - 8; },
+    street: (list) => VCity.streetDraw(list),
+  };
+  // V Agent City = outer navigation layer (assets/city.js). A floor is rendered by the ORIGINAL scene (buildScene/sceneRender) with that floor's department + agents.
+  function cityRender() {
+    if (!cityOn) { cityOn = true; VCity.mount({ stage, isHelper, personRef, colorOf, openAgent: (k) => openAgent(k), openCEO: () => $('#btn-task').click(), changed: () => cityRender(), entered: () => { sceneKey = ''; cityRender(); } }); VMove.init(vmHooks); }
+    floor = 0; VCity.update(D); VMove.prune(D.agents.map((x) => x.key)); const c = VCity.floorCtx(D);
+    if (!c) { V = { departments: D.departments, agents: D.agents }; sideRender(); VMove.sync(); return; }
+    V = c; sceneRender(); VCity.tile(svg, VB0, () => { szW = 0; lod(); });
+    for (const k of Object.keys(els)) if (els[k]._managed) { const ag = vmHooks.agent(k); if (ag) updateAgent(els[k], ag); }
+    VMove.sync(); sideRender();
+  }
   function render() {
+    if (CITY) return cityRender();
     V = floorView();
     if (floor === null) { showBuilding(); sideRender(); return; }
     sceneRender(); renderFloorNav(); sideRender();
@@ -473,7 +503,7 @@
       places[a.key] = p;
       if (p.t === 'desk') deskG(p.i).querySelector('.desk-top').style.color = colorOf(a.key);
     }
-    for (const k of Object.keys(els)) if (!A.find((a) => a.key === k)) { leave(els[k]); delete els[k]; delete places[k]; }
+    for (const k of Object.keys(els)) if (!A.find((a) => a.key === k) && !els[k]._managed) { leave(els[k]); delete els[k]; delete places[k]; }
     renderRooms();
     // ── client view: dim everything outside access_dept ───────────────────
     if (D.role === 'client') {
@@ -537,6 +567,7 @@
   const walkAny = walk;
   if (DBG) { const h = document.createElement('div'); h.id = 'dev-hud'; h.style.cssText = 'position:fixed;left:50%;bottom:4px;transform:translateX(-50%);z-index:99;font:11px/1.4 monospace;background:#000c;color:#9f9;padding:4px 7px;border-radius:6px;pointer-events:none';
     document.body.appendChild(h); let n = 0, t0 = performance.now(); const tk = (t) => { n++; if (t - t0 >= 1000) { h.textContent = Math.round(n * 1000 / (t - t0)) + ' fps · ' + svg.querySelectorAll('*').length + ' nodes · ' + S.nav.rects.length + ' rects · detail ' + (lodNear ? 'on' : 'off'); n = 0; t0 = t; } requestAnimationFrame(tk); }; requestAnimationFrame(tk); }
+  if (DBG && CITY) window.__vh = () => ({ els, places, S: () => S, hooks: vmHooks, handleBuilds, D: () => D });
   if (DBG) window.__vo = { SPEED, HELPER_MULT, scene: () => S, els, places, dest, goTo, inv, proj, movers: () => movers.size };
 
   const where = (a) => { const x = D.departments.find((y) => y.id === a.dept); if (!x) return 'No department'; const t = x.teams.find((y) => y.id === a.team); return x.name + (t ? ' / ' + t.name : ''); };
@@ -555,8 +586,10 @@
   $('#inst').onchange = (e) => { inst = e.target.value; renderList(); };
   document.addEventListener('keydown', (e) => { if (e.key === '/' && !e.target.closest('input,textarea,select')) { e.preventDefault(); $('#q').focus(); } });
   function focusAgent(key) {
-    if (!els[key] || floor === null) { const k = floorOfAgent(key); if (k !== null && k !== floor) { enterFloor(k); setTimeout(() => focusAgent(key), 900); } return; }
+    if (CITY) { const l = VCity.locate(key); if (!l) return; if (VCity.view() !== 'floor' || VCity.st.b !== l.b || VCity.st.n !== l.n) { VCity.enter(l.b, l.n); setTimeout(() => focusAgent(key), 1300); return; } }
+    if (!CITY && (!els[key] || floor === null)) { const k = floorOfAgent(key); if (k !== null && k !== floor) { enterFloor(k); setTimeout(() => focusAgent(key), 900); } return; }
     const g = els[key]; if (!g || !g._pos) return;
+    if (CITY) { document.querySelectorAll('.agent.found').forEach((x) => x.classList.remove('found')); g.classList.add('found'); setTimeout(() => g.classList.remove('found'), 4000); VCity.focusScene(g._pos[0], g._pos[1]); return; }
     document.querySelectorAll('.agent.found').forEach((x) => x.classList.remove('found')); g.classList.add('found'); setTimeout(() => g.classList.remove('found'), 4000);
     const nw = Math.min(VB0.w, VB0.w / 2.2), to = { w: nw, h: nw * VB0.h / VB0.w }; to.x = g._pos[0] - to.w / 2; to.y = g._pos[1] - 40 - to.h / 2;
     if (window.gsap) gsap.to(vb, { ...to, duration: 0.6, ease: 'power2.inOut', onUpdate: () => { clampVB(); setVB(); } }); else { Object.assign(vb, to); clampVB(); setVB(); }
@@ -585,7 +618,21 @@
     if (chatOpen && chatOpen.to === to) chatOpen.paint();
     toast(b.stage === 'done' ? 'Website ready: ' + biz + ' (link in the Sniper chat)' : 'Website build failed: ' + biz);
   }
+  // city mode: the same errands as below, but Sonic really walks Sniper building -> street -> Web Builder (and back) through VMove
+  function cityBuilds() {
+    const h = D.agents.find(isHelper), done = delivered(); if (!h) return;
+    for (const b of (D && D.builds) || []) {
+      if (seenBuild.get(b.job_id) === b.stage) continue;
+      const first = !seenBuild.has(b.job_id) && !buildsPrimed; seenBuild.set(b.job_id, b.stage);
+      const age = Date.now() - new Date(String(b.updated_at).replace(' ', 'T').replace(/([+-]\d\d)$/, '$1:00')).getTime();
+      if (b.stage === 'sent') { if (!first || age < 45 * 60e3) { const w = VMove.leadSpot('web'); VMove.go(h.key, { lv: 'floor', b: 'web', f: 1, x: w[0], y: w[1] }, { why: 'errand' }).catch(() => {}); } }
+      else if (first && done.includes(b.job_id + ':' + b.stage)) continue;
+      else { const s = VMove.leadSpot('sn'); VMove.go(h.key, { lv: 'floor', b: 'sn', f: 1, x: s[0], y: s[1] }, { why: 'errand' }).then(() => { deliverBuild(b); return VMove.goHome(h.key); }).catch(() => { deliverBuild(b); }); }
+    }
+    buildsPrimed = true;
+  }
   function handleBuilds() {
+    if (CITY) return cityBuilds();
     const sent = delivered();
     for (const b of (D && D.builds) || []) {
       if (seenBuild.get(b.job_id) === b.stage) continue;
