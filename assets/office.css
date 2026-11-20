@@ -282,3 +282,7 @@ a.pick{display:inline-flex;align-items:center;text-decoration:none;color:inherit
 .va-cbtns .btn.cancel{color:var(--bad);border-color:var(--bad)}.va-cbtns a.btn.primary{background:var(--clay);border-color:var(--clay);color:#fff}
 /* the phone rule above turns every .btn.primary into a 44px icon (top-bar CEO button); inside drawers and the client panel they are normal text buttons */
 .drawer .btn.primary,.va-new .btn.primary,.va-cbtns .btn.primary,.va-cform .btn.primary{width:auto;padding:0 14px}.drawer .btn.primary span{display:inline}
+.va-tools{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin:6px 0 10px}.va-tools .va-search{flex:1;min-width:160px}.va-tools .va-new{flex:none;position:relative}.va-tools .va-new summary{margin:0}
+.va-tools .va-new[open]{flex-basis:100%}.va-tools .va-new[open] summary{margin-bottom:8px}
+.va-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}.va-pills button{min-height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line2);background:#fff;cursor:pointer;font-size:12.5px}.va-pills button small{opacity:.6;margin-left:2px}
+.va-pills button.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}

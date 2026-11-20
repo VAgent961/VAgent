@@ -17,11 +17,11 @@
   const genPw = () => { const c = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789', a = new Uint32Array(10); crypto.getRandomValues(a); return Array.from(a, (n) => c[n % c.length]).join(''); };
 
   function mount(el, c) {
-    const { api, toast, esc } = c; let rows = [];
+    const { api, toast, esc } = c; let rows = [], q = '', fil = 'all';
     const copy = async (text, what) => { try { await navigator.clipboard.writeText(text); toast((what || 'Copied') + ' copied'); } catch (e) { prompt('Copy:', text); } };
     function shell() {
-      el.innerHTML = `<p class="help">Voice AI customers. Each one gets a login at <b>adminvoice.vagent.online</b> and a public call link. Expired or canceled accounts are blocked and their agent goes offline.</p>
-        <details class="va-new"><summary class="btn primary" style="display:inline-flex">+ Create client account</summary>
+      el.innerHTML = `<p class="help">Voice AI customers, fewest days left first. Each one gets a login at <b>adminvoice.vagent.online</b> and a public call link. Expired or canceled accounts are blocked and their agent goes offline.</p>
+        <div class="va-tools"><input class="input va-search" type="search" placeholder="Search name, email, phone or slug…" aria-label="Search clients"><details class="va-new"><summary class="btn primary" style="display:inline-flex">+ New Client</summary>
         <form class="va-cform" autocomplete="off">
           <div class="field"><label>Business name</label><input class="input" name="business_name" maxlength="80" required placeholder="e.g. Tech Store Hamra"></div>
           <div class="field"><label>Slug / subdomain</label><input class="input" name="slug" maxlength="30" required placeholder="voice1" pattern="[a-z0-9][a-z0-9\\-]{1,28}[a-z0-9]"><small>Link: voice.vagent.online/<b class="va-slug">slug</b> · <b class="va-slug">slug</b>.vagent.online</small></div>
@@ -30,8 +30,10 @@
           <div class="field"><label>WhatsApp number (with country code)</label><input class="input" name="phone" maxlength="30" placeholder="96103123456"></div>
           <div class="field"><label>Subscription days</label><input class="input" name="days" type="number" min="1" max="3650" value="30"></div>
           <p class="va-err" role="alert"></p><button class="btn primary" type="submit">Create account</button>
-        </form></details>
+        </form></details></div>
+        <div class="va-pills" role="group" aria-label="Filter by status"></div>
         <div class="va-clist"><p class="empty">Loading…</p></div>`;
+      el.querySelector('.va-search').addEventListener('input', (e) => { q = e.target.value; draw(); });
       const f = el.querySelector('.va-cform');
       f.slug.addEventListener('input', () => { const v = f.slug.value.toLowerCase().replace(/[^a-z0-9-]/g, ''); f.slug.value = v; el.querySelectorAll('.va-slug').forEach((x) => (x.textContent = v || 'slug')); });
       f.querySelector('[data-gen]').onclick = () => { f.password.value = genPw(); };
@@ -58,9 +60,19 @@
         <div class="va-cbtns">${hot ? waBtn('💬 WhatsApp Reminder') : waBtn('💬 WhatsApp')}<button class="btn" type="button" data-extend>+30 Days</button>${a.state === 'canceled' ? '' : '<button class="btn cancel" type="button" data-cancel>Cancel Account</button>'}</div>
       </article>`;
     }
+    const PILLS = [['all', 'All'], ['active', 'Active'], ['expiring', 'Expiring Soon (≤2 days)'], ['expired', 'Expired'], ['canceled', 'Canceled']];
+    const digits = (t) => String(t || '').replace(/\D/g, '');
+    function visible() {   // search + status filter together, always sorted from the fewest days left to the most
+      const s = q.trim().toLowerCase(), sd = digits(s);
+      return rows.filter((a) => (fil === 'all' || a.state === fil) && (!s || [a.business_name, a.email, a.slug].some((v) => String(v || '').toLowerCase().includes(s)) || (sd.length > 1 && digits(a.phone).includes(sd))))
+        .sort((x, y) => x.days_left - y.days_left || Date.parse(x.subscription_end) - Date.parse(y.subscription_end) || x.business_name.localeCompare(y.business_name));
+    }
     function draw() {
-      const box = el.querySelector('.va-clist');
-      box.innerHTML = rows.length ? rows.map(card).join('') : '<p class="empty">No clients yet. Create the first account above.</p>';
+      const pills = el.querySelector('.va-pills');
+      pills.innerHTML = PILLS.map(([k, l]) => `<button type="button" data-f="${k}" class="${fil === k ? 'on' : ''}">${l} <small>${k === 'all' ? rows.length : rows.filter((a) => a.state === k).length}</small></button>`).join('');
+      pills.querySelectorAll('button').forEach((b) => (b.onclick = () => { fil = b.dataset.f; draw(); }));
+      const list = visible(), box = el.querySelector('.va-clist');
+      box.innerHTML = list.length ? list.map(card).join('') : `<p class="empty">${rows.length ? 'No clients match your search or filter.' : 'No clients yet. Press + New Client above.'}</p>`;
       box.querySelectorAll('.va-ccard').forEach((cd) => {
         const a = rows.find((x) => String(x.id) === cd.dataset.id);
         cd.querySelectorAll('[data-copy]').forEach((b) => (b.onclick = () => copy(b.dataset.copy)));

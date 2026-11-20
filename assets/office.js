@@ -750,14 +750,14 @@
     inner.innerHTML = head
       + (d.canRun ? `<button class="btn primary" type="button" id="run-now">▶ Run now</button>` : '')
       + leadRow
-      + (VOICE ? `<p class="label">Call ${esc(d.name)}</p><div id="voice-mount"></div>` : `<p class="label">Talk to ${esc(d.name)}</p>`
+      + (VOICE ? `<p class="label">Customers &amp; Clients</p><div id="voice-mount"></div>` : `<p class="label">Talk to ${esc(d.name)}</p>`
       + chatUI('agent:' + key, 'Ask it something…')
       + `<div class="chips"><button class="pick" type="button" ${d.runnable ? 'data-say="start"' : flow ? `data-flow="${esc(flow.key)}"` : 'data-reset'}>▶ Start over</button>${d.runnable && SNIPER(key) ? CHECK_SITE : ''}</div>` + `<p class="help">${how}</p>`)
       + `<div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1"><label for="dept">Department</label><select class="input" id="dept">${opts}</select></div><div class="field" style="flex:1"><label for="team">Team</label><select class="input" id="team">${teamOpts(d.dept)}</select></div></div>`
       + `<details class="more"><summary>What it does (${d.steps.length} steps)</summary><ol class="steps">${steps}</ol></details>`
       + `<details class="more"><summary>Recent runs</summary><ul class="runs">${runs}</ul></details>`
       + `<div class="row"><a class="btn" href="${esc(d.link)}" target="_blank" rel="noopener">Open in n8n</a><button class="btn ${d.active ? 'danger' : ''}" type="button" id="toggle">${d.active ? 'Turn off' : 'Turn on'}</button></div>`;
-    if (VOICE && window.VoiceAgent) VoiceAgent.mount(inner.querySelector('#voice-mount'), 'demo-cafe', { api, toast, esc, ago }); else bindChat('agent:' + key, d.name);
+    if (VOICE && window.VoiceClients) VoiceClients.mount(inner.querySelector('#voice-mount'), { api, toast, esc, ago });   // Voice Receptionist = Customers & Clients only (test calls: the public pages) else bindChat('agent:' + key, d.name);
     const rn = () => { const n = prompt('New name for this agent (empty = its n8n name):', d.name); if (n === null) return; api('agent', { body: { key, action: 'rename', name: n } }).then(async () => { toast('Renamed'); await load(); openAgent(key); }).catch((x) => toast(x.message)); };
     $('#rename').onclick = rn;
     const saveAssign = async () => { try { await api('agent', { body: { key, action: 'assign', deptId: $('#dept').value || null, teamId: $('#team').value || null } }); toast('Moved'); load(); } catch (x) { toast(x.message); } };
