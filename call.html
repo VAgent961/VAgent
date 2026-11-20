@@ -37,12 +37,15 @@
   <script>
     (function () {
       // Embedding reminder (also see the comment above): the parent page must set allow="microphone" on the iframe.
-      var id = new URLSearchParams(location.search).get('id') || '';
+      // Which business? ?id=<slug> (vagent.online/call.html), the first path segment (voice.vagent.online/<slug>), or the client's own subdomain (voice1.vagent.online -> looked up by host).
+      var host = location.hostname.toLowerCase(), id = new URLSearchParams(location.search).get('id') || '';
+      if (!id && host === 'voice.vagent.online') id = location.pathname.split('/')[1] || '';
+      var byHost = !id && /\.vagent\.online$/.test(host) && !/^(www|voice|adminvoice)\./.test(host);
       var title = document.getElementById('title'), note = document.getElementById('note'), mount = document.getElementById('mount');
       var embedded = window.top !== window.self;
       function stop(msg) { title.textContent = 'Not available'; document.getElementById('sub').textContent = msg; }
-      if (!/^[a-z0-9-]{1,40}$/i.test(id)) return stop('This call link is not valid.');
-      fetch('/api/public-business?id=' + encodeURIComponent(id)).then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); }).then(function (b) {
+      if (byHost ? false : !/^[a-z0-9-]{1,40}$/i.test(id)) return stop('This call link is not valid.');
+      fetch('/api/public-business?' + (byHost ? 'host=' + encodeURIComponent(host) : 'id=' + encodeURIComponent(id))).then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); }).then(function (b) {
         title.textContent = 'Call ' + b.name;
         document.title = 'Call ' + b.name;
         if (b.active === false) { // owner switched this agent off: no microphone, no call

@@ -29,6 +29,12 @@ const steps = [
   "CREATE TABLE IF NOT EXISTS voice_orders (id bigserial PRIMARY KEY, business_id text NOT NULL REFERENCES businesses(id) ON DELETE CASCADE, customer_details text, order_summary text, at timestamptz DEFAULT now())",
   "ALTER TABLE voice_orders ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'order'",
   "CREATE TABLE IF NOT EXISTS voice_rate (k text NOT NULL, bucket bigint NOT NULL, n int NOT NULL DEFAULT 0, PRIMARY KEY (k, bucket))",
+  // ---- Voice AI SaaS (multi-tenant): every row below belongs to exactly one business_id; client APIs derive it from the signed session, never from the request.
+  "CREATE TABLE IF NOT EXISTS client_accounts (id serial PRIMARY KEY, business_id text NOT NULL UNIQUE REFERENCES businesses(id) ON DELETE CASCADE, business_name text NOT NULL, slug text NOT NULL UNIQUE, custom_subdomain text UNIQUE, email text NOT NULL UNIQUE, phone text, password_hash text NOT NULL, password_encrypted text NOT NULL, subscription_start timestamptz NOT NULL DEFAULT now(), subscription_end timestamptz NOT NULL DEFAULT now() + interval '30 days', status text NOT NULL DEFAULT 'active' CHECK (status IN ('active','canceled')), created_at timestamptz NOT NULL DEFAULT now())",
+  "CREATE TABLE IF NOT EXISTS items (id bigserial PRIMARY KEY, business_id text NOT NULL REFERENCES businesses(id) ON DELETE CASCADE, name text NOT NULL, price numeric(12,2) NOT NULL DEFAULT 0, quantity integer NOT NULL DEFAULT 0, available boolean NOT NULL DEFAULT true, custom_fields jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now())",
+  "CREATE INDEX IF NOT EXISTS items_business_idx ON items (business_id)",
+  "CREATE TABLE IF NOT EXISTS orders (id bigserial PRIMARY KEY, business_id text NOT NULL REFERENCES businesses(id) ON DELETE CASCADE, customer_name text, customer_phone text, delivery_address text, items_summary text NOT NULL DEFAULT '', notes text NOT NULL DEFAULT '', status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','done','canceled')), created_at timestamptz NOT NULL DEFAULT now())",
+  "CREATE INDEX IF NOT EXISTS orders_business_idx ON orders (business_id, created_at DESC)",
   "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS active boolean NOT NULL DEFAULT true",
   "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS orders_seen_at timestamptz NOT NULL DEFAULT now()",
 ];

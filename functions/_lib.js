@@ -22,15 +22,15 @@ export async function sql(env, query, params = []) {
 export async function hashPassword(password) {
   const salt = b64u(crypto.getRandomValues(new Uint8Array(16)));
   const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: Uint8Array.from(atob(salt), (c) => c.charCodeAt(0)), iterations: 10000 }, key, 256);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: unb64u(salt), iterations: 10000 }, key, 256);
   return 'pbkdf2$10000$' + salt + '$' + b64u(bits);
 }
 export async function checkPassword(password, stored) {
   const [kind, iter, salt, hash] = String(stored || '').split('$');
   if (kind !== 'pbkdf2') return false;
   const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: Uint8Array.from(atob(salt), (c) => c.charCodeAt(0)), iterations: Number(iter) }, key, 256);
-  const a = new Uint8Array(bits), b = Uint8Array.from(atob(hash), (c) => c.charCodeAt(0));
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: unb64u(salt), iterations: Number(iter) }, key, 256);
+  const a = new Uint8Array(bits), b = unb64u(hash);
   if (a.length !== b.length) return false;
   let diff = 0; for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
   return diff === 0;

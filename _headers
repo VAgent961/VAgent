@@ -8,3 +8,11 @@
 /call
   Permissions-Policy: microphone=(self)
   Content-Security-Policy: frame-ancestors *
+/admin-voice
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+/admin-voice.html
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff

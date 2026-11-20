@@ -5,7 +5,7 @@ const N8N_VOICE = 'https://hassan.vagent.online/webhook/voice-receptionist';
 const N8N_TTS = 'https://hassan.vagent.online/webhook/voice-tts';
 const MAX_BYTES = 3 * 1024 * 1024; // ~3 MB of audio is minutes of speech
 
-// Our own pages only: same host as the request, localhost, or vagent.online. An embedded iframe of /call.html still sends its own
+// Our own pages only: same host as the request, localhost, vagent.online or any *.vagent.online (adminvoice., voice. and every client subdomain such as voice1.). An embedded iframe of /call.html still sends its own
 // (vagent.online) origin, so client websites can embed the page without being allowed to call the API directly.
 export function originOf(request) {
   const src = request.headers.get('origin') || request.headers.get('referer') || '';
@@ -77,8 +77,8 @@ export async function offlineResponse(env, request) {
   const bid = new URL(request.url).searchParams.get('business_id') || '';
   if (!/^[a-z0-9-]{1,40}$/i.test(bid)) return null; // proxyVoice answers bad ids itself
   try {
-    const r = await sql(env, 'SELECT active FROM businesses WHERE id = $1', [bid]);
-    if (r.length && r[0].active === false) return json({ error: 'This voice agent is currently offline.', offline: true }, 403);
+    const r = await sql(env, 'SELECT b.active, a.status AS acct_status, (a.subscription_end <= now()) AS expired FROM businesses b LEFT JOIN client_accounts a ON a.business_id = b.id WHERE b.id = $1', [bid]);
+    if (r.length && (r[0].active === false || (r[0].acct_status && (r[0].acct_status !== 'active' || r[0].expired)))) return json({ error: 'This voice agent is currently offline.', offline: true }, 403);
   } catch { /* if the lookup fails, do not block */ }
   return null;
 }

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Voice AI · Client Portal</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <meta name="theme-color" content="#FAF9F5">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/admin-voice.css">
+</head>
+<body>
+  <!-- Client Admin Portal for the Voice AI service. Served only on adminvoice.vagent.online (functions/_middleware.js). Login only: there is NO signup, accounts are created by VAgent HQ. -->
+  <main id="login" class="card login" hidden>
+    <span class="mic" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2Z"/></svg></span>
+    <p class="eyebrow">Voice AI</p>
+    <h1>Client Portal</h1>
+    <p class="sub">Sign in to manage your items and orders.</p>
+    <form id="login-form" autocomplete="on">
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="username" required maxlength="200" placeholder="you@business.com">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required maxlength="200">
+      <p class="err" id="login-err" role="alert"></p>
+      <button class="btn primary" type="submit" id="login-btn">Sign in</button>
+    </form>
+    <p class="fine">Accounts are created by VAgent. Need access? Contact us.</p>
+  </main>
+
+  <div id="app" hidden>
+    <header class="top">
+      <div class="who"><p class="eyebrow">Voice AI · Client Portal</p><h1 id="biz">…</h1></div>
+      <div class="actions">
+        <span class="pill" id="sub-pill"></span>
+        <a class="btn" id="live" href="#" target="_blank" rel="noopener">📞 Open my Voice AI ↗</a>
+        <button class="btn" type="button" id="logout">Log out</button>
+      </div>
+    </header>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab on" type="button" role="tab" data-tab="items">Items</button>
+      <button class="tab" type="button" role="tab" data-tab="orders">Orders <span class="count" id="pending-count" hidden></span></button>
+    </nav>
+
+    <section id="tab-items" class="panel">
+      <div class="bar"><p class="help">Everything here is what your Voice AI knows and sells. Add as many extra columns per item as you like.</p><button class="btn primary" type="button" id="add-item">+ Add item</button></div>
+      <p class="empty" id="items-empty" hidden>No items yet. Add your first item so your Voice AI can sell it.</p>
+      <div class="tw"><table id="items-table" class="tbl" hidden></table></div>
+    </section>
+
+    <section id="tab-orders" class="panel" hidden>
+      <div class="bar"><div class="chips" id="order-filter"></div><button class="btn" type="button" id="refresh">↻ Refresh</button></div>
+      <p class="empty" id="orders-empty" hidden>No orders here yet. When a customer orders on a call, it appears right here.</p>
+      <div id="orders" class="orders"></div>
+    </section>
+  </div>
+
+  <div id="modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <form id="item-form" class="sheet">
+      <h2 id="modal-title">Add item</h2>
+      <div class="row3">
+        <div class="f"><label for="i-name">Name</label><input id="i-name" maxlength="120" required></div>
+        <div class="f"><label for="i-price">Price</label><input id="i-price" type="number" min="0" step="0.01" inputmode="decimal" required></div>
+        <div class="f"><label for="i-qty">Quantity</label><input id="i-qty" type="number" min="0" step="1" inputmode="numeric" required></div>
+      </div>
+      <label class="check"><input id="i-avail" type="checkbox" checked> Available for sale</label>
+      <p class="label">Extra fields <small>(your own columns: Color, Size, Warranty…)</small></p>
+      <datalist id="keys"></datalist>
+      <div id="i-extra"></div>
+      <button class="btn" type="button" id="add-field">+ Add Column / Field</button>
+      <p class="err" id="item-err" role="alert"></p>
+      <div class="foot"><button class="btn" type="button" id="cancel-item">Cancel</button><button class="btn primary" type="submit">Save</button></div>
+    </form>
+  </div>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="/assets/admin-voice.js"></script>
+</body>
+</html>

@@ -76,10 +76,10 @@
     const pub = !!(ctx && ctx.public);
     voiceUrl = pub ? '/api/public-voice' : '/api/voice'; ttsUrl = pub ? '/api/public-tts' : '/api/tts';
     if (stopPrev) stopPrev();
-    el.innerHTML = (pub ? '' : '<div class="va-tabs" role="tablist"><button class="va-tab on" type="button" role="tab" data-t="call">Test Call</button><button class="va-tab" type="button" role="tab" data-t="manage">Manage Businesses &amp; Orders</button></div>') + '<div class="va-pane" data-pane="call"><div class="va"><div class="va-log" aria-live="polite"></div>'
+    el.innerHTML = (pub ? '' : '<div class="va-tabs" role="tablist"><button class="va-tab on" type="button" role="tab" data-t="call">Test Call</button><button class="va-tab" type="button" role="tab" data-t="manage">Manage Businesses &amp; Orders</button><button class="va-tab" type="button" role="tab" data-t="clients">Clients &amp; Accounts</button></div>') + '<div class="va-pane" data-pane="call"><div class="va"><div class="va-log" aria-live="polite"></div>'
       + '<p class="va-state" role="status">Hold the button and talk</p>'
       + '<button class="va-btn" type="button" aria-label="Hold to talk"><span class="va-ring"></span><svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2Z"/></svg></button>'
-      + '<button class="va-reset" type="button">Start a new call</button></div></div>' + (pub ? '' : '<div class="va-pane" data-pane="manage" hidden></div>');
+      + '<button class="va-reset" type="button">Start a new call</button></div></div>' + (pub ? '' : '<div class="va-pane" data-pane="manage" hidden></div><div class="va-pane" data-pane="clients" hidden></div>');
     if (!pub) el.querySelector('.va').insertAdjacentHTML('afterbegin', '<select class="input va-biz" aria-label="Business" hidden></select>');
     const biz = el.querySelector('.va-biz') || document.createElement('select'); // detached in public mode
     const loadBiz = () => fetch('/api/businesses', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : [])).then((rows) => {
@@ -166,12 +166,13 @@
     btn.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') stop(); });
     reset.addEventListener('click', () => { history = []; log.innerHTML = ''; stopSpeech(); say('Hold the button and talk'); });
     el.querySelectorAll('.va-tab').forEach((t) => t.addEventListener('click', () => {
-      const manage = t.dataset.t === 'manage';
+      const k = t.dataset.t;
       el.querySelectorAll('.va-tab').forEach((x) => x.classList.toggle('on', x === t));
-      el.querySelector('[data-pane=call]').hidden = manage;
-      const mp = el.querySelector('[data-pane=manage]'); mp.hidden = !manage;
-      if (manage) { stop(); stopSpeech(); if (window.VoiceAdmin && ctx) VoiceAdmin.mount(mp, ctx); }
-      else loadBiz();
+      el.querySelectorAll('[data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== k; });
+      if (k !== 'call') { stop(); stopSpeech(); }
+      if (k === 'manage' && window.VoiceAdmin && ctx) VoiceAdmin.mount(el.querySelector('[data-pane=manage]'), ctx);
+      else if (k === 'clients' && window.VoiceClients && ctx) VoiceClients.mount(el.querySelector('[data-pane=clients]'), ctx);
+      else if (k === 'call') loadBiz();
     }));
   }
 
