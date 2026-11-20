@@ -1,6 +1,6 @@
 // V Agent City — the OUTER layer only: city overview -> building exterior (pick a floor) -> the original isometric office (scene.js / office.js).  window.VCity
 // No interiors are drawn here. Entering a floor hands over to office.js, which renders the ORIGINAL scene for that floor's department + agents.
-// Marketing HQ = 5 floors, Web Builder / Sniper Client / Client Voice AI = 1 floor each, plus the CEO villa (assets/villa.js).
+// Marketing HQ = 5 floors, Web Builder / Sniper Client / Client Voice AI = 1 floor each, plus the CEO castle (assets/castle.js).
 (function () {
   'use strict';
   const NS = 'http://www.w3.org/2000/svg';
@@ -14,10 +14,10 @@
     sn: { id: 'sn', name: 'Sniper Client', short: 'Sniper Client', match: /sniper/i, floors: 1, fp: [2700, 160, FW, FD], h: FH, door: 2700 + FW / 2, col: '#3F7D58', wall: ['#E6E9E3', '#D2D8CF', '#C0C8BC'] },
     // Client Voice AI: its own building (it used to be floor 6 of Marketing HQ)
     cv: { id: 'cv', name: 'Client Voice AI', short: 'Voice AI', match: /^client voice/i, floors: 1, fp: [3900, 160, FW, FD], h: FH, door: 3900 + FW / 2, col: '#8A5BC8', wall: ['#E6E4EC', '#D3D0DE', '#C2BECF'] },
-    // The CEO's villa in the middle of the city (assets/villa.js). Not a department building: no agents live here, only the CEO.
-    ceo: { id: 'ceo', name: 'The CEO Villa', short: 'CEO Villa', match: /(?!)/, floors: 1, fp: [2230, 1880, 640, 340], lot: [2060, 1770, 1000, 700], h: 300, door: 2550, col: '#C9A227', villa: true },
+    // The CEO's castle in the middle of the city (assets/castle.js). Not a department building: no agents live here, only the CEO.
+    ceo: { id: 'ceo', name: 'The CEO Castle', short: 'CEO Castle', match: /(?!)/, floors: 1, fp: [2230, 1880, 640, 340], lot: [2060, 1770, 1000, 700], h: 340, door: 2550, col: '#C9A227', castle: true },
   };
-  const ORDER = ['mk', 'web', 'sn', 'cv'], ALL = ORDER.concat(['ceo']);   // ORDER = department buildings (agents live there); ALL also has the villa
+  const ORDER = ['mk', 'web', 'sn', 'cv'], ALL = ORDER.concat(['ceo']);   // ORDER = department buildings (agents live there); ALL also has the castle
   // Marketing HQ: floor n = the n-th of these departments (matched by name; a missing one leaves its floor empty). Change here if the marketing teams are renamed.
   const MK_FLOORS = [/^marketing/i, /^content/i, /^paid/i, /^publishing/i, /^seo/i];
   const CITY_W = 4800, CITY_D = 2000 + DY;
@@ -30,7 +30,7 @@
   const cityNav = (() => {
     const r = [], add = (a, b, c, d) => r.push([a, b, c, d]), w = VCityKit.world(), cws = VCityKit.crossings().slice().sort((a, b) => a - b);
     for (const b of ORDER) { const [x, y, fw, d] = BLD[b].fp; add(x, y, x + fw, y + d); }
-    { const [lx, ly, lw, ld] = BLD.ceo.lot; add(lx, ly, lx + lw, ly + ld); }   // the villa's walled garden
+    { const [lx, ly, lw, ld] = BLD.ceo.lot; add(lx, ly, lx + lw, ly + ld); }   // the castle's walled garden
     let x0 = 0; for (const c of cws) { add(x0, w.MR0 + 4, c - 46, w.MR1 - 4); x0 = c + 46; } add(x0, w.MR0 + 4, CITY_W, w.MR1 - 4);
     add(w.SX0 + 4, 0, w.SX1 - 4, w.MR0 - 116); add(w.SX0 + 4, w.MR0 - 36, w.SX1 - 4, w.MR0);   // the side street (open only at its crossing)
     add(1690, 1560 + DY, 1910, 1640 + DY);   // fountain
@@ -57,7 +57,7 @@
   function drawCity() {
     let s = VCityKit.ground();
     st.decor = st.decor || VCityKit.decor();
-    for (const id of ALL) { const b = BLD[id], [x, y, w, d] = b.fp; s += b.villa ? VVilla.shadow(b) : VCityKit.shadowOf(x, y, w, d, b.h, id); }   // cast shadows: long, hard, to the south-west
+    for (const id of ALL) { const b = BLD[id], [x, y, w, d] = b.fp; if (!b.castle) s += VCityKit.shadowOf(x, y, w, d, b.h, id); }   // the castle draws its own shadow inside its garden (the lawn would cover one drawn here)   // cast shadows: long, hard, to the south-west
     for (const dd of st.decor) s += dd.shadow;
     st.cityStatic = s; return s;
   }
@@ -71,7 +71,7 @@
   // A building = stacked floor groups (.vc-fl, bottom to top) + roof group (.vc-top) + one slab per floor level (.vc-slab, shown under the open floor) + a host (.vc-host) where the ORIGINAL office scene is mounted.
   // Cutaway = the floors above the open one fade out, the open one is replaced by the real office, the floors below stay as structure.
   function buildingSvg(id) {
-    if (BLD[id].villa) return VVilla.building(BLD[id], { pill: (lp) => `<g class="vc-pill" data-b="${id}" transform="translate(${lp[0].toFixed(1)} ${lp[1].toFixed(1)}) scale(1.7)"><rect x="-210" y="-34" width="420" height="68" rx="34" fill="#141413" opacity=".92"/><circle cx="-172" cy="0" r="12" fill="${BLD[id].col}"/><text class="t1" x="-148" y="-4" font-size="26" font-weight="700" fill="#FAF9F5" font-family="Inter,sans-serif">${BLD[id].short}</text><text class="t2" x="-148" y="24" font-size="19" fill="#C9C6BC" font-family="Inter,sans-serif">The CEO, at home</text></g>` });
+    if (BLD[id].castle) return VCastle.building(BLD[id], { pill: (lp) => `<g class="vc-pill" data-b="${id}" transform="translate(${lp[0].toFixed(1)} ${lp[1].toFixed(1)}) scale(1.7)"><rect x="-210" y="-34" width="420" height="68" rx="34" fill="#141413" opacity=".92"/><circle cx="-172" cy="0" r="12" fill="${BLD[id].col}"/><text class="t1" x="-148" y="-4" font-size="26" font-weight="700" fill="#FAF9F5" font-family="Inter,sans-serif">${BLD[id].short}</text><text class="t2" x="-148" y="24" font-size="19" fill="#C9C6BC" font-family="Inter,sans-serif">The CEO, at home</text></g>` });
     const b = BLD[id], [x, y, w, d] = b.fp, h = b.h, fl = b.floors, fh = FH, S = [];
     const south = `<g transform="${plane(x, y + d)} matrix(${K} .5 0 1 0 0)">`, dx = b.door - x;
     S.push(`<g class="vc-b" data-b="${id}" tabindex="0" role="button" aria-label="${b.name}" style="cursor:pointer">`);
@@ -121,9 +121,9 @@
     if (st.cam) st.cam.kill();
     if (animate && window.gsap && !matchMedia('(prefers-reduced-motion:reduce)').matches) st.cam = gsap.to(st.vb, { ...to, duration: 1.1, ease: 'power2.inOut', onUpdate: setVB }); else { Object.assign(st.vb, to); setVB(); }
   }
-  function boxOf(id) { if (BLD[id].villa) return VVilla.boxOf(BLD[id]); const b = BLD[id], [x, y, w, d] = b.fp, l = P(x, y + d)[0], r = P(x + w, y)[0], t = P(x, y, b.h + 200)[1], bt = P(x + w, y + d)[1] + 150; return { x: l - 100, y: t, w: r - l + 200, h: bt - t }; }
+  function boxOf(id) { if (BLD[id].castle) return VCastle.boxOf(BLD[id]); const b = BLD[id], [x, y, w, d] = b.fp, l = P(x, y + d)[0], r = P(x + w, y)[0], t = P(x, y, b.h + 200)[1], bt = P(x + w, y + d)[1] + 150; return { x: l - 100, y: t, w: r - l + 200, h: bt - t }; }
   // the open floor: the original scene's rectangle in world coordinates (+ a little ground so the building stays readable)
-  const tileBox = (id, n) => { if (BLD[id].villa) return VVilla.roomBox(BLD[id]); const t = tileRect(id, n); return t ? { x: t.x - 20, y: t.y - 20, w: t.w + 40, h: t.h + 40 } : boxOf(id); };
+  const tileBox = (id, n) => { if (BLD[id].castle) return VCastle.roomBox(BLD[id]); const t = tileRect(id, n); return t ? { x: t.x - 20, y: t.y - 20, w: t.w + 40, h: t.h + 40 } : boxOf(id); };
   const CITY_BOX = { x: -1100, y: -780, w: 6500, h: 3500 };
   function frame(animate) { fitTo(st.view === 'floor' ? tileBox(st.b, st.n) : st.view === 'bld' ? boxOf(st.b) : CITY_BOX, animate); }
   function zoom(k, cx, cy) { if (st.cam) st.cam.kill(); const v = st.vb, r = st.svg.getBoundingClientRect(); const fx = cx === undefined ? 0.5 : (cx - r.left) / r.width, fy = cy === undefined ? 0.5 : (cy - r.top) / r.height; const nw = Math.max(380, Math.min(CITY_BOX.w * 1.2, v.w / k)), nh = nw * v.h / v.w; v.x += (v.w - nw) * fx; v.y += (v.h - nh) * fy; v.w = nw; v.h = nh; setVB(); }
@@ -175,7 +175,7 @@
 
   // what the original office renders for the current floor: that floor's department(s) and agents
   function floorCtx(D) {
-    if (st.view !== 'floor' || BLD[st.b].villa) return null; const by = assign(D, st.H), id = st.b, deps = D.departments.filter((d) => BLD[id].match.test(d.name || ''));
+    if (st.view !== 'floor' || BLD[st.b].castle) return null; const by = assign(D, st.H), id = st.b, deps = D.departments.filter((d) => BLD[id].match.test(d.name || ''));
     const live = (a) => !(window.VMove && VMove.isManaged(a.key));
     if (id === 'mk') { const fl = by.mkFloors[st.n - 1]; return { departments: fl.dept ? [fl.dept] : [], agents: fl.agents.filter(live), esc: { up: st.n < 5, down: st.n < 5, hole: st.n > 1 }, tag: 'mk' + st.n }; }
     return { departments: deps, agents: by[id].concat(id === 'sn' ? D.agents.filter(st.H.isHelper) : []).filter(live), tag: '' };
@@ -236,11 +236,11 @@
   const esc = (t) => String(t).replace(/[<&>"]/g, '');
   function renderUI() {
     if (!st.ui) return; const u = st.ui, byB = assign(st.D, st.H);
-    $('.vc-tabs', u).innerHTML = `<button type="button" data-go="city" class="${st.view === 'city' ? 'on' : ''}">City overview</button>` + ALL.map((b) => `<button type="button" data-go="${b}" class="${st.b === b ? 'on' : ''}" style="--c:${BLD[b].col}"><i></i>${BLD[b].short} <small>${BLD[b].villa ? '🏡' : byB[b].length}</small></button>`).join('');
+    $('.vc-tabs', u).innerHTML = `<button type="button" data-go="city" class="${st.view === 'city' ? 'on' : ''}">City overview</button>` + ALL.map((b) => `<button type="button" data-go="${b}" class="${st.b === b ? 'on' : ''}" style="--c:${BLD[b].col}"><i></i>${BLD[b].short} <small>${BLD[b].castle ? '🏰' : byB[b].length}</small></button>`).join('');
     const fl = $('.vc-floors', u);
     if (st.view === 'bld') { const id = st.b, B = BLD[id], list = byB[id]; fl.hidden = false;
       fl.innerHTML = `<span class="vc-h">${esc(B.name)} · pick a floor</span>` + Array.from({ length: B.floors }, (_, i) => B.floors - i).map((f) => { const fl = id === 'mk' ? byB.mkFloors[f - 1] : null, cnt = id === 'mk' ? fl.agents.length : list.length, wk = (id === 'mk' ? fl.agents : list).filter((a) => a.status === 'working').length;
-        return `<button type="button" data-floor="${f}"><b>${f}</b><span>${id === 'mk' ? (fl.dept ? esc(fl.dept.name) : '<em>no department</em>') : B.villa ? 'Living room' : 'Floor 1'}<small>${B.villa ? 'The CEO is home' : cnt + ' agent' + (cnt === 1 ? '' : 's') + (wk ? ' · ' + wk + ' working' : '')}</small></span></button>`; }).join(''); }
+        return `<button type="button" data-floor="${f}"><b>${f}</b><span>${id === 'mk' ? (fl.dept ? esc(fl.dept.name) : '<em>no department</em>') : B.castle ? 'Great hall' : 'Floor 1'}<small>${B.castle ? 'The CEO is home' : cnt + ' agent' + (cnt === 1 ? '' : 's') + (wk ? ' · ' + wk + ' working' : '')}</small></span></button>`; }).join(''); }
     else fl.hidden = true;
     if (st.view === 'floor') { const B = BLD[st.b], many = B.floors > 1, fx = st.b === 'mk' ? assign(st.D, st.H).mkFloors[st.n - 1] : null, nm = fx && fx.dept ? fx.dept.name : '';
       st.bar.innerHTML = `<button type="button" data-go="city">🏙 City</button><button type="button" data-go="${st.b}">🏢 ${esc(B.short)}</button><span class="vc-here">${many ? 'Floor ' + st.n + (nm ? ' · ' + esc(nm) : '') : esc(B.name)}</span>${many ? `<span class="vc-esc"><button type="button" data-fl="${st.n + 1}" ${st.n >= B.floors ? 'disabled' : ''} aria-label="Open the floor above" title="Open the floor above (cutaway moves; agents are not carried)">▲ Up</button><button type="button" data-fl="${st.n - 1}" ${st.n <= 1 ? 'disabled' : ''} aria-label="Open the floor below" title="Open the floor below (cutaway moves; agents are not carried)">▼ Down</button></span>` : ''}`; }
@@ -324,7 +324,7 @@
   function mount(H) {
     st.H = H; st.stage = H.stage; const old = st.stage.querySelector('#vc-root'); if (old) old.remove();
     const wrap = document.createElement('div'); wrap.id = 'vc-root'; wrap.className = 'vc'; st.stage.appendChild(wrap); st.root = wrap;
-    st.svg = document.createElementNS(NS, 'svg'); st.svg.setAttribute('id', 'vc-svg'); st.svg.setAttribute('preserveAspectRatio', 'xMidYMid meet'); st.svg.setAttribute('aria-label', 'V Agent City: Marketing Headquarters, Web Builder, Sniper Client, Client Voice AI and the CEO villa');
+    st.svg = document.createElementNS(NS, 'svg'); st.svg.setAttribute('id', 'vc-svg'); st.svg.setAttribute('preserveAspectRatio', 'xMidYMid meet'); st.svg.setAttribute('aria-label', 'V Agent City: Marketing Headquarters, Web Builder, Sniper Client, Client Voice AI and the CEO castle');
     wrap.appendChild(st.svg); st.svg.innerHTML = drawAll(); document.body.classList.add('city-on');
     const sc0 = document.getElementById('scene'); if (sc0) { park().appendChild(sc0); st.scene = sc0; }   // the original office lives inside the city svg from the start (parked until a floor opens)
     bindCamera(); mountUI(); st.view = 'city'; setMode(); frame(false); renderUI(); paintLights(); mkCars(); requestAnimationFrame(tick);

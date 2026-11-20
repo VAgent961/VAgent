@@ -91,7 +91,7 @@ body.city-on .stage>svg.fx-layer,body.city-on .stage>.zoom,body.city-on .stage>.
 .vc-ui{z-index:2}
 .vc-shd.off{display:none}
 
-/* CEO villa (assets/villa.js): the living room is only drawn while the villa is open; a few gentle loops (transform/opacity only) */
+/* CEO castle (assets/castle.js): the great hall is only drawn while the castle is open; a few gentle loops (transform/opacity only) */
 .vc-b:not(.open) .vc-in{display:none}
 .vc-in .vv-glow{animation:vvGlow 3.4s ease-in-out infinite}
 .vc-in .vv-tick{animation:vvTick 16s linear infinite}
@@ -105,3 +105,8 @@ body.city-on .stage>svg.fx-layer,body.city-on .stage>.zoom,body.city-on .stage>.
 @keyframes vvSteam{0%,100%{opacity:.25}50%{opacity:.8}}
 .vc-in .vc-ceo:hover .tag rect{fill:#4A3B1C}
 @media (prefers-reduced-motion:reduce){.vc-in *{animation:none!important}}
+.vc-in .vv-flag,.vc-top .vv-flag,.vc-fl .vv-flag{transform-box:fill-box;transform-origin:0 50%;animation:vvFlag 2.6s ease-in-out infinite}
+.vc-fl .vv-flame{animation:vvFlicker 1.1s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
+@keyframes vvFlag{0%,100%{transform:skewY(-4deg) scaleX(1)}50%{transform:skewY(5deg) scaleX(.94)}}
+@keyframes vvFlicker{0%,100%{transform:scale(1,1);opacity:1}50%{transform:scale(.92,1.1);opacity:.85}}
+@media (prefers-reduced-motion:reduce){.vv-flag,.vv-flame{animation:none!important}}
