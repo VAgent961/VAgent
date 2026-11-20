@@ -4,7 +4,7 @@
   'use strict';
   const $ = (s, r) => (r || document).querySelector(s);
   const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  let me = null, items = [], orders = [], filter = 'pending', editing = null, timer = null;
+  let me = null, items = [], orders = [], filter = 'pending', editing = null, timer = null, imgVal = '';
 
   async function api(path, opt) {
     opt = opt || {};
@@ -15,11 +15,19 @@
   }
   function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2800); }
 
+  // ---------------- login showcase (decorative: waveform, rotating call lines, order status)
+  (function showcase() {
+    $('#wave').innerHTML = Array.from({ length: 28 }, (_, i) => '<span style="--i:' + i + '"></span>').join('');
+    const say = $('#say'), chip = $('#chip'), lines = ['“Two shawarma and a mint lemonade, please.”', '“بدي كيلو ورق عنب وتبولة، توصيل عالحمرا.”', '“Do you have the iPhone 16 in blue?”', '“شو عندكم بالمعجنات اليوم؟”'];
+    let k = 0; setInterval(() => { if (document.hidden || $('#login').hidden) return; k = (k + 1) % lines.length; say.textContent = lines[k]; say.classList.remove('swap'); void say.offsetWidth; say.classList.add('swap'); const done = k % 2 === 1; chip.textContent = done ? 'Done' : 'Pending'; chip.className = 'chip ' + (done ? 'done' : 'pending'); }, 3800);
+    const t = $('#pw-toggle'); t.addEventListener('click', () => { const show = $('#password').type === 'password'; $('#password').type = show ? 'text' : 'password'; t.setAttribute('aria-pressed', show ? 'true' : 'false'); t.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); });
+  })();
+
   // ---------------- login / session
-  function showLogin(msg) { clearInterval(timer); $('#app').hidden = true; $('#login').hidden = false; $('#login-err').textContent = msg || ''; $('#password').value = ''; }
+  function showLogin(msg) { clearInterval(timer); $('#app').hidden = true; $('#login').hidden = false; $('#login-err').textContent = msg || ''; $('#password').value = ''; $('#password').type = 'password'; $('#pw-toggle').setAttribute('aria-pressed', 'false'); }
   function showApp() {
     $('#login').hidden = true; $('#app').hidden = false;
-    $('#biz').textContent = me.business_name; document.title = me.business_name + ' · Voice AI';
+    $('#biz').textContent = me.business_name; document.title = me.business_name + ' · Voice AI + POS';
     const pill = $('#sub-pill'); pill.className = 'pill ' + (me.state === 'expiring' ? 'expiring' : 'active');
     pill.textContent = me.state === 'expiring' ? '⚠ ' + me.days_left + ' day' + (me.days_left === 1 ? '' : 's') + ' left · contact VAgent to renew' : me.days_left + ' days left';
     $('#live').href = me.voice_link;
@@ -45,12 +53,14 @@
   }));
 
   // ---------------- items
+  // thumbnail (rounded square) with a placeholder icon when there is no picture; the url was validated by the server (https link or small data:image upload)
+  const thumb = (u) => '<span class="thumb">' + (u ? '<img src="' + esc(u) + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">' : '<span class="ph" aria-hidden="true"></span>') + '</span>';
   const money = (v) => '$' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const customKeys = () => { const ks = []; items.forEach((i) => Object.keys(i.custom_fields || {}).forEach((k) => { if (!ks.includes(k)) ks.push(k); })); return ks; };
   function drawItems() {
     const t = $('#items-table'), ks = customKeys(); $('#items-empty').hidden = items.length > 0; t.hidden = !items.length;
-    t.innerHTML = '<thead><tr><th>Name</th><th>Price</th><th>Quantity</th><th>Available</th>' + ks.map((k) => '<th>' + esc(k) + '</th>').join('') + '<th></th></tr></thead><tbody>'
-      + items.map((i) => '<tr data-id="' + i.id + '"><td data-label="Name"><b>' + esc(i.name) + '</b></td><td data-label="Price">' + money(i.price) + '</td><td data-label="Quantity">' + esc(i.quantity) + '</td>'
+    t.innerHTML = '<thead><tr><th>Image</th><th>Name</th><th>Price</th><th>Quantity</th><th>Available</th>' + ks.map((k) => '<th>' + esc(k) + '</th>').join('') + '<th></th></tr></thead><tbody>'
+      + items.map((i) => '<tr data-id="' + i.id + '"><td data-label="Image">' + thumb(i.image_url) + '</td><td data-label="Name"><b>' + esc(i.name) + '</b></td><td data-label="Price">' + money(i.price) + '</td><td data-label="Quantity">' + esc(i.quantity) + '</td>'
         + '<td data-label="Available"><span class="chip ' + (i.available ? 'yes' : 'no') + '">' + (i.available ? 'Yes' : 'No') + '</span></td>'
         + ks.map((k) => { const v = (i.custom_fields || {})[k]; return '<td data-label="' + esc(k) + '">' + (v === undefined || v === '' ? '<span class="dash">—</span>' : esc(v)) + '</td>'; }).join('')
         + '<td class="act"><button class="btn" type="button" data-edit>Edit</button> <button class="btn cancel" type="button" data-del>Delete</button></td></tr>').join('') + '</tbody>';
@@ -72,6 +82,7 @@
   }
   function openModal(it) {
     editing = it || null; $('#modal-title').textContent = it ? 'Edit item' : 'Add item'; $('#item-err').textContent = '';
+    setImage(it && it.image_url ? it.image_url : '', ''); $('#i-file').value = '';
     $('#i-name').value = it ? it.name : ''; $('#i-price').value = it ? it.price : ''; $('#i-qty').value = it ? it.quantity : ''; $('#i-avail').checked = it ? !!it.available : true;
     $('#keys').innerHTML = customKeys().map((k) => '<option value="' + esc(k) + '">').join('');
     const box = $('#i-extra'); box.innerHTML = ''; Object.entries(it ? it.custom_fields || {} : {}).forEach(([k, v]) => box.appendChild(xrow(k, v)));
@@ -83,10 +94,40 @@
   $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#modal').hidden) closeModal(); });
   $('#add-field').addEventListener('click', () => { const r = xrow('', ''); $('#i-extra').appendChild(r); r.querySelector('.k').focus(); });
+  // ---- image: upload (resized to max 400px + compressed in the browser, so it stays small in Neon) or paste a link
+  const prev = $('#i-prev');
+  function setImage(v, info, bad) {
+    imgVal = v || ''; const im = $('img', prev), ph = $('.ph', prev); im.hidden = !imgVal; ph.hidden = !!imgVal; if (imgVal) im.src = imgVal; else im.removeAttribute('src');
+    $('#i-remove').hidden = !imgVal; $('#i-url').value = /^https:/i.test(imgVal) ? imgVal : ''; const i = $('#i-info'); i.textContent = info || ''; i.classList.toggle('bad', !!bad);
+  }
+  async function compress(file) {
+    if (!/^image\//.test(file.type)) throw new Error('Choose an image file.');
+    if (file.size > 20e6) throw new Error('That file is too large (max 20 MB).');
+    let bmp; try { bmp = await createImageBitmap(file); } catch (e) { throw new Error('Could not read that image.'); }
+    for (const max of [400, 320, 240]) {
+      const sc = Math.min(1, max / Math.max(bmp.width, bmp.height)), w = Math.max(1, Math.round(bmp.width * sc)), h = Math.max(1, Math.round(bmp.height * sc));
+      const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.drawImage(bmp, 0, 0, w, h);
+      for (const [type, q] of [['image/webp', 0.82], ['image/webp', 0.68], ['image/jpeg', 0.72], ['image/jpeg', 0.55], ['image/jpeg', 0.4]]) { const u = c.toDataURL(type, q); if (u.startsWith('data:' + type) && u.length <= 110000) return { url: u, w, h }; }
+    }
+    throw new Error('That picture is too detailed to shrink enough. Try another one.');
+  }
+  $('#i-file').addEventListener('change', async (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return; $('#i-info').textContent = 'Compressing…'; $('#i-info').classList.remove('bad');
+    try { const r = await compress(f); setImage(r.url, 'Ready · ' + r.w + '×' + r.h + ' · ' + Math.round(r.url.length * 0.75 / 1024) + ' KB'); } catch (err) { setImage(imgVal, err.message, true); }
+    e.target.value = '';
+  });
+  $('#i-url').addEventListener('input', (e) => {
+    const v = e.target.value.trim(); if (!v) { setImage('', ''); return; }
+    if (!/^https:\/\/\S{4,1900}$/i.test(v)) { imgVal = ''; $('#i-info').textContent = 'Use a link that starts with https://'; $('#i-info').classList.add('bad'); $('img', prev).hidden = true; $('.ph', prev).hidden = false; $('#i-remove').hidden = false; return; }
+    imgVal = v; const im = $('img', prev); im.hidden = false; $('.ph', prev).hidden = true; im.src = v; $('#i-remove').hidden = false; $('#i-info').textContent = 'Link added'; $('#i-info').classList.remove('bad');
+  });
+  $('img', prev).addEventListener('error', () => { if (imgVal && /^https:/i.test(imgVal)) { $('#i-info').textContent = 'That link did not load a picture. It will still be saved.'; $('#i-info').classList.add('bad'); } });
+  $('#i-remove').addEventListener('click', () => setImage('', 'Removed'));
+
   $('#item-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const custom = {}; document.querySelectorAll('#i-extra .xrow').forEach((r) => { const k = r.querySelector('.k').value.trim(); if (k) custom[k] = r.querySelector('.v').value.trim(); });
-    const body = { name: $('#i-name').value, price: $('#i-price').value, quantity: $('#i-qty').value, available: $('#i-avail').checked, custom_fields: custom };
+    const body = { name: $('#i-name').value, price: $('#i-price').value, quantity: $('#i-qty').value, available: $('#i-avail').checked, custom_fields: custom, image_url: imgVal };
     try {
       if (editing) { const r = await api('items', { method: 'PUT', body: { ...body, id: editing.id } }); items = items.map((x) => (x.id === r.id ? r : x)); }
       else { const r = await api('items', { body }); items.push(r); items.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase())); }

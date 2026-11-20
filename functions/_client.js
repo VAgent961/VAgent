@@ -70,5 +70,11 @@ export function cleanItem(b) {
     const ent = Object.entries(b.custom_fields); if (ent.length > 30) return { error: 'Max 30 extra fields per item.' };
     for (const [k, v] of ent) { const key = String(k).trim().slice(0, 40); if (key) custom[key] = String(v ?? '').trim().slice(0, 300); }
   }
-  return { name, price, quantity, available: b.available !== false, custom };
+  // Image: an https:// link or a small uploaded image (data:image/webp|jpeg|png, compressed in the browser to ~400px; capped at 150k characters = ~110 KB). Anything else is refused.
+  let image = String(b.image_url || '').trim();
+  if (image) {
+    const link = /^https:\/\/[^\s"'<>\\]{4,1900}$/i.test(image), upload = /^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/.test(image) && image.length <= 150000;
+    if (!link && !upload) return { error: 'Image must be an https:// link or an uploaded picture (about 110 KB max).' };
+  } else image = null;
+  return { name, price, quantity, available: b.available !== false, custom, image };
 }
