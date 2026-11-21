@@ -115,6 +115,19 @@ a{color:var(--accent)}
 .vx-sk::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);transform:translateX(-100%);animation:vxShimmer 1.4s linear infinite}
 @keyframes vxShimmer{to{transform:translateX(100%)}}
 
+/* ---- touch + small screens (mobile-first additions): 44px targets, 48px fields, bottom-sheet modal with safe-area padding */
+@media (max-width:768px),(pointer:coarse){
+  .vx-btn,.vx-btn.sm{min-height:44px}
+  .vx-btn.icon,.vx-btn.icon.sm{width:44px;padding:0}
+  .vx-input{min-height:48px}
+  .vx-tabs .tab{min-height:44px}
+}
+@media (max-width:640px){
+  .vx-modal{place-items:end stretch;padding:0}
+  .vx-sheet{max-width:none;max-height:calc(100dvh - max(12px,env(safe-area-inset-top)));border-radius:20px 20px 0 0;padding:0 18px;transform:translateY(100%);transition-duration:.32s}
+  .vx-modal.open .vx-sheet{transform:none}
+  .vx-sheet.narrow{max-width:none;padding:18px 18px max(18px,env(safe-area-inset-bottom))}
+}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;animation-delay:0ms!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
   .vx-dot::after{display:none}
