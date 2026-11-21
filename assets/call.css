@@ -1,25 +1,85 @@
-/* Public call page (call.html). Brand: cream #FAF9F5 / #F3F1EA, ink #141413, terracotta #B5532F (hover #9A4527), Newsreader + Inter. */
-:root{--cream:#FAF9F5;--sand:#F3F1EA;--ink:#141413;--muted:#5E5D59;--line:#E3E0D5;--line2:#D8D5CB;--clay:#B5532F;--clay2:#9A4527;--ok:#3F7D4E}
-*{box-sizing:border-box}
-html,body{margin:0;min-height:100%}
-body{background:var(--cream);color:var(--ink);font-family:Inter,system-ui,sans-serif;display:grid;place-items:center;padding:20px 16px;min-height:100vh;min-height:100dvh}
-button{font:inherit;color:inherit}
-.card{width:100%;max-width:420px;background:#fff;border:1px solid var(--line);border-radius:20px;padding:26px 22px 20px;text-align:center}
-.eyebrow{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--clay);font-weight:600}
-h1{margin:0 0 6px;font-family:Newsreader,Georgia,serif;font-weight:500;font-size:30px;line-height:1.15}
-.sub{margin:0 0 14px;color:var(--muted);font-size:14px;line-height:1.45}
-.note{margin:10px 0 0;color:var(--clay2);font-size:13px;min-height:0}
-.fine{margin:14px 0 0;color:var(--muted);font-size:11.5px}
-.va{display:flex;flex-direction:column;align-items:center;gap:10px;margin:4px 0 8px}
-.va-log{width:100%;max-height:240px;overflow:auto;display:flex;flex-direction:column;gap:6px;text-align:start}
-.va-msg{max-width:88%;padding:8px 12px;border-radius:14px;font-size:14px;line-height:1.4;background:var(--sand);color:var(--ink)}
-.va-msg.me{align-self:flex-end;background:var(--ink);color:var(--cream)}.va-msg.note{align-self:center;background:none;color:var(--ok);font-size:12.5px}
-.va-state{margin:0;font-size:13px;color:var(--muted);min-height:18px}
-.va-btn{position:relative;width:92px;height:92px;border-radius:50%;border:0;background:var(--clay);color:#fff;display:grid;place-items:center;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .15s,background .15s}
-.va-btn:hover{background:var(--clay2)}.va-btn:disabled{opacity:.5;cursor:default}.va-btn.on{transform:scale(1.06);background:var(--clay2)}
-.va-btn:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
-.va-ring{position:absolute;inset:0;border-radius:50%;border:2px solid var(--clay);opacity:0;pointer-events:none}
+/* Public call page (call.html), built on assets/vx.css. One dark call surface on the neutral page; the voice stage (halo + radial level bars + push-to-talk button)
+   has five states driven by .va[data-v] set from voice-agent.js: idle | listening | thinking | speaking | offline. Only transform/opacity are animated. */
+body{display:grid;place-items:center;padding:20px 16px;padding-bottom:max(20px,env(safe-area-inset-bottom))}
+.call{position:relative;isolation:isolate;overflow:hidden;width:100%;max-width:440px;background:var(--night);color:var(--night-ink);border:1px solid var(--night-line);border-radius:22px;padding:22px 22px 18px;text-align:center;box-shadow:var(--sh-3)}
+.call-grid{position:absolute;inset:0;z-index:-2;background-image:linear-gradient(var(--night-line) 1px,transparent 1px),linear-gradient(90deg,var(--night-line) 1px,transparent 1px);background-size:44px 44px;opacity:.45;-webkit-mask-image:radial-gradient(ellipse 85% 60% at 50% 38%,#000 25%,transparent 78%);mask-image:radial-gradient(ellipse 85% 60% at 50% 38%,#000 25%,transparent 78%)}
+.call-glow{position:absolute;left:50%;top:-18%;width:110%;aspect-ratio:1;z-index:-1;border-radius:50%;background:radial-gradient(circle,rgba(134,162,255,.26),transparent 60%);transform:translateX(-50%);animation:callBreath 7s ease-in-out infinite}
+@keyframes callBreath{0%,100%{opacity:.55;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.06)}}
+.call-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;min-height:28px}
+.call-brand{display:inline-flex;align-items:center;gap:8px;font-family:var(--f-display);font-weight:600;font-size:15px;color:var(--night-ink)}
+.call-mark{width:26px;height:26px;border-radius:8px;background:var(--accent);color:#fff;display:grid;place-items:center}
+.call .vx-chip.call-chip{background:rgba(88,214,141,.12);border-color:rgba(88,214,141,.32);color:var(--night-ok)}
+.call .vx-chip.call-chip.off{background:rgba(152,161,182,.12);border-color:rgba(152,161,182,.3);color:var(--night-mute)}.call-chip.off .vx-dot::after{display:none}
+.call h1{font-size:28px;line-height:1.15;color:#fff;overflow-wrap:anywhere}
+.sub{margin:8px auto 0;color:var(--night-mute);font-size:14.5px;line-height:1.5;max-width:34ch;text-wrap:pretty}
+.note{margin:8px 0 0;color:#FFC46B;font-size:13.5px;line-height:1.45}
+.note:empty{display:none}
+.fine{margin:14px 0 0;color:var(--night-mute);font-size:12.5px;line-height:1.5}
+
+/* ---- the call centerpiece (reserved heights, so nothing shifts while states change) */
+.va{display:flex;flex-direction:column;align-items:center;gap:6px;margin:8px 0 0;--lvl:0}
+.va-stage{order:1;position:relative;width:224px;height:224px;display:grid;place-items:center}
+.va-state{order:2;margin:2px 0 0;min-height:32px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;border-radius:999px;border:1px solid var(--night-line);background:rgba(20,25,37,.8);color:var(--night-ink);font-size:13.5px;font-weight:500}
+.va-state::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--night-mute);flex:none;transition:background-color var(--t-med)}
+.va[data-v=listening] .va-state::before{background:#FF7A70}.va[data-v=thinking] .va-state::before{background:#FFC46B}.va[data-v=speaking] .va-state::before{background:var(--night-ok)}.va[data-v=idle] .va-state::before{background:var(--night-accent)}
+.va-log{order:3;width:100%;height:164px;margin-top:10px;overflow:auto;display:flex;flex-direction:column;gap:8px;text-align:start;scroll-behavior:smooth;overscroll-behavior:contain;padding:2px}
+.va-log:empty::before{content:"Your conversation appears here.";margin:auto;color:var(--night-mute);font-size:13.5px}
+.va-msg{max-width:86%;padding:9px 13px;border-radius:14px;font-size:14.5px;line-height:1.45;background:var(--night-2);border:1px solid var(--night-line);color:var(--night-ink);animation:vxRise .35s var(--ease) both;overflow-wrap:anywhere}
+.va-msg.me{align-self:flex-end;background:var(--accent);border-color:var(--accent);color:#fff;border-bottom-right-radius:4px}
+.va-msg.ai{align-self:flex-start;border-bottom-left-radius:4px}
+.va-msg.note{align-self:center;max-width:100%;background:none;border:0;color:var(--night-ok);font-size:13px;padding:2px 0}
+.va-reset{order:4;margin-top:6px;min-height:36px;padding:0 12px;border:0;border-radius:var(--r-s);background:none;color:var(--night-mute);font-size:13.5px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;transition:color var(--t-fast),transform var(--t-fast) var(--ease)}
+.va-reset:hover{color:#fff}.va-reset:active{transform:scale(.97)}
+.va-reset:focus-visible{outline:2px solid var(--night-accent);outline-offset:2px}
+
+/* halo (breathes), radial bars (36 spokes: outer wrapper places it, inner <b> scales), push-to-talk button */
+.va-halo{position:absolute;width:132px;height:132px;border-radius:50%;background:radial-gradient(circle,rgba(134,162,255,.55),rgba(134,162,255,.08) 62%,transparent 70%);animation:vaBreathe 3.6s ease-in-out infinite;transition:transform .09s linear}
+@keyframes vaBreathe{0%,100%{transform:scale(.94);opacity:.7}50%{transform:scale(1.08);opacity:1}}
+.va-bars{position:absolute;inset:0;pointer-events:none}
+.va-bars i{position:absolute;left:50%;top:50%;width:3.5px;height:34px;margin:-17px 0 0 -1.75px;transform:rotate(calc(var(--i) * 10deg)) translateY(-80px)}
+.va-bars b{display:block;width:100%;height:100%;border-radius:2px;background:var(--night-accent);transform:scaleY(.12);transform-origin:50% 100%;opacity:.55;will-change:transform}
+.va[data-v=idle] .va-bars b{animation:vaIdle 3.6s ease-in-out infinite;animation-delay:calc(var(--i) * -.1s)}
+@keyframes vaIdle{0%,100%{transform:scaleY(.12);opacity:.4}50%{transform:scaleY(.26);opacity:.7}}
+
+.va-btn{position:relative;width:96px;height:96px;border-radius:50%;border:0;background:var(--accent);color:#fff;display:grid;place-items:center;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;box-shadow:0 0 0 6px rgba(36,72,200,.28),0 10px 30px -6px rgba(36,72,200,.7),0 1px 0 rgba(255,255,255,.25) inset;transition:transform .18s var(--ease),background-color .15s}
+.va-btn:hover{background:var(--accent-h)}
+.va-btn.on{transform:scale(1.07);background:var(--accent-h)}
+.va-btn:active{transform:scale(.97)}
+.va-btn.on:active{transform:scale(1.04)}
+.va-btn:focus-visible{outline:2px solid #fff;outline-offset:6px}
+.va-btn:disabled{cursor:default;transform:none}
+.va-btn svg{width:32px;height:32px;position:relative}
+.va-ring{position:absolute;inset:0;border-radius:50%;border:2px solid var(--night-accent);opacity:0;pointer-events:none}
 .va-btn.on .va-ring{animation:vaPulse 1.1s ease-out infinite}
-@keyframes vaPulse{from{transform:scale(1);opacity:.7}to{transform:scale(1.6);opacity:0}}
-.va-reset{background:none;border:0;color:var(--muted);font-size:12.5px;text-decoration:underline;cursor:pointer}
-@media (prefers-reduced-motion:reduce){.va-btn.on .va-ring{animation:none;opacity:.5}.va-btn{transition:none}}
+@keyframes vaPulse{from{transform:scale(1);opacity:.75}to{transform:scale(1.7);opacity:0}}
+
+/* listening: with Web Audio the bars + halo follow the mic level (inline transforms, voice-agent.js); without it a CSS animation stands in */
+.va[data-v=listening] .va-bars b{opacity:1}
+.va[data-v=listening][data-meter] .va-halo{transform:scale(calc(.98 + var(--lvl) * .42));animation:none;opacity:1}
+.va[data-v=listening]:not([data-meter]) .va-bars b{animation:vaListen .9s ease-in-out infinite;animation-delay:calc(var(--i) * -.071s)}
+.va[data-v=listening]:not([data-meter]) .va-halo{animation-duration:.9s}
+@keyframes vaListen{0%,100%{transform:scaleY(.18)}50%{transform:scaleY(.8)}}
+/* thinking: a rhythmic pulse + a light chasing round the ring */
+.va[data-v=thinking] .va-halo{animation:vaThink 1.2s ease-in-out infinite}
+.va[data-v=thinking] .va-bars b{transform:scaleY(.28);animation:vaChase 1.4s ease-in-out infinite;animation-delay:calc(var(--i) * -.0389s)}
+@keyframes vaThink{0%,100%{transform:scale(.92);opacity:.6}50%{transform:scale(1.12);opacity:1}}
+@keyframes vaChase{0%,100%{opacity:.2}30%{opacity:1}}
+/* speaking: a fluid wave travelling round the ring */
+.va[data-v=speaking] .va-halo{animation:vaBreathe 1.6s ease-in-out infinite}
+.va[data-v=speaking] .va-bars b{opacity:1;background:var(--night-ok);animation:vaSpeak 1.15s ease-in-out infinite;animation-delay:calc(var(--i) * -.0639s)}
+@keyframes vaSpeak{0%,100%{transform:scaleY(.2)}50%{transform:scaleY(.95)}}
+/* offline: muted and still */
+.va[data-v=offline] .va-halo{animation:none;background:radial-gradient(circle,rgba(152,161,182,.18),transparent 68%)}
+.va[data-v=offline] .va-bars b{background:var(--night-mute);opacity:.25;transform:scaleY(.1)}
+.va[data-v=offline] .va-btn{background:#2B3143;color:var(--night-mute);box-shadow:0 0 0 6px rgba(152,161,182,.08)}
+.va[data-v=offline] .va-state::before{background:var(--night-mute)}
+
+@media (max-width:420px){
+  body{padding:12px 12px}
+  .call{padding:18px 16px 14px;border-radius:18px}
+  .call h1{font-size:25px}
+  .va-stage{width:208px;height:208px}
+  .va-bars i{transform:rotate(calc(var(--i) * 10deg)) translateY(-74px)}
+}
+@media (max-height:700px){.va-log{height:120px}}
+@media (prefers-reduced-motion:reduce){.va-btn.on .va-ring{animation:none;opacity:.5}.call-glow{animation:none}}

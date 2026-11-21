@@ -3,6 +3,7 @@
 (function () {
   const MAX_HISTORY = 12;
   const MIN_MS = 500;
+  const BARS = 36;   // radial level bars around the public call button
   let stopPrev = null;
 
   function pickMime() {
@@ -78,8 +79,9 @@
     if (stopPrev) stopPrev();
     el.innerHTML = (pub ? '' : '<div class="va-tabs" role="tablist"><button class="va-tab on" type="button" role="tab" data-t="call">Test Call</button><button class="va-tab" type="button" role="tab" data-t="manage">Manage Businesses &amp; Orders</button><button class="va-tab" type="button" role="tab" data-t="clients">Clients &amp; Accounts</button></div>') + '<div class="va-pane" data-pane="call"><div class="va"><div class="va-log" aria-live="polite"></div>'
       + '<p class="va-state" role="status">Hold the button and talk</p>'
+      + (pub ? '<div class="va-stage"><span class="va-halo" aria-hidden="true"></span><span class="va-bars" aria-hidden="true">' + Array.from({ length: BARS }, (_, i) => '<i style="--i:' + i + '"><b></b></i>').join('') + '</span>' : '')
       + '<button class="va-btn" type="button" aria-label="Hold to talk"><span class="va-ring"></span><svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2Z"/></svg></button>'
-      + '<button class="va-reset" type="button">Start a new call</button></div></div>' + (pub ? '' : '<div class="va-pane" data-pane="manage" hidden></div><div class="va-pane" data-pane="clients" hidden></div>');
+      + (pub ? '</div>' : '') + '<button class="va-reset" type="button">Start a new call</button></div></div>' + (pub ? '' : '<div class="va-pane" data-pane="manage" hidden></div><div class="va-pane" data-pane="clients" hidden></div>');
     if (!pub) el.querySelector('.va').insertAdjacentHTML('afterbegin', '<select class="input va-biz" aria-label="Business" hidden></select>');
     const biz = el.querySelector('.va-biz') || document.createElement('select'); // detached in public mode
     const loadBiz = () => fetch('/api/businesses', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : [])).then((rows) => {
@@ -96,11 +98,31 @@
     const log = el.querySelector('.va-log'), state = el.querySelector('.va-state'), btn = el.querySelector('.va-btn'), reset = el.querySelector('.va-reset');
     let history = [], rec = null, chunks = [], stream = null, t0 = 0, busy = false, alive = true;
 
-    const say = (t) => { state.textContent = t; };
+    const va = el.querySelector('.va');
+    const say = (t) => { state.textContent = t; va.dataset.v = /^Listening/.test(t) ? 'listening' : /^Thinking/.test(t) ? 'thinking' : /^Speaking/.test(t) ? 'speaking' : 'idle'; };
+    va.dataset.v = 'idle';
+    // live mic level (public page only): AnalyserNode -> the radial bars; no Web Audio = the CSS listening animation stays
+    let ac = null, raf = 0;
+    function meter(s) {
+      if (!pub) return;
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+        ac = new AC(); if (ac.state === 'suspended') ac.resume().catch(() => {});
+        const an = ac.createAnalyser(); an.fftSize = 256; an.smoothingTimeConstant = 0.72; ac.createMediaStreamSource(s).connect(an);
+        const d = new Uint8Array(an.frequencyBinCount), bars = el.querySelectorAll('.va-bars b'), n = bars.length; va.dataset.meter = '1';
+        const loop = () => {
+          an.getByteFrequencyData(d); let sum = 0;
+          for (let i = 0; i < n; i++) { const m = Math.min(i, n - 1 - i) / (n / 2), v = d[1 + Math.floor(m * 22)] / 255; sum += v; bars[i].style.transform = 'scaleY(' + (0.12 + Math.min(1, v * 1.25) * 0.88).toFixed(3) + ')'; }
+          va.style.setProperty('--lvl', Math.min(1, sum / n * 2.2).toFixed(3)); raf = requestAnimationFrame(loop);
+        };
+        loop();
+      } catch (e) { stopMeter(); }
+    }
+    function stopMeter() { cancelAnimationFrame(raf); raf = 0; try { if (ac) ac.close(); } catch (e) {} ac = null; delete va.dataset.meter; va.style.removeProperty('--lvl'); el.querySelectorAll('.va-bars b').forEach((b) => { b.style.transform = ''; }); }
     const bubble = (who, text) => {
       const d = document.createElement('div'); d.className = 'va-msg ' + who; d.textContent = text; log.appendChild(d); log.scrollTop = log.scrollHeight;
     };
-    const release = () => { if (stream) stream.getTracks().forEach((t) => t.stop()); stream = null; };
+    const release = () => { stopMeter(); if (stream) stream.getTracks().forEach((t) => t.stop()); stream = null; };
     const cleanup = () => { alive = false; clearInterval(watch); try { if (rec && rec.state === 'recording') rec.stop(); } catch (e) {} release(); stopSpeech(); if (stopPrev === cleanup) stopPrev = null; };
     stopPrev = cleanup;
     const watch = setInterval(() => { if (!el.isConnected) cleanup(); }, 1000); // drawer closed -> stop mic + voice
@@ -114,7 +136,7 @@
       try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
       catch (err) { say('Allow the microphone to talk to it.'); return; }
       if (!alive) { release(); return; }
-      chunks = []; t0 = Date.now();
+      meter(stream); chunks = []; t0 = Date.now();
       const mime = pickMime();
       rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
       rec.ondataavailable = (ev) => { if (ev.data && ev.data.size) chunks.push(ev.data); };

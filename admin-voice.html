@@ -7,88 +7,144 @@
   <meta name="robots" content="noindex">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-  <meta name="theme-color" content="#FAFAF8">
+  <meta name="theme-color" content="#F5F5F1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/vx.css">
   <link rel="stylesheet" href="/assets/admin-voice.css">
 </head>
 <body>
   <!-- Client Admin Portal for the Voice AI + POS service. Served only on adminvoice.vagent.online (functions/_middleware.js). Login only: there is NO signup, accounts are created by VAgent HQ. -->
   <main id="login" hidden>
-    <header class="lg-head">
-      <span class="lg-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2Z"/></svg></span>
-      <span class="lg-name" translate="no">Voice AI + POS</span>
-    </header>
-    <section class="lg-body" aria-labelledby="lg-title">
-      <h1 id="lg-title">Sign in</h1>
-      <p class="lg-sub">Use the email and password VAgent set up for your business.</p>
-      <form id="login-form" autocomplete="on" novalidate>
-        <label for="email">Email</label>
-        <input id="email" name="email" type="email" autocomplete="username" inputmode="email" spellcheck="false" autocapitalize="none" required maxlength="200" placeholder="name@business.com">
-        <label for="password">Password</label>
-        <div class="pw"><input id="password" name="password" type="password" autocomplete="current-password" required maxlength="200"><button type="button" id="pw-toggle" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
-        <p class="err" id="login-err" role="alert"></p>
-        <button class="btn primary" type="submit" id="login-btn">Sign in</button>
-      </form>
+    <section class="lg-auth">
+      <header class="lg-head vx-in" style="--d:0">
+        <span class="lg-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2Z"/></svg></span>
+        <span class="lg-name" translate="no">Voice AI + POS</span>
+      </header>
+      <div class="lg-body" aria-labelledby="lg-title">
+        <h1 id="lg-title" class="vx-in" style="--d:1">Sign in</h1>
+        <p class="lg-sub vx-in" style="--d:2">Use the email and password VAgent set up for your business.</p>
+        <form id="login-form" class="vx-in" style="--d:3" autocomplete="on" novalidate>
+          <label class="vx-label" for="email">Email</label>
+          <input class="vx-input" id="email" name="email" type="email" autocomplete="username" inputmode="email" spellcheck="false" autocapitalize="none" required maxlength="200" placeholder="name@business.com">
+          <label class="vx-label second" for="password">Password</label>
+          <div class="pw"><input class="vx-input" id="password" name="password" type="password" autocomplete="current-password" required maxlength="200"><button type="button" id="pw-toggle" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          <p class="err" id="login-err" role="alert"></p>
+          <button class="vx-btn primary lg-go" type="submit" id="login-btn">Sign in</button>
+        </form>
+      </div>
+      <footer class="lg-foot">Accounts are created by VAgent. If you need access, contact your VAgent account manager.</footer>
     </section>
-    <footer class="lg-foot">Accounts are created by VAgent. If you need access, contact your VAgent account manager.</footer>
+    <aside class="lg-show" aria-label="Product preview">
+      <div class="sh-grid" aria-hidden="true"></div><div class="sh-glow" aria-hidden="true"></div>
+      <div class="sh-inner">
+        <h2 class="vx-in" style="--d:2">Calls in, orders out.</h2>
+        <p class="sh-lead vx-in" style="--d:3">Your AI answers every call in the customer’s language and writes the order straight into your queue.</p>
+        <div class="sh-stage vx-in" style="--d:4" aria-hidden="true">
+          <div class="sh-row sh-call">
+            <div class="sh-top"><span class="sh-tag"><i class="vx-dot"></i>Live call</span><span class="sh-time vx-num" id="sh-time">0:00</span></div>
+            <div class="sh-wave" id="sh-wave"></div>
+            <p class="sh-say" id="sh-say"></p>
+          </div>
+          <div class="sh-conn"><i></i></div>
+          <div class="sh-row sh-order" id="sh-order">
+            <div class="sh-top"><b id="sh-ord-id">Order #1042</b><span class="sh-chip" id="sh-chip">New</span></div>
+            <ul class="sh-lines" id="sh-lines"></ul>
+            <div class="sh-total"><span>Total</span><b class="vx-num" id="sh-total">$0.00</b></div>
+          </div>
+        </div>
+        <p class="sh-cap">Sample call, shown for illustration.</p>
+      </div>
+    </aside>
   </main>
 
   <div id="app" hidden>
     <header class="top">
-      <div class="who"><span class="logo sm" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2Z"/></svg></span><div><p class="eyebrow">Voice AI + POS · Client Portal</p><h1 id="biz">…</h1></div></div>
-      <div class="actions">
-        <span class="pill" id="sub-pill"></span>
-        <a class="btn" id="live" href="#" target="_blank" rel="noopener">📞 Open my Voice AI ↗</a>
-        <button class="btn" type="button" id="logout">Log out</button>
+      <div class="top-in">
+        <div class="who">
+          <span class="lg-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2Z"/></svg></span>
+          <div class="who-t"><p class="who-sub" translate="no">Voice AI + POS</p><h1 id="biz">…</h1></div>
+        </div>
+        <div class="actions">
+          <span class="vx-chip ok" id="sub-pill"><i class="vx-dot"></i><span id="sub-txt">Agent live</span></span>
+          <a class="vx-btn" id="live" href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Open my Voice AI</a>
+          <button class="vx-btn icon" type="button" id="copy-link" aria-label="Copy my Voice AI link" title="Copy link"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          <button class="vx-btn ghost" type="button" id="logout">Log out</button>
+        </div>
       </div>
     </header>
-    <nav class="tabs" role="tablist" aria-label="Sections">
-      <button class="tab on" type="button" role="tab" data-tab="items">Items</button>
-      <button class="tab" type="button" role="tab" data-tab="orders">Orders <span class="count" id="pending-count" hidden></span></button>
-    </nav>
+    <div class="shell">
+      <section class="kpis" aria-label="Overview">
+        <div class="kpi"><p class="k-l">Total items</p><p class="k-v vx-num" id="k-items">–</p></div>
+        <div class="kpi"><p class="k-l">In stock</p><p class="k-v vx-num" id="k-stock">–</p></div>
+        <div class="kpi"><p class="k-l">Pending orders</p><p class="k-v vx-num" id="k-pending">–</p></div>
+        <div class="kpi"><p class="k-l">Completed orders</p><p class="k-v vx-num" id="k-done">–</p></div>
+      </section>
+      <nav class="vx-tabs main-tabs" role="tablist" aria-label="Sections" id="main-tabs">
+        <button class="tab on" type="button" role="tab" aria-selected="true" data-tab="items">Items</button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-tab="orders">Orders <span class="vx-count" id="pending-count" hidden></span></button>
+        <i class="ind" aria-hidden="true"></i>
+      </nav>
 
-    <section id="tab-items" class="panel">
-      <div class="bar"><p class="help">Everything here is what your Voice AI knows and sells. Add a picture and as many extra columns per item as you like.</p><button class="btn primary" type="button" id="add-item">+ Add item</button></div>
-      <p class="empty" id="items-empty" hidden>No items yet. Add your first item so your Voice AI can sell it.</p>
-      <div class="tw"><table id="items-table" class="tbl" hidden></table></div>
-    </section>
+      <section id="tab-items" class="panel" role="tabpanel">
+        <div class="bar">
+          <div class="search"><span aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span><input class="vx-input" id="item-search" type="search" placeholder="Search items" aria-label="Search items" autocomplete="off" spellcheck="false"></div>
+          <button class="vx-btn primary" type="button" id="add-item"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add item</button>
+        </div>
+        <div class="tw" id="items-wrap"><table id="items-table" class="tbl" hidden></table></div>
+        <div class="empty" id="items-empty" hidden><span class="empty-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></span><h3 id="items-empty-t">No items yet</h3><p id="items-empty-p">Add your first item so your Voice AI can sell it.</p></div>
+      </section>
 
-    <section id="tab-orders" class="panel" hidden>
-      <div class="bar"><div class="chips" id="order-filter"></div><button class="btn" type="button" id="refresh">↻ Refresh</button></div>
-      <p class="empty" id="orders-empty" hidden>No orders here yet. When a customer orders on a call, it appears right here.</p>
-      <div id="orders" class="orders"></div>
-    </section>
+      <section id="tab-orders" class="panel" role="tabpanel" hidden>
+        <div class="bar">
+          <div class="vx-tabs seg" id="order-filter" role="tablist" aria-label="Order status"><i class="ind" aria-hidden="true"></i></div>
+          <button class="vx-btn" type="button" id="refresh"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>Refresh</button>
+        </div>
+        <div id="orders" class="orders"></div>
+        <div class="empty" id="orders-empty" hidden><span class="empty-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span><h3>No orders here yet</h3><p>When a customer orders on a call, it appears right here.</p></div>
+      </section>
+    </div>
   </div>
 
-  <div id="modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <form id="item-form" class="sheet">
-      <h2 id="modal-title">Add item</h2>
-      <p class="label first">Image <small>(optional)</small></p>
+  <div id="modal" class="vx-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <form id="item-form" class="vx-sheet" novalidate>
+      <div class="sheet-h"><h2 id="modal-title">Add item</h2><button type="button" class="vx-btn icon sm ghost" id="x-item" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <p class="vx-label">Image <small>(optional)</small></p>
       <div class="img-row">
-        <div class="thumb big" id="i-prev"><img alt="" hidden><span class="ph" aria-hidden="true"></span></div>
+        <label class="drop" id="drop" for="i-file">
+          <span class="thumb big" id="i-prev"><img alt="" hidden><span class="ph" aria-hidden="true"></span></span>
+          <span class="drop-t"><b>Drop an image here</b><small>or click to upload. It is resized and compressed for you.</small></span>
+        </label>
+        <input id="i-file" type="file" accept="image/*" hidden>
         <div class="img-ctl">
-          <div class="img-btns"><label class="btn" for="i-file">⬆ Upload image</label><input id="i-file" type="file" accept="image/*" hidden><button class="btn cancel" type="button" id="i-remove" hidden>Remove</button></div>
-          <input id="i-url" type="url" inputmode="url" maxlength="1900" placeholder="…or paste an image link (https://…)" aria-label="Image link">
-          <small id="i-info" class="info"></small>
+          <input class="vx-input" id="i-url" type="url" inputmode="url" maxlength="1900" placeholder="…or paste an image link (https://…)" aria-label="Image link">
+          <div class="img-meta"><small id="i-info" class="info"></small><button class="vx-btn sm danger" type="button" id="i-remove" hidden>Remove</button></div>
         </div>
       </div>
       <div class="row3">
-        <div class="f"><label for="i-name">Name</label><input id="i-name" maxlength="120" required></div>
-        <div class="f"><label for="i-price">Price</label><input id="i-price" type="number" min="0" step="0.01" inputmode="decimal" required></div>
-        <div class="f"><label for="i-qty">Quantity</label><input id="i-qty" type="number" min="0" step="1" inputmode="numeric" required></div>
+        <div class="f"><label class="vx-label" for="i-name">Name</label><input class="vx-input" id="i-name" maxlength="120" required></div>
+        <div class="f"><label class="vx-label" for="i-price">Price</label><input class="vx-input" id="i-price" type="number" min="0" step="0.01" inputmode="decimal" required></div>
+        <div class="f"><label class="vx-label" for="i-qty">Quantity</label><input class="vx-input" id="i-qty" type="number" min="0" step="1" inputmode="numeric" required></div>
       </div>
-      <label class="check"><input id="i-avail" type="checkbox" checked> Available for sale</label>
-      <p class="label">Extra fields <small>(your own columns: Color, Size, Warranty…)</small></p>
+      <label class="check"><input id="i-avail" type="checkbox" checked><span class="box" aria-hidden="true"></span>Available for sale</label>
+      <p class="vx-label extra-h">Extra fields <small>(your own columns: Color, Size, Warranty…)</small></p>
       <datalist id="keys"></datalist>
       <div id="i-extra"></div>
-      <button class="btn" type="button" id="add-field">+ Add Column / Field</button>
+      <button class="vx-btn sm" type="button" id="add-field"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add Column / Field</button>
       <p class="err" id="item-err" role="alert"></p>
-      <div class="foot"><button class="btn" type="button" id="cancel-item">Cancel</button><button class="btn primary" type="submit">Save</button></div>
+      <div class="foot"><button class="vx-btn" type="button" id="cancel-item">Cancel</button><button class="vx-btn primary" type="submit" id="save-item">Save item</button></div>
     </form>
   </div>
-  <div id="toast" class="toast" role="status"></div>
+
+  <div id="confirm" class="vx-modal" hidden role="alertdialog" aria-modal="true" aria-labelledby="cf-title" aria-describedby="cf-text">
+    <div class="vx-sheet narrow">
+      <h2 id="cf-title">Are you sure?</h2><p class="cf-text" id="cf-text"></p>
+      <div class="foot"><button class="vx-btn" type="button" id="cf-no">Keep it</button><button class="vx-btn danger" type="button" id="cf-yes">Delete</button></div>
+    </div>
+  </div>
+
+  <div class="vx-toasts" id="toasts" aria-live="polite"></div>
   <script src="/assets/admin-voice.js"></script>
 </body>
 </html>
