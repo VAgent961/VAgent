@@ -156,7 +156,7 @@
     const t = $('#items-table'), q = query.trim().toLowerCase();
     const list = q ? items.filter((i) => (i.name + ' ' + Object.entries(i.custom_fields || {}).map(([k, v]) => k + ' ' + v).join(' ')).toLowerCase().includes(q)) : items;
     const none = !list.length; $('#items-empty').hidden = !none; t.hidden = none; $('#items-wrap').hidden = none;
-    if (none) { $('#items-empty-t').textContent = q ? 'No items match “' + q + '”' : 'No items yet'; $('#items-empty-p').textContent = q ? 'Try a different name or clear the search.' : 'Add your first item so your Voice AI can sell it.'; return; }
+    if (none) { t.innerHTML = ''; $('#items-empty-t').textContent = q ? 'No items match “' + q + '”' : 'No items yet'; $('#items-empty-p').textContent = q ? 'Try a different name or clear the search.' : 'Add your first item so your Voice AI can sell it.'; return; }
     t.innerHTML = '<thead><tr><th>Item</th><th></th><th class="num">Price</th><th class="num">Quantity</th><th>Available</th><th>Details</th><th></th></tr></thead><tbody>'
       + list.map((i, n) => {
         const cf = Object.entries(i.custom_fields || {}).filter(([k]) => k);
