@@ -286,3 +286,49 @@ a.pick{display:inline-flex;align-items:center;text-decoration:none;color:inherit
 .va-tools .va-new[open]{flex-basis:100%}.va-tools .va-new[open] summary{margin-bottom:8px}
 .va-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}.va-pills button{min-height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line2);background:#fff;cursor:pointer;font-size:12.5px}.va-pills button small{opacity:.6;margin-left:2px}
 .va-pills button.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+
+/* ===== Responsive pass (mobile-first additions; skills: responsive-craft + responsive-design) =====
+   44px tap targets, 16px fields (no iOS zoom), scrollable filter rows, safe-area padding, sheet-style "+ New Client". */
+.va-fh,.va-fx{display:none}
+@media (max-width:900px),(pointer:coarse){
+  input,select,textarea,.input{font-size:16px}
+  .search input{min-height:44px;font-size:16px}
+  .btn,.top .actions .btn,.top .actions .btn.icon,.top .actions a.btn{min-height:44px;min-width:44px}
+  .top .actions .btn,.top .actions .btn.icon{width:44px;height:44px}
+  .top .actions a.btn{width:44px;height:44px;padding:0}
+  .top{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right));padding-top:env(safe-area-inset-top);height:calc(60px + env(safe-area-inset-top))}
+  .zoom button{width:44px;height:44px}
+  .filters{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:0 16px 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .filters::-webkit-scrollbar{display:none}
+  .filters button{flex:none;min-height:44px;padding:0 14px}
+  .side{padding-bottom:calc(32px + env(safe-area-inset-bottom))}
+  .drawer-in{padding-bottom:calc(24px + env(safe-area-inset-bottom));overscroll-behavior:contain}
+  .drawer .d-title{padding-right:48px}
+  .rename,.drawer .pick,a.pick{min-height:44px;min-width:44px}
+  .more summary,.item summary,.activity summary,details>summary.btn{min-height:44px;display:flex;align-items:center}
+  .va-tab{min-height:44px}
+  .va-x{width:44px;height:44px}
+  .va-reset,.va-prodhead .input,.va-prop .input{min-height:44px}
+  .va-search,.va-cform .input{min-height:48px}
+  .va-pills{flex-wrap:nowrap;overflow-x:auto;margin:0 -24px 12px;padding:0 24px 2px;scrollbar-width:none;scroll-snap-type:x proximity}
+  .va-pills::-webkit-scrollbar{display:none}
+  .va-pills button{flex:none;min-height:44px;padding:0 16px;font-size:14px;scroll-snap-align:start}
+  .va-cbtns .btn,.va-cbtns a.btn,.va-cbtns button{min-height:44px;flex:1 1 130px}
+  .va-mini{min-height:44px;min-width:44px;padding:0 14px;font-size:13px}
+  .va-dl{font-size:14px;gap:2px 10px;align-items:center}
+  .va-dl dd{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0}
+  .va-dl a{display:inline-flex;align-items:center;min-height:44px;overflow-wrap:anywhere}
+  .va-pw .btn{min-height:48px}
+  .va-tools .va-new summary{min-height:48px}
+  .va-ccard{padding:14px}
+  .va-days b{font-size:30px}
+  /* + New Client opens as a bottom sheet: sticky title row with an easy close, sticky Create button */
+  .va-new[open]::before{content:"";position:fixed;inset:0;z-index:30;background:rgba(20,20,19,.42);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .va-new[open] .va-cform{position:fixed;left:0;right:0;bottom:0;z-index:31;max-height:calc(100dvh - max(12px,env(safe-area-inset-top)));overflow-y:auto;overscroll-behavior:contain;margin:0;padding:0 16px;border:0;border-radius:20px 20px 0 0;box-shadow:0 -12px 40px rgba(20,20,19,.25)}
+  .va-fh{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff;padding:14px 0 10px}
+  .va-fh b{font-family:Newsreader,Georgia,serif;font-weight:500;font-size:22px}
+  .va-fx{display:grid;place-items:center;width:44px;height:44px;border:0;background:none;border-radius:10px;cursor:pointer;color:var(--muted);font-size:26px;line-height:1}
+  .va-submit{position:sticky;bottom:0;z-index:2;background:#fff;margin:8px -16px 0;padding:10px 16px max(12px,env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+  .va-submit .btn.primary{width:100%;min-height:48px}
+}
+@media (max-width:430px){.top .name{display:none}.top .logo{flex:1}}

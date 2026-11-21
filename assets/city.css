@@ -133,3 +133,13 @@ body.city-on .stage>svg.fx-layer,body.city-on .stage>.zoom,body.city-on .stage>.
 @keyframes vvFlag{0%,100%{transform:skewY(-4deg) scaleX(1)}50%{transform:skewY(5deg) scaleX(.94)}}
 @keyframes vvFlicker{0%,100%{transform:scale(1,1);opacity:1}50%{transform:scale(.92,1.1);opacity:.85}}
 @media (prefers-reduced-motion:reduce){.vv-flag,.vv-flame{animation:none!important}}
+
+/* ===== Responsive pass: the map's own controls (tabs, floors, zoom) get 44px targets; the tab row scrolls instead of wrapping over the map ===== */
+@media (max-width:760px),(pointer:coarse){
+  .vc-tabs button,.vc-floors button,.vc-zoom button,.vc-btns button,.vc-bar button,.vc-here,.vc-switch,.vc-ui>.vc-switch,.stage>a.vc-switch{min-height:44px;min-width:44px}
+  .vc-tabs button{flex:none;padding:0 14px;font-size:13px}
+  .vc-zoom button{width:44px;height:44px}
+  .vc-ch button{min-width:44px;min-height:44px}
+}
+@media (min-width:761px){.vc-tabs{right:140px}}
+@media (max-width:760px){.vc-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px}.vc-tabs::-webkit-scrollbar{display:none}}

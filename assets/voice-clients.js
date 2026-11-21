@@ -23,19 +23,21 @@
       el.innerHTML = `<p class="help">Voice AI customers, fewest days left first. Each one gets a login at <b>adminvoice.vagent.online</b> and a public call link. Expired or canceled accounts are blocked and their agent goes offline.</p>
         <div class="va-tools"><input class="input va-search" type="search" placeholder="Search name, email, phone or slug…" aria-label="Search clients"><details class="va-new"><summary class="btn primary" style="display:inline-flex">+ New Client</summary>
         <form class="va-cform" autocomplete="off">
+          <div class="va-fh"><b>New client</b><button class="va-fx" type="button" aria-label="Close">×</button></div>
           <div class="field"><label>Business name</label><input class="input" name="business_name" maxlength="80" required placeholder="e.g. Tech Store Hamra"></div>
           <div class="field"><label>Slug / subdomain</label><input class="input" name="slug" maxlength="30" required placeholder="voice1" pattern="[a-z0-9][a-z0-9\\-]{1,28}[a-z0-9]"><small>Link: voice.vagent.online/<b class="va-slug">slug</b> · <b class="va-slug">slug</b>.vagent.online</small></div>
           <div class="field"><label>Client email (their login)</label><input class="input" name="email" type="email" maxlength="200" required></div>
           <div class="field"><label>Password</label><div class="va-pw"><input class="input" name="password" maxlength="100" required minlength="6"><button class="btn" type="button" data-gen>Generate</button></div></div>
           <div class="field"><label>WhatsApp number (with country code)</label><input class="input" name="phone" maxlength="30" placeholder="96103123456"></div>
           <div class="field"><label>Subscription days</label><input class="input" name="days" type="number" min="1" max="3650" value="30"></div>
-          <p class="va-err" role="alert"></p><button class="btn primary" type="submit">Create account</button>
+          <div class="va-submit"><p class="va-err" role="alert"></p><button class="btn primary" type="submit">Create account</button></div>
         </form></details></div>
         <div class="va-pills" role="group" aria-label="Filter by status"></div>
         <div class="va-clist"><p class="empty">Loading…</p></div>`;
       el.querySelector('.va-search').addEventListener('input', (e) => { q = e.target.value; draw(); });
       const f = el.querySelector('.va-cform');
       f.slug.addEventListener('input', () => { const v = f.slug.value.toLowerCase().replace(/[^a-z0-9-]/g, ''); f.slug.value = v; el.querySelectorAll('.va-slug').forEach((x) => (x.textContent = v || 'slug')); });
+      f.querySelector('.va-fx').onclick = () => { el.querySelector('.va-new').open = false; };
       f.querySelector('[data-gen]').onclick = () => { f.password.value = genPw(); };
       f.addEventListener('submit', async (e) => {
         e.preventDefault(); const err = el.querySelector('.va-err'); err.textContent = '';
