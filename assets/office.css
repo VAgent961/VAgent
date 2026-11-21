@@ -295,7 +295,7 @@ a.pick{display:inline-flex;align-items:center;text-decoration:none;color:inherit
   .search input{min-height:44px;font-size:16px}
   .btn,.top .actions .btn,.top .actions .btn.icon,.top .actions a.btn{min-height:44px;min-width:44px}
   .top .actions .btn,.top .actions .btn.icon{width:44px;height:44px}
-  .top .actions a.btn{width:44px;height:44px;padding:0}
+  .top .actions a.btn{width:auto;height:44px;padding:0 14px}
   .top{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right));padding-top:env(safe-area-inset-top);height:calc(60px + env(safe-area-inset-top))}
   .zoom button{width:44px;height:44px}
   .filters{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:0 16px 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
@@ -331,4 +331,5 @@ a.pick{display:inline-flex;align-items:center;text-decoration:none;color:inherit
   .va-submit{position:sticky;bottom:0;z-index:2;background:#fff;margin:8px -16px 0;padding:10px 16px max(12px,env(safe-area-inset-bottom));border-top:1px solid var(--line)}
   .va-submit .btn.primary{width:100%;min-height:48px}
 }
+@media (max-width:560px){.top .actions a.btn{width:44px;padding:0}}
 @media (max-width:430px){.top .name{display:none}.top .logo{flex:1}}
