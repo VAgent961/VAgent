@@ -15,16 +15,13 @@
   }
   function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2800); }
 
-  // ---------------- login showcase (decorative: waveform, rotating call lines, order status)
-  (function showcase() {
-    $('#wave').innerHTML = Array.from({ length: 28 }, (_, i) => '<span style="--i:' + i + '"></span>').join('');
-    const say = $('#say'), chip = $('#chip'), lines = ['“Two shawarma and a mint lemonade, please.”', '“بدي كيلو ورق عنب وتبولة، توصيل عالحمرا.”', '“Do you have the iPhone 16 in blue?”', '“شو عندكم بالمعجنات اليوم؟”'];
-    let k = 0; setInterval(() => { if (document.hidden || $('#login').hidden) return; k = (k + 1) % lines.length; say.textContent = lines[k]; say.classList.remove('swap'); void say.offsetWidth; say.classList.add('swap'); const done = k % 2 === 1; chip.textContent = done ? 'Done' : 'Pending'; chip.className = 'chip ' + (done ? 'done' : 'pending'); }, 3800);
+  // ---------------- login: show/hide password
+  (function pwToggle() {
     const t = $('#pw-toggle'); t.addEventListener('click', () => { const show = $('#password').type === 'password'; $('#password').type = show ? 'text' : 'password'; t.setAttribute('aria-pressed', show ? 'true' : 'false'); t.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); });
   })();
 
   // ---------------- login / session
-  function showLogin(msg) { clearInterval(timer); $('#app').hidden = true; $('#login').hidden = false; $('#login-err').textContent = msg || ''; $('#password').value = ''; $('#password').type = 'password'; $('#pw-toggle').setAttribute('aria-pressed', 'false'); }
+  function showLogin(msg) { clearInterval(timer); $('#app').hidden = true; $('#login').hidden = false; $('#login-err').textContent = msg || ''; $('#email').removeAttribute('aria-invalid'); $('#password').removeAttribute('aria-invalid'); $('#password').value = ''; $('#password').type = 'password'; $('#pw-toggle').setAttribute('aria-pressed', 'false'); }
   function showApp() {
     $('#login').hidden = true; $('#app').hidden = false;
     $('#biz').textContent = me.business_name; document.title = me.business_name + ' · Voice AI + POS';
@@ -38,9 +35,9 @@
     try { me = await api('me'); showApp(); } catch (e) { showLogin(e.status === 401 ? '' : e.message); }
   }
   $('#login-form').addEventListener('submit', async (e) => {
-    e.preventDefault(); const b = $('#login-btn'); b.disabled = true; $('#login-err').textContent = '';
+    e.preventDefault(); const b = $('#login-btn'), em = $('#email'), pw = $('#password'); em.removeAttribute('aria-invalid'); pw.removeAttribute('aria-invalid'); $('#login-err').textContent = ''; if (!em.value.trim() || !pw.value) { const bad = !em.value.trim() ? em : pw; bad.setAttribute('aria-invalid', 'true'); $('#login-err').textContent = !em.value.trim() ? 'Enter your email address.' : 'Enter your password.'; bad.focus(); return; } b.disabled = true; b.textContent = 'Signing in…';
     try { await api('login', { body: { email: $('#email').value, password: $('#password').value } }); await boot(); }
-    catch (err) { $('#login-err').textContent = err.message; } finally { b.disabled = false; }
+    catch (err) { $('#login-err').textContent = err.message; $('#email').setAttribute('aria-invalid', 'true'); $('#password').setAttribute('aria-invalid', 'true'); } finally { b.disabled = false; b.textContent = 'Sign in'; }
   });
   $('#logout').addEventListener('click', async () => { try { await api('logout', { body: {} }); } catch (e) { /* ignore */ } me = null; showLogin(''); });
   const onAuthError = (e) => { if (e.status === 401 || e.code === 'subscription') { showLogin(e.message); return true; } return false; };
