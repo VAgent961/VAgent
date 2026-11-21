@@ -103,6 +103,29 @@ body.city-on .stage>svg.fx-layer,body.city-on .stage>.zoom,body.city-on .stage>.
 @keyframes vvFire{0%,100%{transform:scale(1,1)}50%{transform:scale(1.06,.9)}}
 @keyframes vvWag{from{transform:rotate(-14deg)}to{transform:rotate(16deg)}}
 @keyframes vvSteam{0%,100%{opacity:.25}50%{opacity:.8}}
+/* CEO activity loop (castle.js): one figure per station, only the current one shows; the walker crosses the hall between stations */
+.vc-in .cv-p{display:none}
+.vc-in[data-act=tv] .cv-tv,.vc-in[data-act=bench] .cv-bench,.vc-in[data-act=dota] .cv-dota,.vc-in[data-act=walk] .cv-walk{display:inline;animation:vvSettle .5s ease-out}
+.vc-in[data-act=bench] .cv-rest{display:none}
+.vc-in .cv-bench .tag,.vc-in .cv-dota .tag{pointer-events:auto}
+.vc-in .vv-glow2{animation:vvGlow 2.2s ease-in-out infinite}
+.vc-in .vv-hands{animation:vvType .28s ease-in-out infinite alternate}
+.vc-in .vv-creep{animation:vvCreep 4.2s linear infinite}
+.vc-in .vv-creep.c2{animation-delay:-2.1s}
+.vc-in .vv-creep.d{animation-name:vvCreepD}
+.vc-in .cv-bar{animation:vvPress 3.4s ease-in-out infinite}
+.vc-in .cv-arm{animation:vvPressArm 3.4s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
+.vc-in .vv-legL,.vc-in .vv-legR{transform-box:fill-box;transform-origin:50% 0;animation:vvStep .5s ease-in-out infinite alternate}
+.vc-in .vv-legR{animation-direction:alternate-reverse}
+.vc-in .vv-bob{animation:vvBob .25s ease-in-out infinite alternate}
+@keyframes vvSettle{from{opacity:0}to{opacity:1}}
+@keyframes vvType{from{transform:translateY(0)}to{transform:translateY(-1.6px)}}
+@keyframes vvCreep{0%{transform:translate(0,0);opacity:0}10%,85%{opacity:1}100%{transform:translate(66px,-24px);opacity:0}}
+@keyframes vvCreepD{0%{transform:translate(0,0);opacity:0}10%,85%{opacity:1}100%{transform:translate(-66px,24px);opacity:0}}
+@keyframes vvPress{0%,10%{transform:translateY(0)}45%,58%{transform:translateY(18px)}93%,100%{transform:translateY(0)}}
+@keyframes vvPressArm{0%,10%{transform:scaleY(1)}45%,58%{transform:scaleY(.1)}93%,100%{transform:scaleY(1)}}
+@keyframes vvStep{from{transform:rotate(-20deg)}to{transform:rotate(20deg)}}
+@keyframes vvBob{from{transform:translateY(0)}to{transform:translateY(-2px)}}
 .vc-in .vc-ceo:hover .tag rect{fill:#4A3B1C}
 @media (prefers-reduced-motion:reduce){.vc-in *{animation:none!important}}
 .vc-in .vv-flag,.vc-top .vv-flag,.vc-fl .vv-flag{transform-box:fill-box;transform-origin:0 50%;animation:vvFlag 2.6s ease-in-out infinite}

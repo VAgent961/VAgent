@@ -101,7 +101,12 @@
     s += `<g transform="translate(${f1(u)} ${-(gh + 30)})"><path d="M-13,-16 h26 v20 q0,14 -13,20 q-13,-6 -13,-20 z" fill="#B5532F" stroke="#C9A227" stroke-width="2.5"/><text y="6" text-anchor="middle" font-size="16" font-weight="800" fill="#F6E7B0" font-family="Newsreader,Georgia,serif">V</text></g>`;
     for (const t of [u - 50, u + 50]) s += `<g transform="translate(${f1(t)} -66)"><ellipse cx="0" cy="-6" rx="24" ry="20" fill="url(#vc-pool)" opacity=".85"/><rect x="-2" y="-2" width="4" height="12" fill="#3A2A1C"/><path class="vv-flame" d="M0,-4 q-6,-8 0,-18 q6,10 0,18z" fill="#F28A2E"/><path d="M0,-4 q-3,-5 0,-11 q3,6 0,11z" fill="#FFD25A"/></g>`;
     for (const t of [10, gt.w - 24]) s += `<path d="M${t},-120 h14 v62 l-7,-9 l-7,9 z" fill="#8A2B3A"/><rect x="${t}" y="-120" width="14" height="6" fill="#C9A227"/><rect x="${t + 5}" y="-114" width="4" height="46" fill="#C9A227" opacity=".85"/>`;
-    return s + '</g>';
+    return s + '</g></g>';
+  }
+  // the barbell resting on the rack hooks while nobody is pressing
+  function benchRest(gx, y, z) {
+    const a = P(gx - 82, y, z - 4), c = P(gx + 82, y, z - 4), pl = (x, r, col) => { const o = P(x, y, z - 4); return `<g transform="translate(${f1(o[0])} ${f1(o[1])}) matrix(${-K} .5 0 1 0 0)"><circle r="${r}" fill="${col}" stroke="#0E0E12" stroke-width="1.5"/><circle r="3.2" fill="#B8BCC6"/></g>`; };
+    return `<g class="cv-rest"><line x1="${f1(a[0])}" y1="${f1(a[1])}" x2="${f1(c[0])}" y2="${f1(c[1])}" stroke="#8E929C" stroke-width="5" stroke-linecap="round"/>` + pl(gx - 76, 17, '#B5342F') + pl(gx - 68, 14, '#2B2B30') + pl(gx + 68, 14, '#2B2B30') + pl(gx + 76, 17, '#B5342F') + '</g>';
   }
   function castleParts(b) {
     const L = lay(b), { X0, X1, Y0, Y1, WT, WH, TR, TH, TH2, keep, gate } = L, P_ = {}, T_ = {}, add = (k, bb, h) => { P_[k] = { bb, h }; };
@@ -205,39 +210,52 @@
   }
 
   // ---------------------------------------------------------------- the interior (the great hall, shown when the castle is open)
+  // Three zones along the hall: TV lounge (west), bench-press gym (middle), Dota 2 gaming corner (east). The CEO cycles through them, 3 minutes each.
+  const ACTS = ['tv', 'bench', 'dota'], ACT_MS = 180000, WALK_MS = 3200;
+  const LABEL = { tv: 'Watching TV', bench: 'Bench Pressing', dota: 'Playing Dota 2' }, WALKTO = { tv: 'Walking to the TV', bench: 'Walking to the bench', dota: 'Walking to the PC' };
+  let ST = null, forced = null;   // ST = screen positions of the three stand points + the aisle (set in interior())
+
   function interior(b) {
-    const g = geo(b), x0 = g.HX, x1 = g.HX + g.HW, y0 = g.HY, y1 = g.HY + g.HD, Z = 4, H = 150, W = x1 - x0, D = y1 - y0, tvx = g.cx; let s = '';
+    const g = geo(b), x0 = g.HX, x1 = g.HX + g.HW, y0 = g.HY, y1 = g.HY + g.HD, Z = 4, H = 150, W = x1 - x0, D = y1 - y0, tvx = x0 + 105, gx = x0 + 320, dx = x0 + 535; let s = '';
+    const AY = y1 - 24;   // the walking aisle along the front of the hall
+    ST = { tv: P(tvx, 2132, Z), bench: P(gx - 42, y1 - 44, Z), dota: P(dx, 2004, Z), aisle: AY, ax: { tv: tvx, bench: gx - 42, dota: dx } };
     s += `<defs>
-      <pattern id="vv-parq" width="48" height="24" patternUnits="userSpaceOnUse" patternTransform="matrix(.866 .5 -.866 .5 0 0)"><rect width="48" height="24" fill="#B98B5A"/><rect width="24" height="12" fill="#C69868"/><rect x="24" y="12" width="24" height="12" fill="#C69868"/><path d="M0 12H48M0 0V24M24 0V24" stroke="#8E6841" stroke-width="1" opacity=".55"/></pattern>
+      <pattern id="vv-flags" width="64" height="32" patternUnits="userSpaceOnUse" patternTransform="matrix(.866 .5 -.866 .5 0 0)"><rect width="64" height="32" fill="#C9BDA2"/><rect width="32" height="16" fill="#D3C8AF"/><rect x="32" y="16" width="32" height="16" fill="#D3C8AF"/><path d="M0 16H64M0 0V32M32 0V32" stroke="#A89C83" stroke-width="1.4" opacity=".7"/></pattern>
       <linearGradient id="vv-screen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1D2B4F"/><stop offset=".6" stop-color="#2E5C9E"/><stop offset="1" stop-color="#7FB5F0"/></linearGradient>
       <linearGradient id="vv-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6FB3E8"/><stop offset="1" stop-color="#FBD9A0"/></linearGradient>
       <radialGradient id="vv-warm" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFD98A" stop-opacity=".55"/><stop offset="1" stop-color="#FFD98A" stop-opacity="0"/></radialGradient>
       <radialGradient id="vv-tv" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#9FD0FF" stop-opacity=".5"/><stop offset="1" stop-color="#9FD0FF" stop-opacity="0"/></radialGradient>
+      <radialGradient id="vv-moba" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#8E7CFF" stop-opacity=".55"/><stop offset=".6" stop-color="#3FB27A" stop-opacity=".18"/><stop offset="1" stop-color="#8E7CFF" stop-opacity="0"/></radialGradient>
+      <radialGradient id="vv-spot" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFF3D0" stop-opacity=".42"/><stop offset="1" stop-color="#FFF3D0" stop-opacity="0"/></radialGradient>
     </defs>`;
-    // floor slab + parquet + the rug
-    s += box(x0 - 4, y0 - 4, W + 8, D + 8, 0, Z, '#B98B5A', '#8E6841', '#6E4F31');
-    s += flat(x0, y0, x1, y1, 'url(#vv-parq)', Z);
-    s += flat(tvx - 150, 1996, tvx + 150, 2168, '#7C2530', Z + 0.4) + flat(tvx - 142, 2004, tvx + 142, 2160, '#B8424A', Z + 0.6) + flat(tvx - 124, 2022, tvx + 124, 2142, '#8E2B36', Z + 0.8) + flat(tvx - 118, 2028, tvx + 118, 2136, 'none', Z + 0.9, 'stroke="#D9B36A" stroke-width="2"');
-    // the TV's light pooling on the floor and the lamp glow
-    s += `<g transform="${tr(tvx, 1990, Z)}"><ellipse cx="0" cy="0" rx="170" ry="62" fill="url(#vv-tv)" class="vv-glow"/></g>`;
+    const soft = (x, y, rx, ry, o) => { const p = P(x, y, Z); return `<ellipse cx="${f1(p[0])}" cy="${f1(p[1])}" rx="${rx}" ry="${ry}" fill="#000" opacity="${o || 0.2}"/>`; };
+    // floor slab + stone flags; a red rug (TV), a rubber mat (gym) and a navy carpet (gaming) mark the three zones, gold inlay lines divide them
+    s += box(x0 - 4, y0 - 4, W + 8, D + 8, 0, Z, '#C9BDA2', '#8E8268', '#6E6450');
+    s += flat(x0, y0, x1, y1, 'url(#vv-flags)', Z);
+    s += flat(x0 + 212, y0 + 10, x0 + 214, y1 - 6, '#C9A227', Z + 0.3, 'opacity=".55"') + flat(x0 + 428, y0 + 10, x0 + 430, y1 - 6, '#C9A227', Z + 0.3, 'opacity=".55"');
+    s += flat(tvx - 92, 1996, tvx + 92, 2176, '#7C2530', Z + 0.4) + flat(tvx - 85, 2003, tvx + 85, 2169, '#B8424A', Z + 0.6) + flat(tvx - 70, 2018, tvx + 70, 2154, '#8E2B36', Z + 0.8) + flat(tvx - 64, 2024, tvx + 64, 2148, 'none', Z + 0.9, 'stroke="#D9B36A" stroke-width="2"');
+    s += flat(gx - 96, 1976, gx + 96, y1 - 8, '#2A2A30', Z + 0.4) + flat(gx - 90, 1982, gx + 90, y1 - 14, '#35353C', Z + 0.6, 'stroke="#55555E" stroke-width="1.5"') + flat(gx - 3, 1986, gx + 3, y1 - 18, '#D9B13A', Z + 0.8, 'opacity=".5"');
+    s += flat(dx - 96, 1926, dx + 96, 2150, '#161C38', Z + 0.4) + flat(dx - 90, 1932, dx + 90, 2144, '#1E2750', Z + 0.6) + flat(dx - 90, 1932, dx + 90, 2144, 'none', Z + 0.9, 'stroke="#7C6CFF" stroke-width="2" class="vv-glow2"');
+    // light pools: the TV's, a gym spotlight, the monitor glow
+    s += `<g transform="${tr(tvx, 2060, Z)}"><ellipse cx="0" cy="0" rx="150" ry="58" fill="url(#vv-tv)" class="vv-glow"/></g>`;
+    s += `<g transform="${tr(gx, 2090, Z)}"><ellipse cx="0" cy="0" rx="150" ry="62" fill="url(#vv-spot)"/></g>`;
+    s += `<g transform="${tr(dx, 2000, Z)}"><ellipse cx="0" cy="0" rx="150" ry="60" fill="url(#vv-moba)" class="vv-glow2"/></g>`;
     const banner = (u) => `<path d="M${u},-${H - 12} h22 v66 l-11,-12 l-11,12 z" fill="#8A2B3A"/><rect x="${u}" y="-${H - 12}" width="22" height="6" fill="#C9A227"/><rect x="${u + 9}" y="-${H - 18}" width="4" height="52" fill="#C9A227" opacity=".85"/>`;
-    // north wall (the TV wall): cream wall, oak wainscot, skirting, cornice, bookcase, TV, painting, sconces
+    const sconce = (u) => `<g transform="translate(${u} -96)"><ellipse cx="0" cy="0" rx="26" ry="22" fill="url(#vv-warm)"/><rect x="-3" y="-8" width="6" height="14" rx="3" fill="#E6C25A"/><path d="M-9,-2 l9,-16 l9,16 z" fill="#F5E3B0"/></g>`;
+    // north wall: cream stone, oak wainscot, cornice, the TV (west), a crest over the gym, banners between zones, the PC corner with a violet LED strip
     s += SF(x0, y0, Z) + `<rect x="0" y="-${H}" width="${W}" height="${H}" fill="url(#vv-stS)"/><rect x="0" y="-44" width="${W}" height="44" fill="#8B6B4A"/>`
       + Array.from({ length: Math.floor(W / 58) }, (_, i) => `<rect x="${f1(8 + i * 58)}" y="-38" width="46" height="30" fill="none" stroke="#6E5238" stroke-width="2"/>`).join('')
       + `<rect x="0" y="-8" width="${W}" height="8" fill="#E9DFC8"/><rect x="0" y="-${H}" width="${W}" height="9" fill="#D6C7A3"/><rect x="0" y="-${H - 9}" width="${W}" height="3" fill="#BDAE8B"/>`;
-    // bookcase (left of the TV)
-    s += `<rect x="30" y="-132" width="150" height="124" fill="#5B3A22" stroke="#3E2715" stroke-width="2"/>`;
-    for (let r = 0; r < 4; r++) { const v = -16 - r * 30; s += `<rect x="34" y="${v - 22}" width="142" height="26" fill="#3E2715"/>`; let u = 37; for (let k = 0; k < 14 && u < 170; k++) { const w = 6 + rnd(r * 20 + k) * 7, h = 16 + rnd(r * 9 + k + 3) * 9; s += `<rect x="${f1(u)}" y="${f1(v + 2 - h)}" width="${f1(w)}" height="${f1(h)}" fill="${['#B5532F', '#2F6F9F', '#C9A227', '#3F7D58', '#8A5BC8', '#E9DDC0'][(r + k) % 6]}"/>`; u += w + 1.2; } }
-    // the TV (wall mounted, glowing): ticker + little chart
     const tx = tvx - x0 - 66;
     s += `<rect x="${tx - 5}" y="-118" width="142" height="82" rx="4" fill="#15151A"/><rect x="${tx}" y="-113" width="132" height="72" fill="url(#vv-screen)"/>`
       + `<g class="vv-chart" opacity=".95"><polyline points="${tx + 10},-54 ${tx + 32},-68 ${tx + 52},-60 ${tx + 76},-86 ${tx + 98},-78 ${tx + 122},-98" fill="none" stroke="#7CF0A8" stroke-width="3" stroke-linecap="round"/><circle cx="${tx + 122}" cy="-98" r="4" fill="#7CF0A8"/></g>`
       + `<rect x="${tx}" y="-50" width="132" height="9" fill="#0F1426" opacity=".85"/><clipPath id="vv-tvclip"><rect x="${tx}" y="-50" width="132" height="9"/></clipPath><g clip-path="url(#vv-tvclip)"><text class="vv-tick" x="${tx + 132}" y="-42.5" font-size="7" font-weight="700" fill="#FFD66B" font-family="Inter,sans-serif">VAGENT HQ · ALL AGENTS ONLINE · SNIPER +3 LEADS · VOICE AI TOOK 12 CALLS</text></g>`
       + `<rect x="${tx + 52}" y="-36" width="28" height="4" fill="#2A2A30"/>`;
-    // painting + sconces
-    s += `<rect x="${W - 150}" y="-122" width="86" height="64" fill="#C9A227"/><rect x="${W - 145}" y="-117" width="76" height="54" fill="#F2D9A8"/><circle cx="${W - 120}" cy="-96" r="11" fill="#E9873A"/><polygon points="${W - 145},-63 ${W - 118},-92 ${W - 100},-76 ${W - 84},-100 ${W - 69},-63" fill="#3F7D58"/>`;
-    for (const u of [tvx - x0 - 108, tvx - x0 + 108]) s += `<g transform="translate(${u} -96)"><ellipse cx="0" cy="0" rx="26" ry="22" fill="url(#vv-warm)"/><rect x="-3" y="-8" width="6" height="14" rx="3" fill="#E6C25A"/><path d="M-9,-2 l9,-16 l9,16 z" fill="#F5E3B0"/></g>`;
-    s += [4, W - 30].map(banner).join('');
+    const gu = gx - x0, du = dx - x0;
+    s += `<g transform="translate(${gu} -112)"><path d="M-22,-20 h44 v30 q0,18 -22,28 q-22,-10 -22,-28 z" fill="#8A2B3A" stroke="#C9A227" stroke-width="3"/><path d="M-4,-12 h8 v8 h8 v8 h-8 v14 h-8 v-14 h-8 v-8 h8 z" fill="#E9C46A"/></g>`
+      + [tvx - x0 - 108, tvx - x0 + 108, gu - 70, gu + 70, du - 104, du + 104].map(sconce).join('')
+      + `<rect x="${du - 92}" y="-66" width="184" height="3" rx="1.5" fill="#7C6CFF" class="vv-glow2"/><rect x="${du - 92}" y="-66" width="184" height="3" rx="1.5" fill="#fff" opacity=".35"/>`
+      + [4, 214, 430, W - 30].map(banner).join('');
     s += '</g>';
     // west wall: two arched windows onto the city, a fireplace with a living fire
     s += EF(x0, y0, Z) + `<rect x="0" y="-${H}" width="${D}" height="${H}" fill="url(#vv-stW)"/>${[92, 224].map(banner).join('')}<rect x="0" y="-44" width="${D}" height="44" fill="#7C5E40"/><rect x="0" y="-8" width="${D}" height="8" fill="#D9CCAF"/><rect x="0" y="-${H}" width="${D}" height="9" fill="#C9BA96"/>`;
@@ -246,48 +264,152 @@
     s += `<rect x="128" y="-96" width="84" height="88" fill="#E8DFC9" stroke="#BDAE8B" stroke-width="3"/><rect x="144" y="-70" width="52" height="62" fill="#2A1F1A"/><rect x="120" y="-104" width="100" height="9" fill="#F3EBD6" stroke="#BDAE8B" stroke-width="2"/>`
       + `<g class="vv-fire"><path d="M158,-8 q-10,-22 2,-40 q4,16 14,8 q10,14 -2,32 z" fill="#F28A2E"/><path d="M168,-8 q-6,-14 2,-26 q6,10 8,26 z" fill="#FFD25A"/></g><ellipse cx="170" cy="-6" rx="40" ry="10" fill="url(#vv-warm)" opacity=".7"/>`
       + `<g transform="translate(140 -104)"><rect x="-4" y="-18" width="8" height="18" rx="3" fill="#8A5BC8"/><circle cx="-8" cy="-22" r="3" fill="#F28BC0"/><circle cx="6" cy="-24" r="3" fill="#F5C542"/></g></g>`;
-    // furniture: console under the TV, coffee table, side table + lamp, armchair, plants
+
+    // ---- TV lounge: console under the TV, coffee table, sofa (the CEO sits on it), the dog on the rug
+    s += soft(tvx, 1912, 90, 16) + soft(tvx, 2016, 62, 12) + soft(tvx, 2092, 90, 20);
     s += box(tvx - 84, y0 + 6, 168, 24, Z, 32, '#7B5836', '#6B4A2E', '#52381F') + box(tvx - 78, y0 + 8, 74, 20, Z + 2, 22, '#5E4128', '#4A3320', '#3A2818') + box(tvx + 4, y0 + 8, 74, 20, Z + 2, 22, '#5E4128', '#4A3320', '#3A2818');
     s += box(tvx - 56, 1996, 112, 40, Z, 16, '#CFE8F3', '#9CC0D2', '#7BA2B6') + box(tvx - 56, 1996, 112, 40, Z, 4, '#7B5836', '#6B4A2E', '#52381F');
     { const o = P(tvx - 20, 2014, Z + 16); s += `<g transform="translate(${f1(o[0])} ${f1(o[1])})"><ellipse cx="0" cy="0" rx="11" ry="5" fill="#F4F0E6"/><ellipse cx="0" cy="-5" rx="9" ry="4" fill="#F4F0E6"/><ellipse cx="0" cy="-8" rx="8" ry="3" fill="#6B3E22"/></g>` + `<g transform="translate(${f1(o[0] + 36)} ${f1(o[1] + 2)})"><rect x="-12" y="-5" width="24" height="5" fill="#2F6F9F"/><rect x="-10" y="-9" width="20" height="4" fill="#C9A227"/></g>`; }
-    // sofa (faces the TV, i.e. north): seat, west arm, then the CEO, then the backrest and east arm in front of him
-    const sx = tvx - 80, sy = 2064, sw = 160, sd = 50, cl = ['#3E6396', '#2F4E78', '#233B5C'];
-    s += box(sx, sy, sw, sd, Z, 16, '#4A72A8', cl[1], cl[2]) + [0, 1, 2].map((i) => box(sx + 14 + i * 44, sy + 3, 42, sd - 14, Z + 16, 7, '#5A84BC', '#3E6396', '#2F4E78')).join('') + box(sx + 18, sy + 30, 20, 12, Z + 23, 12, '#E9C46A', '#C9A227', '#A8851C') + box(sx + sw - 40, sy + 30, 20, 12, Z + 23, 12, '#E9873A', '#C96F28', '#A85A1F');
+    { const o = P(tvx - 56, 2142, Z + 1); s += `<g transform="translate(${f1(o[0])} ${f1(o[1])})"><ellipse cx="2" cy="3" rx="22" ry="7" fill="#000" opacity=".2"/><ellipse cx="0" cy="-5" rx="20" ry="9" fill="#D9A15A"/><circle cx="-18" cy="-8" r="8" fill="#E2B070"/><path d="M-25,-12 q-5,8 0,14 q4,-6 3,-12z" fill="#9A6A32"/><g class="vv-tail"><path d="M18,-8 q12,-6 14,-16 q-8,2 -16,10z" fill="#D9A15A"/></g></g>`; }
+    const sx = tvx - 75, sy = 2064, sw = 150, sd = 50, cl = ['#3E6396', '#2F4E78', '#233B5C'];
+    s += box(sx, sy, sw, sd, Z, 16, '#4A72A8', cl[1], cl[2]) + [0, 1, 2].map((i) => box(sx + 14 + i * 40, sy + 3, 38, sd - 14, Z + 16, 7, '#5A84BC', '#3E6396', '#2F4E78')).join('') + box(sx + 18, sy + 30, 20, 12, Z + 23, 12, '#E9C46A', '#C9A227', '#A8851C') + box(sx + sw - 40, sy + 30, 20, 12, Z + 23, 12, '#E9873A', '#C96F28', '#A85A1F');
     s += box(sx, sy, 14, sd, Z, 34, cl[0], cl[1], cl[2]);
-    s += ceo(tvx, sy + 26, Z + 22);
+    s += ceoSeat('tv', tvx, sy + 26, Z + 22);
     s += box(sx + 14, sy + sd - 12, sw - 14, 12, Z, 42, '#4A72A8', cl[1], cl[2]);
     s += box(sx + sw - 14, sy, 14, sd, Z, 34, cl[0], cl[1], cl[2]);
-    // side table + lamp, floor plants
-    s += box(sx + sw + 18, sy + 14, 26, 26, Z, 26, '#7B5836', '#6B4A2A', '#52381F');
-    { const o = P(sx + sw + 31, sy + 27, Z + 26); s += `<g transform="translate(${f1(o[0])} ${f1(o[1])})"><ellipse cx="0" cy="-30" rx="42" ry="34" fill="url(#vv-warm)"/><rect x="-2" y="-30" width="4" height="30" fill="#6B4A2A"/><path d="M-14,-28 l14,-26 l14,26 z" fill="#F5E3B0" stroke="#C9A227" stroke-width="1.5"/></g>`; }
-    for (const [px, py] of [[x0 + 30, y0 + 30], [x1 - 40, y0 + 38], [x1 - 30, y1 - 40]]) { const o = P(px, py, Z); s += `<g transform="translate(${f1(o[0])} ${f1(o[1])})"><ellipse cx="3" cy="2" rx="16" ry="6" fill="#000" opacity=".2"/><path d="M-11,0 l3,-20 h16 l3,20 z" fill="#B5532F"/><path d="M0,-20 q-22,-8 -26,-34 q16,6 26,34 M0,-20 q-4,-30 8,-44 q6,22 -8,44 M0,-20 q24,-6 28,-30 q-18,4 -28,30" fill="#3F9E4E"/><path d="M0,-20 q-8,-22 -16,-30 M0,-20 q8,-20 14,-34" stroke="#2F7F3E" stroke-width="2" fill="none"/></g>`; }
-    // the dog asleep on the rug (tail wags)
-    { const o = P(tvx - 108, 2128, Z + 1); s += `<g transform="translate(${f1(o[0])} ${f1(o[1])})"><ellipse cx="2" cy="3" rx="22" ry="7" fill="#000" opacity=".2"/><ellipse cx="0" cy="-5" rx="20" ry="9" fill="#D9A15A"/><circle cx="-18" cy="-8" r="8" fill="#E2B070"/><path d="M-25,-12 q-5,8 0,14 q4,-6 3,-12z" fill="#9A6A32"/><g class="vv-tail"><path d="M18,-8 q12,-6 14,-16 q-8,2 -16,10z" fill="#D9A15A"/></g></g>`; }
-    // a warm glow over the sofa area, so the room feels lived in
-    s += `<g transform="${tr(tvx, 2090, Z)}" pointer-events="none"><ellipse cx="0" cy="0" rx="210" ry="80" fill="url(#vv-warm)" opacity=".35"/></g>`;
+
+    // ---- Bench-press gym: rack, flat bench, barbell + plates (the bar moves while the CEO presses), plate stack, dumbbell rack
+    const by = 2066, bz = Z + 66;   // bar axis (y) and its resting z at the top of a rep
+    s += soft(gx, 2092, 74, 34, 0.28) + soft(gx, 2040, 78, 8, 0.2);
+    s += box(gx - 62, 2034, 10, 60, Z, 4, '#3A3A42', '#2A2A30', '#1E1E24') + box(gx + 52, 2034, 10, 60, Z, 4, '#3A3A42', '#2A2A30', '#1E1E24');
+    s += box(gx - 60, 2040, 8, 8, Z + 4, 84, '#5A5A64', '#44444D', '#33333B') + box(gx + 52, 2040, 8, 8, Z + 4, 84, '#5A5A64', '#44444D', '#33333B') + box(gx - 60, 2040, 120, 8, Z + 84, 5, '#6A6A74', '#4C4C55', '#3A3A42');
+    s += box(gx - 58, 2048, 4, 20, bz - 8, 3, '#B8BCC6', '#8E929C', '#6E727C') + box(gx + 54, 2048, 4, 20, bz - 8, 3, '#B8BCC6', '#8E929C', '#6E727C');
+    s += box(gx - 20, 2046, 40, 100, Z, 20, '#2A2A30', '#1E1E24', '#15151A');
+    s += box(gx - 19, 2040, 38, 104, Z + 20, 10, '#1C1C22', '#15151A', '#0E0E12') + flat(gx - 16, 2044, gx + 16, 2140, 'none', Z + 30.2, 'stroke="#C23B36" stroke-width="1.2" opacity=".8"');
+    s += ceoBench(gx, Z + 30);
+    s += benchBar(gx, by, bz) + benchRest(gx, by, bz);
+    s += box(gx + 52, 2168, 30, 30, Z, 5, '#2D2D33', '#1E1E22', '#141418') + box(gx + 55, 2171, 24, 24, Z + 5, 5, '#B5342F', '#8F2724', '#6E1C1A') + box(gx + 58, 2174, 18, 18, Z + 10, 5, '#2D2D33', '#1E1E22', '#141418') + box(gx + 66, 2182, 3, 3, Z + 15, 14, '#B8BCC6', '#8E929C', '#6E727C');
+    s += box(gx - 90, 2176, 70, 18, Z, 16, '#33333B', '#26262C', '#1B1B20') + [0, 1, 2, 3].map((i) => box(gx - 86 + i * 16, 2179, 12, 12, Z + 16, 6, i % 2 ? '#B5342F' : '#4A4A54', '#2D2D33', '#222228')).join('');
+
+    // ---- Dota 2 gaming corner: desk, glowing monitor with a mini MOBA map, keyboard + mouse, PC tower, ergonomic chair
+    s += soft(dx, 1912, 82, 14, 0.3) + soft(dx, 1980, 24, 10, 0.3);
+    s += box(dx + 70, 1896, 16, 30, Z, 38, '#1A1D26', '#12141B', '#0C0D12') + flat(dx + 73, 1899, dx + 77, 1923, '#7C6CFF', Z + 38.2, 'class="vv-glow2"');
+    s += box(dx - 72, 1892, 6, 34, Z, 24, '#2B2F3A', '#1D2029', '#14161D') + box(dx + 60, 1892, 6, 34, Z, 24, '#2B2F3A', '#1D2029', '#14161D');
+    s += box(dx - 76, 1888, 148, 40, Z + 24, 3, '#3A4050', '#232733', '#1A1D26');
+    s += flat(dx - 76, 1926, dx + 72, 1928, '#7C6CFF', Z + 24.5, 'class="vv-glow2"');
+    s += box(dx - 6, 1900, 12, 6, Z + 27, 4, '#2A2D38', '#1D2029', '#14161D') + box(dx - 16, 1902, 32, 4, Z + 27, 1.5, '#2A2D38', '#1D2029', '#14161D');
+    s += SF(dx - 46, 1904, Z + 32) + `<rect x="0" y="-48" width="92" height="48" rx="2.5" fill="#0C0F18"/><rect x="3" y="-45" width="86" height="42" fill="#0B1220"/>` + moba() + `<rect x="3" y="-45" width="86" height="42" fill="#7C6CFF" opacity=".06"/></g>`;
+    s += box(dx - 22, 1912, 44, 13, Z + 27, 2, '#15171F', '#0E1016', '#090A0E') + flat(dx - 20, 1914, dx + 20, 1916, '#7C6CFF', Z + 29.2, 'class="vv-glow2"') + flat(dx - 20, 1918, dx + 20, 1920, '#3FD09A', Z + 29.2, 'opacity=".7"') + box(dx + 30, 1914, 8, 12, Z + 27, 3, '#15171F', '#0E1016', '#090A0E');
+    s += box(dx - 3, 1969, 6, 6, Z + 2, 14, '#2A2A33', '#1E1E26', '#14141A') + circ(dx, 1972, 18, Z + 2, '#23242C') + circ(dx, 1972, 14, Z + 2.4, '#2C2D36');
+    s += box(dx - 17, 1956, 34, 34, Z + 16, 6, '#22232B', '#17181E', '#101116') + box(dx - 14, 1959, 28, 26, Z + 22, 2, '#C0303A', '#982530', '#7A1D26');
+    s += ceoSeat('dota', dx, 1972, Z + 20);
+    s += box(dx - 17, 1986, 34, 7, Z + 22, 38, '#22232B', '#17181E', '#101116') + box(dx - 19, 1984, 4, 10, Z + 22, 26, '#C0303A', '#982530', '#7A1D26') + box(dx + 15, 1984, 4, 10, Z + 22, 26, '#C0303A', '#982530', '#7A1D26') + box(dx - 8, 1987, 16, 7, Z + 54, 10, '#C0303A', '#982530', '#7A1D26');
+
+    // plants (front corners) + a warm glow over the lounge
+    for (const [px, py] of [[x0 + 24, y1 - 30], [x1 - 24, y1 - 30]]) { const o = P(px, py, Z); s += `<g transform="translate(${f1(o[0])} ${f1(o[1])})"><ellipse cx="3" cy="2" rx="16" ry="6" fill="#000" opacity=".2"/><path d="M-11,0 l3,-20 h16 l3,20 z" fill="#B5532F"/><path d="M0,-20 q-22,-8 -26,-34 q16,6 26,34 M0,-20 q-4,-30 8,-44 q6,22 -8,44 M0,-20 q24,-6 28,-30 q-18,4 -28,30" fill="#3F9E4E"/><path d="M0,-20 q-8,-22 -16,-30 M0,-20 q8,-20 14,-34" stroke="#2F7F3E" stroke-width="2" fill="none"/></g>`; }
+    s += `<g transform="${tr(tvx, 2090, Z)}" pointer-events="none"><ellipse cx="0" cy="0" rx="150" ry="60" fill="url(#vv-warm)" opacity=".3"/></g>`;
+    s += ceoWalk();
     return s;
   }
 
-  // The CEO, seen from behind on the sofa (a back view, since he faces the TV): gold blazer, dark hair, a mug in his hand. Clickable = talk to the CEO.
-  function ceo(x, y, z) {
-    const o = P(x, y, z);
-    return `<g class="vc-ceo" role="button" tabindex="0" aria-label="Talk to the CEO" style="cursor:pointer" transform="translate(${f1(o[0])} ${f1(o[1])})">`
-      + '<rect x="-56" y="-120" width="112" height="124" fill="#fff" opacity="0"/>'
-      + '<ellipse cx="0" cy="4" rx="30" ry="9" fill="#000" opacity=".18"/>'
-      + '<path d="M-17,0 L-19,-30 Q-19,-44 -6,-46 L6,-46 Q19,-44 19,-30 L17,0 Z" fill="#C9A227"/><path d="M0,-46 L0,0" stroke="#A8851C" stroke-width="2"/>'
-      + '<path d="M-19,-30 Q-27,-22 -24,-4 L-17,-6 Z" fill="#B38E1E"/><path d="M19,-30 Q27,-22 24,-4 L17,-6 Z" fill="#B38E1E"/>'
-      + '<rect x="-4.5" y="-52" width="9" height="8" fill="#C58C6B"/><path d="M-7,-46 L0,-41 L7,-46 L5,-48 L-5,-48 Z" fill="#F6E7B0"/>'
-      + '<circle cx="0" cy="-62" r="11.5" fill="#C58C6B"/><ellipse cx="-11" cy="-61" rx="2.6" ry="4" fill="#B97D5C"/><ellipse cx="11" cy="-61" rx="2.6" ry="4" fill="#B97D5C"/>'
-      + '<path d="M-12,-64 Q-12,-76 0,-76 Q12,-76 12,-64 Q10,-56 0,-55 Q-10,-56 -12,-64 Z" fill="#3A2E26"/><path d="M-12,-64 Q-13,-58 -9,-54 L-8,-62 Z" fill="#8A8A90"/><path d="M12,-64 Q13,-58 9,-54 L8,-62 Z" fill="#8A8A90"/>'
-      + '<g transform="translate(22 -18)"><rect x="-5" y="-6" width="10" height="9" rx="2" fill="#F4F0E6"/><path d="M5,-4 q5,0 5,3 q0,3 -5,3" fill="none" stroke="#F4F0E6" stroke-width="2"/><path class="vv-steam" d="M-1,-8 q-3,-5 0,-9 M2,-8 q3,-5 0,-9" fill="none" stroke="#fff" stroke-width="1.5" opacity=".7"/></g>'
-      + '<g class="tag" transform="translate(0 -104) scale(1.25)"><rect x="-64" y="-13" width="128" height="24" rx="12" fill="#2B2416"/><text y="3" text-anchor="middle" fill="#E9C46A" font-size="12" font-weight="600" font-family="Inter,sans-serif">CEO · Talk to me</text></g>'
-      + '</g>';
+  // the mini MOBA map on the monitor (plane coordinates: 3..89 x, -45..-3 y): Radiant (green) bottom-left vs Dire (red) top-right, three lanes, river, creeps marching
+  function moba() {
+    const lane = (d, c) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="3.4" stroke-linecap="round" opacity=".75"/>`;
+    return '<g><rect x="3" y="-45" width="86" height="42" fill="#17301F"/><polygon points="3,-45 89,-45 89,-3" fill="#2E1A1F" opacity=".75"/><path d="M3,-40 L89,-8" stroke="#2E6FA8" stroke-width="5" opacity=".55"/>'
+      + lane('M12,-12 L12,-36 L78,-36', '#6B7BA8') + lane('M12,-10 L80,-10 L80,-36', '#6B7BA8') + lane('M12,-12 L80,-36', '#8C9AC4')
+      + '<circle cx="12" cy="-11" r="8" fill="#3FD09A" opacity=".35" class="vv-glow2"/><circle cx="80" cy="-37" r="8" fill="#FF4D5A" opacity=".35" class="vv-glow2"/>'
+      + '<rect x="8" y="-15" width="8" height="8" rx="1.5" fill="#3FD09A"/><rect x="76" y="-41" width="8" height="8" rx="1.5" fill="#FF4D5A"/>'
+      + [[24, -12], [46, -10], [12, -26], [12, -33]].map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="1.8" fill="#7CF0A8"/>`).join('') + [[78, -26], [66, -36], [54, -36], [80, -14]].map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="1.8" fill="#FF8A93"/>`).join('')
+      + '<circle class="vv-creep" cx="14" cy="-13" r="1.7" fill="#7CF0A8"/><circle class="vv-creep c2" cx="14" cy="-13" r="1.7" fill="#7CF0A8"/><circle class="vv-creep d" cx="78" cy="-35" r="1.7" fill="#FF8A93"/><circle class="vv-creep d c2" cx="78" cy="-35" r="1.7" fill="#FF8A93"/>'
+      + '<rect x="5" y="-8.5" width="30" height="3.4" rx="1.4" fill="#0B1220"/><rect x="5" y="-8.5" width="22" height="3.4" rx="1.4" fill="#3FD09A"/><rect x="57" y="-43" width="30" height="3.4" rx="1.4" fill="#0B1220" opacity=".9"/><rect x="57" y="-43" width="19" height="3.4" rx="1.4" fill="#FF4D5A"/></g>';
   }
+
+  // ---------------------------------------------------------------- the CEO (one figure per station, only the current one is shown; city.js turns a click on .vc-ceo into "talk to the CEO")
+  const SKIN = '#C58C6B';
+  function tagG(y) { return `<g class="tag" transform="translate(0 ${y}) scale(1.25)"><rect x="-85" y="-13" width="170" height="24" rx="12" fill="#2B2416"/><text class="cv-tt" y="3" text-anchor="middle" fill="#E9C46A" font-size="12" font-weight="600" font-family="Inter,sans-serif">CEO · ${LABEL.tv}</text></g>`; }
+  // torso + head seen from behind (origin = hip; shared by sitting and walking figures)
+  function bust(headset) {
+    return `<path d="M-17,0 L-19,-30 Q-19,-44 -6,-46 L6,-46 Q19,-44 19,-30 L17,0 Z" fill="#C9A227"/><path d="M0,-46 L0,0" stroke="#A8851C" stroke-width="2"/>`
+      + `<path d="M-19,-30 Q-27,-22 -24,-4 L-17,-6 Z" fill="#B38E1E"/><path d="M19,-30 Q27,-22 24,-4 L17,-6 Z" fill="#B38E1E"/>`
+      + `<rect x="-4.5" y="-52" width="9" height="8" fill="${SKIN}"/><path d="M-7,-46 L0,-41 L7,-46 L5,-48 L-5,-48 Z" fill="#F6E7B0"/>`
+      + `<circle cx="0" cy="-62" r="11.5" fill="${SKIN}"/><ellipse cx="-11" cy="-61" rx="2.6" ry="4" fill="#B97D5C"/><ellipse cx="11" cy="-61" rx="2.6" ry="4" fill="#B97D5C"/>`
+      + `<path d="M-12,-64 Q-12,-76 0,-76 Q12,-76 12,-64 Q10,-56 0,-55 Q-10,-56 -12,-64 Z" fill="#3A2E26"/><path d="M-12,-64 Q-13,-58 -9,-54 L-8,-62 Z" fill="#8A8A90"/><path d="M12,-64 Q13,-58 9,-54 L8,-62 Z" fill="#8A8A90"/>`
+      + (headset ? '<path d="M-12.5,-65 Q0,-84 12.5,-65" fill="none" stroke="#16161C" stroke-width="3"/><ellipse cx="-12.5" cy="-61" rx="3.6" ry="5.5" fill="#C0303A"/><ellipse cx="12.5" cy="-61" rx="3.6" ry="5.5" fill="#C0303A"/><path d="M-13,-57 q-1,8 7,10" fill="none" stroke="#16161C" stroke-width="1.6"/>' : '');
+  }
+  const wrapG = (act, o, extra) => `<g class="vc-ceo cv-p cv-${act}" role="button" tabindex="0" aria-label="Talk to the CEO" style="cursor:pointer" transform="translate(${f1(o[0])} ${f1(o[1])})"><rect x="-56" y="-120" width="112" height="124" fill="#fff" opacity="0"/>${extra}${tagG(-104)}</g>`;
+  function ceoSeat(act, x, y, z) {
+    const o = P(x, y, z);
+    if (act === 'tv') return wrapG('tv', o, '<ellipse cx="0" cy="4" rx="30" ry="9" fill="#000" opacity=".18"/>' + bust(false) + '<g transform="translate(22 -18)"><rect x="-5" y="-6" width="10" height="9" rx="2" fill="#F4F0E6"/><path d="M5,-4 q5,0 5,3 q0,3 -5,3" fill="none" stroke="#F4F0E6" stroke-width="2"/><path class="vv-steam" d="M-1,-8 q-3,-5 0,-9 M2,-8 q3,-5 0,-9" fill="none" stroke="#fff" stroke-width="1.5" opacity=".7"/></g>');
+    // gaming: headset on, both forearms out in front on the keyboard (the hands tap)
+    return wrapG('dota', o, '<ellipse cx="0" cy="4" rx="30" ry="9" fill="#000" opacity=".18"/>' + bust(true)
+      + '<g class="vv-hands"><path d="M-19,-32 L-31,-16 L-8,-28" fill="none" stroke="#B38E1E" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M19,-32 L31,-16 L10,-27" fill="none" stroke="#B38E1E" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="-7" cy="-28.5" r="3.4" fill="' + SKIN + '"/><circle cx="9" cy="-27.5" r="3.4" fill="' + SKIN + '"/></g>');
+  }
+  // standing, walking back view (the figure that crosses the hall between stations; legs swing)
+  function ceoWalk() {
+    const o = ST.tv;
+    return `<g class="cv-p cv-walk"><g class="cv-wk vc-ceo" role="button" tabindex="0" aria-label="Talk to the CEO" style="cursor:pointer;transform:translate(${f1(o[0])}px,${f1(o[1])}px)"><rect x="-40" y="-150" width="80" height="154" fill="#fff" opacity="0"/><ellipse cx="0" cy="3" rx="22" ry="7" fill="#000" opacity=".22"/>`
+      + '<g class="vv-legL"><rect x="-13" y="-56" width="12" height="52" rx="3" fill="#26324A"/><rect x="-14" y="-6" width="14" height="7" rx="3" fill="#15151A"/></g><g class="vv-legR"><rect x="1" y="-56" width="12" height="52" rx="3" fill="#26324A"/><rect x="0" y="-6" width="14" height="7" rx="3" fill="#15151A"/></g>'
+      + `<g class="vv-bob"><g transform="translate(0 -52)">${bust(false)}</g></g>${tagG(-170)}</g></g>`;
+  }
+  // lying on the flat bench (head to the rack, feet on the floor); arms + barbell are in benchBar()
+  function ceoBench(gx, z) {
+    const h = P(gx, 2051, z + 9), bg = (x, y, w, d, zz, hh, a, l, r) => box(x, y, w, d, zz, hh, a, l, r);
+    let s = `<g class="vc-ceo cv-p cv-bench" role="button" tabindex="0" aria-label="Talk to the CEO" style="cursor:pointer">`;
+    s += bg(gx - 15, 2056, 30, 42, z, 14, '#D2AE3A', '#B38E1E', '#8F7116');   // torso (gold blazer)
+    s += bg(gx - 12, 2098, 24, 40, z, 11, '#2E3A57', '#26324A', '#1B2438');   // thighs
+    s += bg(gx - 11, 2138, 9, 9, 4, 34, '#2E3A57', '#26324A', '#1B2438') + bg(gx + 2, 2138, 9, 9, 4, 34, '#2E3A57', '#26324A', '#1B2438');   // shins to the floor
+    s += bg(gx - 12, 2144, 11, 14, 4, 5, '#F2F2F2', '#C9C9C9', '#A8A8A8') + bg(gx + 1, 2144, 11, 14, 4, 5, '#F2F2F2', '#C9C9C9', '#A8A8A8');   // shoes
+    s += `<g transform="translate(${f1(h[0])} ${f1(h[1])})"><circle cx="0" cy="0" r="11" fill="${SKIN}"/><path d="M-11,-2 Q-11,-13 0,-13 Q11,-13 11,-2 Q6,-8 0,-8 Q-6,-8 -11,-2 Z" fill="#3A2E26"/><circle cx="-4" cy="2" r="1.3" fill="#2A1E18"/><circle cx="4" cy="2" r="1.3" fill="#2A1E18"/></g>`;
+    const t = P(gx, 2051, z + 60);
+    s += `<g transform="translate(${f1(t[0])} ${f1(t[1] - 30)})">${tagG(0)}</g></g>`;
+    return s;
+  }
+  // barbell + hands: they move together (CSS vvPress); the forearms stretch from the shoulders (scaleY) so the hands stay on the bar
+  function benchBar(gx, y, z) {
+    const a = P(gx - 82, y, z), c = P(gx + 82, y, z), sh = (xo) => P(gx + xo, 2064, z - 20);
+    const plate = (x, r, col) => `<g transform="translate(${f1(P(x, y, z)[0])} ${f1(P(x, y, z)[1])}) matrix(${-K} .5 0 1 0 0)"><circle r="${r}" fill="${col}" stroke="#0E0E12" stroke-width="1.5"/><circle r="${r - 4}" fill="none" stroke="#fff" stroke-width="1" opacity=".18"/><circle r="3.2" fill="#B8BCC6"/></g>`;
+    let s = '';
+    for (const xo of [-12, 12]) { const p = sh(xo); s += `<g transform="translate(${f1(p[0])} ${f1(p[1])})"><rect class="cv-arm" x="-3" y="-20" width="6" height="20" fill="#C9A227"/></g>`; }
+    s += `<g class="cv-p cv-bench cv-gear"><g class="cv-bar"><line x1="${f1(a[0])}" y1="${f1(a[1])}" x2="${f1(c[0])}" y2="${f1(c[1])}" stroke="#8E929C" stroke-width="5" stroke-linecap="round"/><line x1="${f1(a[0])}" y1="${f1(a[1] - 1.2)}" x2="${f1(c[0])}" y2="${f1(c[1] - 1.2)}" stroke="#E4E6EC" stroke-width="1.4"/>`
+      + plate(gx - 76, 17, '#B5342F') + plate(gx - 68, 14, '#2B2B30') + plate(gx + 68, 14, '#2B2B30') + plate(gx + 76, 17, '#B5342F');
+    for (const xo of [-12, 12]) { const p = P(gx + xo, 2064, z); s += `<circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="4.2" fill="${SKIN}"/>`; }
+    return s + '</g></g>';
+  }
+  // the barbell resting on the rack hooks while nobody is pressing
+  function benchRest(gx, y, z) {
+    const a = P(gx - 82, y, z - 4), c = P(gx + 82, y, z - 4), pl = (x, r, col) => { const o = P(x, y, z - 4); return `<g transform="translate(${f1(o[0])} ${f1(o[1])}) matrix(${-K} .5 0 1 0 0)"><circle r="${r}" fill="${col}" stroke="#0E0E12" stroke-width="1.5"/><circle r="3.2" fill="#B8BCC6"/></g>`; };
+    return `<g class="cv-rest"><line x1="${f1(a[0])}" y1="${f1(a[1])}" x2="${f1(c[0])}" y2="${f1(c[1])}" stroke="#8E929C" stroke-width="5" stroke-linecap="round"/>` + pl(gx - 76, 17, '#B5342F') + pl(gx - 68, 14, '#2B2B30') + pl(gx + 68, 14, '#2B2B30') + pl(gx + 76, 17, '#B5342F') + '</g>';
+  }
+
+  // ---------------------------------------------------------------- the 3-minute activity loop
+  // The activity is a pure function of the clock: slot = floor(now / 180000 ms), TV -> bench press -> Dota 2 -> TV ... Each slot starts with a ~3 s walk to the next station.
+  const slotOf = (now) => Math.floor(now / ACT_MS), actOf = (now) => ACTS[slotOf(now) % 3];
+  const REDUCED = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function setLabels(root, txt) { root.querySelectorAll('.cv-tt').forEach((t) => { t.textContent = 'CEO · ' + txt; }); root.querySelectorAll('.vc-ceo').forEach((e) => e.setAttribute('aria-label', 'Talk to the CEO (' + txt + ')')); }
+  function walkPath(from, to) {
+    const at = (act) => ST[act], ax = ST.ax, aisle = P(ax[from], ST.aisle, 4)[1], pt2 = (x, y) => 'translate(' + f1(x) + 'px,' + f1(y) + 'px)';
+    const A = at(from), B = at(to), a1 = P(ax[from], ST.aisle, 4), b1 = P(ax[to], ST.aisle, 4);
+    return [pt2(A[0], A[1]), pt2(a1[0], a1[1]), pt2(b1[0], b1[1]), pt2(B[0], B[1])];
+  }
+  function apply(root, key, act, elapsed, walking) {
+    root.__cvKey = key;
+    if (!walking) { root.setAttribute('data-act', act); setLabels(root, LABEL[act]); return; }
+    const from = ACTS[(ACTS.indexOf(act) + 2) % 3], w = root.querySelector('.cv-wk');
+    root.setAttribute('data-act', 'walk'); setLabels(root, WALKTO[act]);
+    if (w && w.animate) { if (root.__cvAnim) root.__cvAnim.cancel(); const an = w.animate(walkPath(from, act).map((t) => ({ transform: t })), { duration: WALK_MS, easing: 'ease-in-out', fill: 'forwards' }); an.currentTime = elapsed; root.__cvAnim = an; }
+  }
+  function tick() {
+    if (document.hidden) return;
+    const root = document.querySelector('.vc-in[data-b] .cv-walk') && document.querySelector('.vc-in[data-b]'); if (!root) return;
+    const now = Date.now(), el = now % ACT_MS, walking = !forced && el < WALK_MS && !REDUCED(), act = forced || actOf(now), key = forced ? 'f' + forced : slotOf(now) + (walking ? 'w' : 's');
+    if (root.__cvKey !== key) apply(root, key, act, el, walking);
+  }
+  setInterval(tick, 400);
 
   // ---------------------------------------------------------------- the building, as city.js expects it
   function building(b, ctx) {
     const g = geo(b), { HX, HY, HW, HD } = g, id = b.id, gd = garden(b);
-    const house = `<g class="vc-house"><g class="vc-fl" data-b="${id}" data-f="1">${walls(b)}</g><g class="vc-in" data-b="${id}">${interior(b)}</g><g class="vc-top" data-b="${id}">${roofs(b)}</g></g>`;
+    const house = `<g class="vc-house"><g class="vc-fl" data-b="${id}" data-f="1">${walls(b)}</g><g class="vc-in" data-b="${id}" data-act="${actOf(Date.now())}">${interior(b)}</g><g class="vc-top" data-b="${id}">${roofs(b)}</g></g>`;
     const sorted = KK.depthSort(gd.items.map((i) => ({ bb: i.bb, h: i.h === '__HOUSE__' ? house : i.h }))).map((i) => i.h).join('');
     // click target for "pick a floor": the whole front of the castle (only active in the building view, see city.css)
     const bands = `<g class="vc-bands" transform="translate(${f1(P(HX, HY + HD)[0])} ${f1(P(HX, HY + HD)[1])}) matrix(${K} .5 0 1 0 0)"><g class="vc-band" data-b="${id}" data-f="1" role="button" aria-label="CEO castle great hall"><rect x="0" y="-240" width="${HW}" height="240"/><circle cx="34" cy="-120" r="22" fill="${b.col}"/><text x="34" y="-112" text-anchor="middle" font-size="24" font-weight="700" fill="#fff" font-family="Inter,sans-serif">1</text></g></g>`;
@@ -299,5 +421,5 @@
   function boxOf(b) { const g = geo(b), l = P(g.HX, g.HY + g.HD)[0], r = P(g.HX + g.HW, g.HY)[0], t = P(g.HX, g.HY, b.h + 130)[1] - 80, bt = P(g.HX + g.HW, g.HY + g.HD)[1] + 300; return { x: l - 300, y: t, w: r - l + 600, h: bt - t }; }
   function roomBox(b) { const g = geo(b), l = P(g.HX, g.HY + g.HD)[0], r = P(g.HX + g.HW, g.HY)[0], t = P(g.HX, g.HY, 4 + 150)[1], bt = P(g.HX + g.HW, g.HY + g.HD)[1]; return { x: l - 30, y: t - 90, w: r - l + 60, h: bt - t + 130 }; }
 
-  window.VCastle = { building, shadow, boxOf, roomBox };
+  window.VCastle = { building, shadow, boxOf, roomBox, ACT_MS, force: (a) => { forced = ACTS.includes(a) ? a : null; tick(); }, act: () => forced || actOf(Date.now()) };
 })();
