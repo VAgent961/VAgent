@@ -97,7 +97,7 @@
 .tbl td{padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:14.5px}
 .tbl tbody tr:last-child td{border-bottom:0}
 .tbl tbody tr{position:relative}
-.tbl tbody tr:hover td{background:#FAFAF7}
+.tbl tbody tr:hover td{background:var(--hover)}
 .tbl td.c-img{width:1%;padding-right:4px}
 .tbl td.num,.tbl th.num{text-align:right;font-variant-numeric:tabular-nums}
 .tbl td.act{white-space:nowrap;text-align:right;width:1%}
@@ -144,7 +144,7 @@
 .order .sum{font-weight:600;font-size:15px;overflow-wrap:anywhere}
 .order .meta{display:flex;gap:8px;align-items:flex-start;color:var(--ink-2);font-size:14px;overflow-wrap:anywhere}
 .order .meta svg{flex:none;margin-top:3px;color:var(--ink-3)}
-.order .meta a{color:var(--accent-h);display:inline-flex;align-items:center;min-height:44px;padding:0 2px}
+.order .meta a{color:var(--link);display:inline-flex;align-items:center;min-height:44px;padding:0 2px}
 .order .meta:has(a){align-items:center}.order .meta:has(a) svg{margin-top:0}
 .order .btns{display:flex;gap:8px;margin-top:6px;transform-origin:50% 0}
 .order .btns .vx-btn{flex:1}
@@ -186,7 +186,7 @@
 .xrow{display:flex;gap:8px;animation:vxRise .3s var(--ease) both;transform-origin:50% 0}
 .xrow .vx-input{min-height:44px;font-size:16px}.xrow .k{flex:1;min-width:0}.xrow .v{flex:1.4;min-width:0}
 .xrow button{width:44px;min-height:44px;flex:none;border-radius:var(--r-s);border:1px solid var(--line-strong);background:var(--surface);cursor:pointer;color:var(--ink-3);display:grid;place-items:center;transition:color var(--t-fast),border-color var(--t-fast),transform var(--t-fast) var(--ease)}
-.xrow button:hover{color:var(--bad);border-color:#E5B4AE}.xrow button:active{transform:scale(.94)}
+.xrow button:hover{color:var(--bad);border-color:var(--bad-line)}.xrow button:active{transform:scale(.94)}
 .xrow.out{opacity:0;transform:translateX(12px);transition:opacity .18s var(--ease),transform .18s var(--ease)}
 .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
 .cf-text{color:var(--ink-2);margin-top:8px;font-size:15px}

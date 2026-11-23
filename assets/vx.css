@@ -10,7 +10,7 @@
   /* the one brand accent (electric, tuned for dark) */
   --accent:#3D5FE0;--accent-h:#2F4FC8;--accent-soft:rgba(88,120,255,.14);--accent-line:rgba(134,162,255,.35);
   /* semantic */
-  --ok:#58D68D;--ok-soft:rgba(88,214,141,.12);--warn:#FFC46B;--warn-soft:rgba(255,196,107,.12);--bad:#FF7A70;--bad-soft:rgba(255,122,112,.12);
+  --ok:#34D399;--ok-soft:rgba(16,185,129,.14);--ok-line:rgba(52,211,153,.32);--hover:rgba(255,255,255,.04);--warn-line:rgba(255,196,107,.32);--bad-line:rgba(255,122,112,.34);--link:#86A2FF;--warn:#FFC46B;--warn-soft:rgba(255,196,107,.12);--bad:#FF7A70;--bad-soft:rgba(255,122,112,.12);
   /* night surfaces (showcase panel, voice stage) */
   --night:#0D1017;--night-2:#141925;--night-line:#252C3D;--night-ink:#E9ECF4;--night-mute:#98A1B6;--night-accent:#86A2FF;--night-ok:#58D68D;
   /* shape + depth */
@@ -29,7 +29,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 button{touch-action:manipulation}
 [hidden]{display:none!important}
 ::selection{background:var(--accent);color:#fff}
-a{color:var(--accent)}
+a{color:var(--link)}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .vx-num{font-variant-numeric:tabular-nums}
 .vx-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -37,13 +37,13 @@ a{color:var(--accent)}
 /* ---- buttons: tactile hover lift + press */
 .vx-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 16px;border-radius:var(--r-s);border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);font-size:14px;font-weight:500;line-height:1;cursor:pointer;text-decoration:none;white-space:nowrap;box-shadow:var(--sh-1);
   transition:transform var(--t-fast) var(--ease),background-color var(--t-fast),border-color var(--t-fast),color var(--t-fast),opacity var(--t-fast)}
-.vx-btn:hover{background:var(--surface-2);border-color:#B6B6AC;transform:translateY(-1px)}
+.vx-btn:hover{background:var(--surface-2);border-color:rgba(255,255,255,.24);transform:translateY(-1px)}
 .vx-btn:active{transform:translateY(0) scale(.98)}
 .vx-btn svg{flex:none}
 .vx-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
 .vx-btn.primary:hover{background:var(--accent-h);border-color:var(--accent-h)}
-.vx-btn.ok{background:var(--ok-soft);border-color:#A9D7B7;color:var(--ok);font-weight:600}.vx-btn.ok:hover{background:#D8EDDF;border-color:#8CC6A0}
-.vx-btn.danger{background:var(--surface);border-color:#E5B4AE;color:var(--bad)}.vx-btn.danger:hover{background:var(--bad-soft);border-color:#D9948C}
+.vx-btn.ok{background:var(--ok-soft);border-color:var(--ok-line);color:var(--ok);font-weight:600}.vx-btn.ok:hover{background:rgba(16,185,129,.22);border-color:rgba(52,211,153,.5)}
+.vx-btn.danger{background:var(--surface);border-color:var(--bad-line);color:var(--bad)}.vx-btn.danger:hover{background:var(--bad-soft);border-color:rgba(255,122,112,.55)}
 .vx-btn.ghost{background:transparent;border-color:transparent;box-shadow:none;color:var(--ink-2)}.vx-btn.ghost:hover{background:var(--surface-2);border-color:transparent}
 .vx-btn.sm{min-height:34px;padding:0 12px;font-size:13px}
 .vx-btn.icon{width:40px;padding:0}.vx-btn.icon.sm{width:34px}
@@ -56,19 +56,19 @@ a{color:var(--accent)}
 
 /* ---- inputs */
 .vx-input{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line-strong);border-radius:var(--r-s);background:var(--surface);color:var(--ink);font-size:16px;transition:border-color var(--t-fast),box-shadow var(--t-fast)}
-.vx-input::placeholder{color:#6B7180}
-.vx-input:hover{border-color:#A9A9A0}
-.vx-input:focus,.vx-input:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(36,72,200,.18)}
+.vx-input::placeholder{color:#8B93A3}
+.vx-input:hover{border-color:rgba(255,255,255,.28)}
+.vx-input:focus,.vx-input:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(88,120,255,.28)}
 .vx-input[aria-invalid=true]{border-color:var(--bad)}
 .vx-label{display:block;font-size:13.5px;font-weight:500;margin:0 0 6px;color:var(--ink)}
 
 /* ---- chips / pills (labels are body face, sentence case, untracked) */
 .vx-chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:500;border:1px solid var(--line-strong);color:var(--ink-2);background:var(--surface);white-space:nowrap}
-.vx-chip.ok{color:var(--ok);background:var(--ok-soft);border-color:#B7DDC3}
-.vx-chip.warn{color:var(--warn);background:var(--warn-soft);border-color:#EBCB95}
-.vx-chip.bad{color:var(--bad);background:var(--bad-soft);border-color:#EDBDB8}
+.vx-chip.ok{color:var(--ok);background:var(--ok-soft);border-color:var(--ok-line)}
+.vx-chip.warn{color:var(--warn);background:var(--warn-soft);border-color:var(--warn-line)}
+.vx-chip.bad{color:var(--bad);background:var(--bad-soft);border-color:var(--bad-line)}
 .vx-chip.mute{color:var(--ink-3);background:var(--surface-2)}
-.vx-chip.accent{color:var(--accent-h);background:var(--accent-soft);border-color:var(--accent-line)}
+.vx-chip.accent{color:var(--link);background:var(--accent-soft);border-color:var(--accent-line)}
 /* live dot: a ring that expands + fades (transform/opacity) */
 .vx-dot{position:relative;width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
 .vx-dot::after{content:"";position:absolute;inset:0;border-radius:50%;background:currentColor;animation:vxPing 2s var(--ease) infinite}
