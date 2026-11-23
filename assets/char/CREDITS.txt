@@ -1,0 +1,1 @@
+r6-*.svg: face frames from "Avataaars" by Pablo Stanley (https://avataaars.com/), free for personal and commercial use; generated with DiceBear (https://www.dicebear.com/styles/avataaars/). Headset overlay is VAgent's own (assets/voice-agent.js).
