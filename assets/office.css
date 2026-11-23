@@ -447,8 +447,14 @@ html[data-zooming] #sky .sk-clouds i,html[data-zooming] #sky .sk-rain,html[data-
 
 /* ── one-click continuous test call (voice-agent.js) ── */
 .va-call{min-height:48px;padding:0 24px;border:0;border-radius:999px;background:var(--clay);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:10px;font-weight:600;font-size:15px;cursor:pointer;align-self:center}
-.va-call:hover{background:var(--clay-h)}.va-call.on{background:#D6453C}.va-call.on:hover{background:#BE372F}.va-call-i{display:inline-grid;place-items:center}.va-call.on .va-call-i svg{transform:rotate(135deg)}
-.va-timer{font-variant-numeric:tabular-nums;margin-left:8px;padding-left:8px;border-left:1px solid var(--line2)}.va-timer[hidden]{display:none}
+.va-call:hover{background:var(--clay-h)}.va-call-i{display:inline-grid;place-items:center}
 .va-lang{align-self:center;min-height:34px;background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer}
 .va-msg .va-tx{display:block}.va-msg time{display:block;margin-top:2px;font-size:10.5px;opacity:.6;text-align:end}.va-msg.interim{opacity:.8;border:1px dashed var(--line2)}
 .va-msg.ai{align-self:flex-start}
+
+/* ── hold to talk (HQ test call) ── */
+.va-help{margin:0;text-align:center;color:var(--muted);font-size:12.5px;line-height:1.5}.va-help[hidden],.va-hold[hidden],.va-end[hidden]{display:none}
+.va-hold{position:relative;align-self:center;min-width:240px;min-height:64px;padding:0 22px;border:0;border-radius:999px;background:var(--clay);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:10px;font-weight:700;font-size:15px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;text-align:center}
+.va-hold *{pointer-events:none;user-select:none;-webkit-user-select:none}.va-hold:hover{background:var(--clay-h)}.va-hold.on{background:#D6453C;transform:scale(1.03)}.va-hold.busy{opacity:.6}
+.va-hold-clock{font-variant-numeric:tabular-nums;padding:2px 9px;border-radius:999px;background:rgba(0,0,0,.28);font-size:13px}.va-hold-clock[hidden]{display:none}
+.va-end{align-self:center;min-height:42px;padding:0 18px;border:1px solid var(--line2);border-radius:999px;background:none;color:var(--bad);display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:13.5px;cursor:pointer}.va-end svg{width:16px;height:16px;transform:rotate(135deg)}

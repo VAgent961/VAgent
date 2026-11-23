@@ -73,13 +73,11 @@ body{display:grid;place-items:center;padding:max(20px,env(safe-area-inset-top)) 
 @media (prefers-reduced-motion:reduce){.va-btn.on .va-ring{animation:none;opacity:.5}.call-glow{animation:none}}
 
 /* ---- one-click continuous call (voice-agent.js): Start Call / End Call pill, live timer, chat thread with timestamps ---- */
-.va-langtabs{order:0}.va-stage{order:1}.va-state{order:2}.va-call{order:3}.va-log{order:5}.va-reset{order:6}
+.va-langtabs{order:0}.va-stage{order:1}.va-state{order:2}.va-call{order:3}.va-hold{order:3}.va-help{order:4}.va-end{order:4}.va-log{order:5}.va-reset{order:6}
 .va-call{margin-top:8px;min-height:54px;min-width:188px;padding:0 28px;border:0;border-radius:999px;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:10px;font:600 16px var(--f-body);cursor:pointer;box-shadow:0 10px 30px -8px rgba(61,95,224,.75),0 1px 0 rgba(255,255,255,.22) inset;transition:transform .18s var(--ease),background-color .15s}
 .va-call:hover{background:var(--accent-h)}.va-call:active{transform:scale(.97)}.va-call:disabled{opacity:.6;cursor:default}
-.va-call.on{background:#D6453C;box-shadow:0 10px 30px -8px rgba(214,69,60,.7),0 1px 0 rgba(255,255,255,.2) inset}.va-call.on:hover{background:#BE372F}
 .va-call:focus-visible{outline:2px solid #fff;outline-offset:4px}
-.va-call-i{display:inline-grid;place-items:center}.va-call.on .va-call-i svg{transform:rotate(135deg)}
-.va-timer{font-variant-numeric:tabular-nums;color:var(--night-mute);padding-left:8px;border-left:1px solid var(--night-line)}.va-timer[hidden]{display:none}
+.va-call-i{display:inline-grid;place-items:center}
 .va-log{height:clamp(170px,26vh,280px)}
 .va-msg .va-tx{display:block}.va-msg time{display:block;margin-top:3px;font-size:11px;opacity:.6;text-align:end}
 .va-msg.interim{opacity:.8;border-style:dashed}.va-msg.interim .va-tx::after{content:"";display:inline-block;width:6px;height:6px;margin-inline-start:6px;border-radius:50%;background:currentColor;animation:vaBlink 1s ease-in-out infinite}
@@ -110,3 +108,19 @@ body{display:grid;place-items:center;padding:max(20px,env(safe-area-inset-top)) 
 @media (prefers-reduced-motion:reduce){.va[data-v=idle] .va-stage,.va[data-v=thinking] .va-stage,.va[data-v=speaking] .va-stage::before,.va[data-v=thinking] .va-hs .acc{animation:none}.va-char{transform:none}}
 @media (max-width:420px){.va-stage,.va-char{width:216px;height:216px}}
 .va-langtabs{direction:ltr}
+
+/* ---- hold to talk (voice-agent.js): Start Call + helper line, then a big Hold to Talk button and a quiet End Call ---- */
+.va-help{margin:4px 0 0;max-width:32ch;text-align:center;color:var(--night-mute);font-size:14px;line-height:1.55;text-wrap:balance}.va-help[hidden]{display:none}
+.va-hold{position:relative;width:min(100%,300px);min-height:76px;margin-top:8px;padding:0 24px;border:0;border-radius:999px;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:12px;font:700 17px/1.2 var(--f-body);cursor:pointer;box-shadow:0 12px 32px -8px rgba(61,95,224,.8),0 1px 0 rgba(255,255,255,.22) inset;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;transition:background-color .15s,transform .15s var(--ease);text-align:center}
+.va-hold[hidden],.va-end[hidden]{display:none}
+.va-hold *{pointer-events:none;user-select:none;-webkit-user-select:none}
+.va-hold:hover{background:var(--accent-h)}.va-hold:focus-visible{outline:2px solid #fff;outline-offset:4px}
+.va-hold::after{content:"";position:absolute;inset:0;border-radius:inherit;border:2px solid #FF8E85;opacity:0;pointer-events:none}
+.va-hold.on{background:#D6453C;transform:scale(1.03);box-shadow:0 12px 36px -6px rgba(214,69,60,.85),0 1px 0 rgba(255,255,255,.2) inset}.va-hold.on::after{animation:vaHoldRing 1.1s ease-out infinite}
+.va-hold.busy{opacity:.6}
+.va-hold-i{display:inline-grid;place-items:center}
+.va-hold-clock{font-variant-numeric:tabular-nums;padding:3px 10px;border-radius:999px;background:rgba(0,0,0,.28);font-size:14px;font-weight:600}.va-hold-clock[hidden]{display:none}
+@keyframes vaHoldRing{from{transform:scale(1);opacity:.8}to{transform:scale(1.14,1.5);opacity:0}}
+.va-end{margin-top:6px;min-height:46px;padding:0 20px;border:1px solid rgba(255,122,112,.45);border-radius:999px;background:none;color:#FF9A92;display:inline-flex;align-items:center;gap:8px;font:600 14.5px var(--f-body);cursor:pointer;transition:background-color .15s}
+.va-end:hover{background:rgba(255,122,112,.12)}.va-end:focus-visible{outline:2px solid var(--night-accent);outline-offset:3px}.va-end svg{width:18px;height:18px;transform:rotate(135deg)}
+@media (prefers-reduced-motion:reduce){.va-hold.on::after{animation:none;opacity:.5}}
