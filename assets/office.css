@@ -337,3 +337,14 @@ a.pick{display:inline-flex;align-items:center;text-decoration:none;color:inherit
 /* Chat in a drawer: the drawer is a column flexbox, so the chat (overflow:auto) was squeezed to 0px height when the drawer had a lot of content, hiding the replies and the option buttons behind it. Keep its natural height (max 46vh, scrolls inside). */
 .drawer .chat{flex:none}
 .drawer .chips .pick{min-height:44px;padding:0 16px}
+
+/* SerpApi quota bar (Sniper Client chat header) */
+.sq{position:relative;margin:0 0 10px;padding:9px 12px;border:1px solid var(--line2);border-radius:12px;background:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:12.5px;min-width:0}
+.sq-msg{color:var(--muted);overflow-wrap:anywhere}.sq.bad{border-color:var(--bad)}.sq.bad .sq-msg{color:var(--bad)}
+.sq-acc{min-height:30px;padding:0 10px;border-radius:999px;border:1px solid var(--line2);background:var(--sand);font-size:12px;font-weight:600;cursor:pointer}
+.sq-num{margin-left:auto}.sq-left{color:var(--muted)}
+.sq-bar{flex:1 1 100%;height:7px;border-radius:4px;background:var(--sand);overflow:hidden}.sq-bar i{display:block;height:100%;width:100%;transform-origin:left;background:var(--ok);transition:transform .4s ease,background .2s}
+.sq.warn .sq-bar i{background:#D98E04}.sq.crit .sq-bar i{background:var(--bad)}.sq.warn .sq-num{color:#9A6400}.sq.crit .sq-num{color:var(--bad)}
+.sq-pop{display:none;flex:1 1 100%;border-top:1px solid var(--line);padding-top:6px}.sq.open .sq-pop,.sq:hover .sq-pop{display:block}
+.sq-row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:2px 0}.sq-row small{color:var(--muted)}.sq-row em{font-style:normal;font-size:11px;background:var(--ink);color:var(--cream);border-radius:999px;padding:1px 7px}.sq-row.bad span:last-child{color:var(--bad)}
+@media (prefers-reduced-motion:reduce){.sq-bar i{transition:none}}

@@ -747,7 +747,7 @@
         ? `<div class="row"><span class="pick" aria-pressed="true" style="display:inline-flex;align-items:center;gap:6px">⭐ Lead of ${esc(aInD.name)}</span><button class="btn" type="button" id="clear-lead">Remove as lead</button></div>`
         : `<button class="btn primary" type="button" id="set-lead">⭐ Make lead of ${esc(aInD.name)}</button>`
       : '';
-    inner.innerHTML = head
+    inner.innerHTML = head + (d.runnable && SNIPER(key) ? sqHtml() : '')
       + (d.canRun ? `<button class="btn primary" type="button" id="run-now">▶ Run now</button>` : '')
       + leadRow
       + (VOICE ? `<p class="label">Customers &amp; Clients</p><div id="voice-mount"></div>` : `<p class="label">Talk to ${esc(d.name)}</p>`
@@ -758,7 +758,7 @@
       + `<details class="more"><summary>Recent runs</summary><ul class="runs">${runs}</ul></details>`
       + `<div class="row"><a class="btn" href="${esc(d.link)}" target="_blank" rel="noopener">Open in n8n</a><button class="btn ${d.active ? 'danger' : ''}" type="button" id="toggle">${d.active ? 'Turn off' : 'Turn on'}</button></div>`;
     // Voice Receptionist = Customers & Clients only (test calls: the public pages); every other agent gets its chat
-    if (VOICE && window.VoiceClients) VoiceClients.mount(inner.querySelector('#voice-mount'), { api, toast, esc, ago }); else bindChat('agent:' + key, d.name);
+    if (VOICE && window.VoiceClients) VoiceClients.mount(inner.querySelector('#voice-mount'), { api, toast, esc, ago }); else { bindChat('agent:' + key, d.name); refreshQuota(true); }
     const rn = () => { const n = prompt('New name for this agent (empty = its n8n name):', d.name); if (n === null) return; api('agent', { body: { key, action: 'rename', name: n } }).then(async () => { toast('Renamed'); await load(); openAgent(key); }).catch((x) => toast(x.message)); };
     $('#rename').onclick = rn;
     const saveAssign = async () => { try { await api('agent', { body: { key, action: 'assign', deptId: $('#dept').value || null, teamId: $('#team').value || null } }); toast('Moved'); load(); } catch (x) { toast(x.message); } };
@@ -792,6 +792,7 @@
     const isClient = D.role === 'client';
     const leadPickOpts = '<option value="">— no lead —</option>' + team.map((a) => `<option value="${esc(a.key)}" ${a.key === d.lead_key ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
     open(`<div class="d-head"><span class="avatar">${leadAvatarSvg}</span><div><h2 class="d-title">${leadTitle}</h2><div class="d-sub">${team.length} employees · ${can} can take tasks${d.mission ? '<br>' + esc(d.mission) : ''}</div></div></div>
+      ${leadHook && SNIPER(leadAgent.key) ? sqHtml() : ''}
       ${isClient ? '' : `<div class="field"><label for="lead-pick">Lead</label><select class="input" id="lead-pick">${leadPickOpts}</select></div>`}
       <p class="label">Talk to the lead</p>${chatUI(leadTo, 'Ask the ' + d.name + ' lead…')}<div class="chips"><button class="pick" type="button" ${leadHook ? 'data-say="start"' : 'data-reset'}>▶ Start over</button>${leadHook && SNIPER(leadAgent.key) ? CHECK_SITE : ''}</div>
       <form id="f-task" class="field"><label for="task">Give the lead a task</label><textarea class="input" id="task" name="t" required placeholder="Example: check vagent.online and report anything broken" ${focusTask ? 'autofocus' : ''}></textarea>
@@ -809,7 +810,7 @@
       ${isClient ? '' : `<p class="label">Edit</p><form id="f-edit" class="field"><input class="input" name="n" value="${esc(d.name)}" aria-label="Department name" required><div class="sw">${DEPT_COLORS.map((c) => `<button type="button" aria-label="Color ${c}" aria-pressed="${c === d.color}" data-c="${c}" style="background:${c}"></button>`).join('')}</div>
       <div class="row"><button class="btn" type="submit">Save</button><button class="btn danger" type="button" id="del-dept">Delete department</button></div></form>`}`, 'dept:' + d.id);
     let color = d.color;
-    bindChat(leadTo, leadHook ? leadAgent.name : d.name + ' lead');
+    bindChat(leadTo, leadHook ? leadAgent.name : d.name + ' lead'); if (leadHook && SNIPER(leadAgent.key)) refreshQuota(true);
     if ($('#lead-pick')) $('#lead-pick').onchange = async (e) => {
       try { await api('departments', { body: { deptId: d.id, leadKey: e.target.value || '' } }); toast(e.target.value ? 'Lead set' : 'Lead cleared'); await load(); openDept(d.id, focusTask); } catch (x) { toast(x.message); }
     };
@@ -922,6 +923,23 @@
 
   // Set just before opening a drawer: the chat there sends this message as soon as it is painted.
   // The Sniper chat always offers "Check the website": the lead answers with the newest build's link (or that it is still building).
+  // ---- SerpApi quota bar (Sniper Client chat header): live numbers from /api/sniper/quota (SerpApi account.json over every configured key), refreshed on open and after every reply
+  const sqHtml = () => (D.role === 'client' ? '' : '<div class="sq" id="sq" aria-live="polite"><span class="sq-msg">Reading SerpApi quota…</span></div>');
+  let sqAt = 0;
+  async function refreshQuota(force) {
+    const el = $('#sq'); if (!el || (!force && Date.now() - sqAt < 800)) return; sqAt = Date.now();
+    try {
+      const q = await api('sniper/quota'); if (!$('#sq')) return;
+      if (!q.ok) { el.className = 'sq bad'; el.innerHTML = `<span class="sq-msg">⚠ SerpApi quota unavailable: ${esc(q.error || 'try again')}</span>`; return; }
+      const pct = q.pct == null ? 0 : q.pct, cls = pct >= 95 ? 'crit' : pct >= 80 ? 'warn' : '', open = el.classList.contains('open');
+      const act = q.activeIndex ? q.activeIndex + '/' + q.configured : '—/' + q.configured;
+      el.className = 'sq ' + cls + (open ? ' open' : '');
+      el.innerHTML = `<button type="button" class="sq-acc" aria-expanded="${open}" title="Per-account quota">Account ${esc(act)} ▾</button><span class="sq-num"><b>${q.totalUsed} / ${q.totalLimit}</b> (${pct}%)</span><span class="sq-left">${q.totalLeft} left</span>`
+        + `<div class="sq-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}"><i style="transform:scaleX(${Math.min(1, pct / 100).toFixed(3)})"></i></div>`
+        + `<div class="sq-pop">${q.accounts.map((a) => a.ok ? `<div class="sq-row${a.index === q.activeIndex ? ' on' : ''}"><span>${esc(a.label)} <small>…${esc(a.last4)}</small>${a.index === q.activeIndex ? ' <em>active</em>' : ''}</span><span>${a.used} / ${a.limit} (${a.pct}%) · ${a.left} left</span></div>` : `<div class="sq-row bad"><span>${esc(a.label)} <small>…${esc(a.last4)}</small></span><span>${esc(a.error)}</span></div>`).join('')}</div>`;
+      $('.sq-acc', el).onclick = () => { const o = el.classList.toggle('open'); $('.sq-acc', el).setAttribute('aria-expanded', o); };
+    } catch (e) { const el2 = $('#sq'); if (el2) { el2.className = 'sq bad'; el2.innerHTML = `<span class="sq-msg">⚠ SerpApi quota unavailable: ${esc(e.message)}</span>`; } }
+  }
   const SNIPER = (k) => !!k && ((D && D.departments) || []).some((x) => x.lead_key === k && /sniper/i.test(x.name)), CHECK_SITE = '<button class="pick" type="button" data-say="build: latest">🔗 Check the website</button>';
   document.addEventListener('submit', (e) => { if (e.target && e.target.id === 'f-chat') e.preventDefault(); }, true);
   let pendingSay = null, chatOpen = null; // chatOpen: the chat on screen, so a delivered website link shows at once
@@ -969,7 +987,7 @@
         settle(id, { id, t: r.reply, buttons: r.buttons, actions: r.actions, prompt: r.prompt, project: r.project, bad: r.ok === false }, ep); }
       catch (x) { settle(id, { id, t: x.message, bad: 1 }, ep); }
       if (btn) btn.disabled = false;
-      if (to.startsWith('agent:')) load();
+      if (to.startsWith('agent:')) { load(); if (SNIPER(to.slice(6))) refreshQuota(); }
     };
     // Start over (button, or typing "start"): drop the old thread, any pending reply and the busy state, then ask for Step 1 again. Never goes to the CEO: `to` is this chat's own target.
     const restart = () => { epoch++; save([]); const btn = f.querySelector('button'); if (btn) btn.disabled = false; paint(); return send('start'); };
