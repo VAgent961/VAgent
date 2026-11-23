@@ -3,6 +3,7 @@
 (function () {
   const MAX_HISTORY = 12;
   const MIN_MS = 500;
+  const MIN_SPEECH_RMS = 0.015, SUSTAIN_MS = 250, CAL_MS = 600, WORD_MS = 1600; // voice isolation: floor of the speech level, speech must hold 250 ms, 600 ms room calibration, how long a recognised word keeps the gate open
   const BARS = 36;   // radial level bars around the public call button
   let stopPrev = null;
 
@@ -109,7 +110,7 @@
     const va = el.querySelector('.va');
     let history = [], alive = true, on = false, phase = 'idle', callId = 0, t0 = 0, timerH = 0, stream = null, rec = null, chunks = [], recMime = '';
     let ac = null, an = null, tdata = null, vadH = 0, raf = 0, sr = null, interim = '', myBubble = null, ctl = null;
-    let floor = 0.01, hasSpoken = false, voicedTicks = 0, lastVoice = 0, turnStart = 0, resumeAt = 0, lang = (navigator.language || '').toLowerCase().startsWith('ar') ? 'ar-LB' : 'en-US';
+    let floor = 0.01, calUntil = 0, calSum = 0, calN = 0, voiceSince = 0, lastLoudAt = 0, lastWordAt = 0, srDead = false, hasSpoken = false, voicedTicks = 0, lastVoice = 0, turnStart = 0, resumeAt = 0, lang = (navigator.language || '').toLowerCase().startsWith('ar') ? 'ar-LB' : 'en-US';
     if (langBtn) { const paint = () => { langBtn.textContent = lang.startsWith('ar') ? 'عربي · tap for EN' : 'EN · tap for عربي'; }; paint(); langBtn.onclick = () => { lang = lang.startsWith('ar') ? 'en-US' : 'ar-LB'; paint(); if (on && phase === 'listening') { stopSR(); startSR(); } }; }
 
     const say = (t) => { stEl.textContent = t; va.dataset.v = phase === 'listening' ? 'listening' : phase === 'thinking' ? 'thinking' : phase === 'speaking' ? 'speaking' : 'idle'; };
@@ -127,7 +128,9 @@
       try {
         const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
         ac = new AC(); if (ac.state === 'suspended') ac.resume().catch(() => {});
-        an = ac.createAnalyser(); an.fftSize = 1024; an.smoothingTimeConstant = 0.6; ac.createMediaStreamSource(s).connect(an);
+        an = ac.createAnalyser(); an.fftSize = 1024; an.smoothingTimeConstant = 0.6; // human-voice band only: two cascaded high-pass (300 Hz) + low-pass (3400 Hz) filters strip rumble, hum, fans, hiss and clicks before any level is measured
+        const hp = (f) => { const b = ac.createBiquadFilter(); b.type = 'highpass'; b.frequency.value = f; b.Q.value = 0.707; return b; }, lpf = (f) => { const b = ac.createBiquadFilter(); b.type = 'lowpass'; b.frequency.value = f; b.Q.value = 0.707; return b; };
+        const chain = [hp(300), hp(300), lpf(3400), lpf(3400)]; let node = ac.createMediaStreamSource(s); for (const f of chain) { node.connect(f); node = f; } node.connect(an);
         tdata = new Uint8Array(an.fftSize); const fd = new Uint8Array(an.frequencyBinCount), bars = pub ? el.querySelectorAll('.va-bars b') : [], n = bars.length;
         if (n) va.dataset.meter = '1';
         const draw = () => { raf = requestAnimationFrame(draw); if (phase !== 'listening') return; an.getByteFrequencyData(fd); let sum = 0;
@@ -138,14 +141,20 @@
     }
     function closeAudio() { cancelAnimationFrame(raf); raf = 0; clearInterval(vadH); vadH = 0; try { if (ac) ac.close(); } catch (e) {} ac = an = null; delete va.dataset.meter; va.style.removeProperty('--lvl'); el.querySelectorAll('.va-bars b').forEach((b) => { b.style.transform = ''; }); }
     function rms() { an.getByteTimeDomainData(tdata); let s = 0; for (let i = 0; i < tdata.length; i++) { const v = (tdata[i] - 128) / 128; s += v * v; } return Math.sqrt(s / tdata.length); }
+    const srOk = () => !!SR && !srDead;
     function vad() { // runs every 60 ms; does nothing unless we are listening (so the AI's own voice is never taken as a turn)
-      if (!on || phase !== 'listening' || !an) return; const now = Date.now(); if (now < resumeAt) return;
-      const r = rms(), thr = Math.min(0.15, Math.max(0.02, floor * 2.6 + 0.012)), loud = r > thr;
-      if (!hasSpoken && !loud) floor = floor * 0.94 + r * 0.06; // learn the room noise while nobody talks
-      if (loud) { voicedTicks++; if (r > thr * 0.8) lastVoice = now; if (!hasSpoken && voicedTicks >= 3) { hasSpoken = true; turnStart = now; lastVoice = now; if (!myBubble) myBubble = bubble('me', interim || '…', 'interim'); } } else voicedTicks = 0;
-      if (hasSpoken) { // speech recognition activity also counts as "still talking"
-        if (now - lastVoice >= cfg.silenceMs || now - turnStart > 55000) endTurn();
-      } else if (rec && rec.state === 'recording' && now - turnStart > 12000) restartRec(); // nobody talking: do not keep minutes of silence
+      if (!on || !an) return; const now = Date.now(), r = rms();
+      if (now < calUntil) { calSum += r; calN++; floor = Math.min(0.08, calSum / calN); return; } // first 600 ms after Start Call: measure the room
+      if (phase !== 'listening' || now < resumeAt) return;
+      const thr = Math.max(floor * 2.6, MIN_SPEECH_RMS), loud = r > thr;
+      if (loud) { lastLoudAt = now; if (!voiceSince) voiceSince = now; } else if (now - lastLoudAt > 120) voiceSince = 0; // a gap longer than 120 ms restarts the 250 ms count
+      const sustained = voiceSince > 0 && now - voiceSince >= SUSTAIN_MS; // claps, coughs and door slams are shorter than this
+      if (!loud && !hasSpoken) floor = Math.min(0.08, floor * 0.97 + r * 0.03); // slowly follow the room noise while nobody talks
+      // real speech = sustained voice-band level AND (when the browser can recognise speech) real words heard just now
+      const words = !srOk() || now - lastWordAt < WORD_MS, speech = sustained && words;
+      if (speech) { lastVoice = now; if (!hasSpoken) { hasSpoken = true; turnStart = now; if (!myBubble) myBubble = bubble('me', interim || '…', 'interim'); } }
+      if (hasSpoken) { if (now - lastVoice >= cfg.silenceMs || now - turnStart > 55000) endTurn(); }
+      else if (rec && rec.state === 'recording' && now - turnStart > 12000) restartRec(); // nobody talking: do not keep minutes of silence
     }
 
     // ── live words while you speak (browser speech recognition; the server transcript replaces them) ──
@@ -153,9 +162,9 @@
       if (!SR || !on || phase !== 'listening') return;
       try {
         sr = new SR(); sr.lang = lang; sr.continuous = true; sr.interimResults = true;
-        sr.onresult = (e) => { let t = ''; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; interim = t.trim(); if (interim) { lastVoice = Date.now(); if (myBubble) setBubbleText(myBubble, interim); else if (hasSpoken) myBubble = bubble('me', interim, 'interim'); } };
-        let dead = false; sr.onend = () => { if (!dead && on && phase === 'listening' && sr) { try { sr.start(); } catch (e) {} } };
-        sr.onerror = (e) => { if (/not-allowed|service-not-allowed|network|language-not-supported/.test(e.error || '')) dead = true; }; sr.start();
+        sr.onresult = (e) => { let t = ''; for (let i = 0; i < e.results.length; i++) { const a = e.results[i][0]; if (a.confidence > 0 && a.confidence < 0.3) continue; t += a.transcript; } interim = t.trim(); if (interim) { const n = Date.now(); lastWordAt = n; if (n - lastLoudAt < 800) lastVoice = n; if (myBubble) setBubbleText(myBubble, interim); else if (hasSpoken) myBubble = bubble('me', interim, 'interim'); } };
+        sr.onend = () => { if (!srDead && on && phase === 'listening' && sr) { try { sr.start(); } catch (e) {} } };
+        sr.onerror = (e) => { if (/not-allowed|service-not-allowed|network|language-not-supported/.test(e.error || '')) srDead = true; }; sr.start();
       } catch (e) { sr = null; }
     }
     function stopSR() { const r = sr; sr = null; if (r) { r.onend = null; try { r.abort(); } catch (e) {} } }
@@ -169,7 +178,7 @@
     }
     function restartRec() { const r = rec; rec = null; if (r) { r.onstop = null; try { r.stop(); } catch (e) {} } startRec(); }
     function listen() { // (re)open a turn: fresh recorder, fresh speech recognition
-      if (!on || !alive) return; phase = 'listening'; hasSpoken = false; voicedTicks = 0; interim = ''; myBubble = null; lastVoice = Date.now(); resumeAt = Date.now() + 450; // short grace so the tail of the AI voice is not heard
+      if (!on || !alive) return; phase = 'listening'; hasSpoken = false; voicedTicks = 0; voiceSince = 0; lastWordAt = 0; interim = ''; myBubble = null; lastVoice = Date.now(); resumeAt = Date.now() + 450; // short grace so the tail of the AI voice is not heard
       startRec(); startSR(); say('Listening…');
     }
     function endTurn() {
@@ -193,7 +202,7 @@
         const j = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(j.error || 'Something went wrong');
         if (id !== callId || !on) return;
-        if (!j.transcript && !j.reply) throw new Error('empty');
+        if (!j.transcript) { if (bub) bub.remove(); throw new Error('noise'); } // nothing intelligible was said: stay quiet and keep listening
         if (j.transcript) { if (bub) { setBubbleText(bub, j.transcript); bub.classList.remove('interim'); } else bubble('me', j.transcript); history.push({ role: 'user', content: j.transcript }); } else if (bub) bub.remove();
         phase = 'speaking'; say('Speaking…');
         // the text and the sound start together; the mic stays closed until the voice has finished
@@ -207,7 +216,7 @@
       } catch (err) {
         if (id !== callId || !on) return;
         if (bub && bub.classList.contains('interim')) bub.remove();
-        if (err && err.name !== 'AbortError') bubble('note', err.message === 'empty' ? 'I did not catch that. Try again.' : err.message);
+        if (err && err.name !== 'AbortError' && err.message !== 'noise') bubble('note', err.message);
       }
       if (id === callId && on) listen();
     }
@@ -217,11 +226,11 @@
       if (on) return; prime();
       if (!navigator.mediaDevices || !window.MediaRecorder) { say('This browser cannot record. Use Chrome, Edge or Safari.'); return; }
       stopSpeech(); callBtn.disabled = true; say('Connecting…');
-      try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+      try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } }); }
       catch (err) { callBtn.disabled = false; phase = 'idle'; say('Allow the microphone to start the call.'); return; }
       callBtn.disabled = false;
       if (!alive) { releaseMic(); return; }
-      on = true; callId++; t0 = Date.now(); floor = 0.01; setBtn(); timerEl.textContent = '00:00'; timerH = setInterval(() => { timerEl.textContent = mmss(Date.now() - t0); }, 1000);
+      on = true; callId++; t0 = Date.now(); floor = 0.01; calUntil = t0 + CAL_MS; calSum = 0; calN = 0; voiceSince = 0; lastWordAt = 0; srDead = false; setBtn(); timerEl.textContent = '00:00'; timerH = setInterval(() => { timerEl.textContent = mmss(Date.now() - t0); }, 1000);
       openAudio(stream); listen();
     }
     function releaseMic() { stopSR(); closeAudio(); const r = rec; rec = null; if (r) { r.onstop = null; try { if (r.state !== 'inactive') r.stop(); } catch (e) {} } chunks = []; if (stream) stream.getTracks().forEach((t) => t.stop()); stream = null; }
