@@ -20,17 +20,38 @@
   function prime() { try { player.src = SILENT; player.play().catch(() => {}); } catch (e) {} } // unlocks audio on Safari (runs inside the button press)
   // level of the voice that is playing (drives the lip-sync); the player is routed through one analyser, created inside the Start Call click
   let sctx = null, sAn = null, sBuf = null;
+  function ensureAnalyser() { // only once the context really runs: on iOS an element routed into a suspended context would play silence
+    if (!sctx || sAn || sctx.state !== 'running') return;
+    try { const src = sctx.createMediaElementSource(player); sAn = sctx.createAnalyser(); sAn.fftSize = 512; sBuf = new Uint8Array(sAn.fftSize); src.connect(sAn); sAn.connect(sctx.destination); } catch (e) { sAn = null; }
+  }
   function hookPlayer() {
     if (sctx) return;
     try {
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; sctx = new AC();
-      sctx.resume().then(() => { if (sctx.state !== 'running' || sAn) return; const src = sctx.createMediaElementSource(player); sAn = sctx.createAnalyser(); sAn.fftSize = 512; sBuf = new Uint8Array(sAn.fftSize); src.connect(sAn); sAn.connect(sctx.destination); }).catch(() => {});
+      sctx.onstatechange = ensureAnalyser; sctx.resume().then(ensureAnalyser).catch(() => {});
     } catch (e) { sctx = null; }
   }
+  // iOS Safari only lets audio start/resume inside a touch gesture: called on Start Call and on every Hold to Talk press and release (plays the silent clip + resumes the context, synchronously)
+  function unlockAudio() { try { if (sctx && sctx.state !== 'running') sctx.resume().then(ensureAnalyser).catch(() => {}); if (player.paused && !armed) prime(); } catch (e) {} }
+  // text-driven syllable envelope: used when the analyser is missing or flat (iOS, browser voice). Mouth opens on vowels, half-opens on consonants, closes on spaces and punctuation, following the playback position.
+  let envText = '', audStart = 0, sawSig = false, boundIdx = 0, boundAt = 0;
+  function envLevel(now) {
+    const t = envText; if (!t) return 0.45 + 0.4 * Math.abs(Math.sin(now / 105));
+    let idx;
+    if (!player.paused && player.duration > 0 && isFinite(player.duration) && player.currentTime > 0) idx = player.currentTime / player.duration * t.length;
+    else if (boundAt && now - boundAt < 700) idx = boundIdx + (now - boundAt) / 1000 * 13;
+    else idx = (now - audStart) / 1000 * 13;
+    const ch = t[Math.min(t.length - 1, Math.max(0, Math.floor(idx)))] || ' ';
+    const base = /[.,;:!?\u061F\u060C\u2026]/.test(ch) ? 0 : /\s/.test(ch) ? 0.12 : /[aeiouyAEIOU\u0627\u0623\u0625\u0622\u0648\u064A\u0649\u0629]/.test(ch) ? 0.92 : 0.5;
+    return base * (0.8 + 0.2 * Math.sin(now / 55));
+  }
+  const scrub = (txt) => { const raw = String(txt || ''); // never show or speak anything internal (the server cleans it too)
+    if (/[{}]|"\s*:|\b(?:uuid|created_at|updated_at|item_?id|store_?id|tenant_?id|business_?id|extra_fields)\b|\bids?\s*[:=]/i.test(raw)) return /[\u0600-\u06FF]/.test(raw) ? 'بقدر ساعدك بس بالمنتجات والأسعار وطلبك. شو بتحب تعرف؟' : 'I can only help with our products, prices and your order. What would you like to know?';
+    return raw.replace(/\[\s*\d{1,2}:\d{2}[^\]]*\]/g, ' ').replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, ' ').replace(/\(\s*(?:id|ref)\s*[:=#]?\s*[\w-]+\s*\)/gi, ' ').replace(/\s{2,}/g, ' ').trim(); };
   function outLevel() { if (!sAn || player.paused) return -1; sAn.getByteTimeDomainData(sBuf); let t = 0; for (let i = 0; i < sBuf.length; i++) { const v = (sBuf[i] - 128) / 128; t += v * v; } return Math.sqrt(t / sBuf.length); }
   // audible = real sound is coming out right now (drives the mouth). armed = a TTS clip was loaded into the player (the silent unlock clip must not count).
   let audible = false, armed = false, audHook = null;
-  function setAud(v) { if (audible === v) return; audible = v; if (audHook) audHook(v); }
+  function setAud(v) { if (audible === v) return; audible = v; if (v) { audStart = performance.now(); } else { envText = ''; boundAt = 0; } if (audHook) audHook(v); }
   const realPlay = () => armed && !player.paused && !player.ended && player.currentTime > 0 && player.readyState >= 3;
   ['playing', 'timeupdate'].forEach((n) => player.addEventListener(n, () => { if (realPlay()) setAud(true); }));
   ['ended', 'pause', 'error', 'emptied', 'waiting'].forEach((n) => player.addEventListener(n, () => setAud(false)));
@@ -49,11 +70,12 @@
     if (!r.ok) throw new Error('tts ' + r.status);
     return URL.createObjectURL(await r.blob());
   }
-  function playUrl(url) {
+  function playUrl(url, text) {
     return new Promise((resolve, reject) => {
+      envText = String(text || ''); sawSig = false; boundAt = 0;
       player.onended = () => { URL.revokeObjectURL(url); resolve(); };
       player.onerror = () => { URL.revokeObjectURL(url); reject(new Error('play')); };
-      armed = true; player.src = url; player.play().catch(reject);
+      armed = true; player.src = url; try { if (sctx && sctx.state !== 'running') sctx.resume(); } catch (e) {} player.play().catch(reject);
     });
   }
   function browserSpeak(text, onEnd) {
@@ -65,7 +87,7 @@
     u.lang = ar ? 'ar-SA' : 'en-US';
     const v = ss.getVoices().find((x) => x.lang && x.lang.toLowerCase().startsWith(ar ? 'ar' : 'en'));
     if (v) u.voice = v;
-    u.onstart = () => setAud(true); u.onboundary = () => setAud(true);
+    envText = text; sawSig = false; u.onstart = () => { envText = text; setAud(true); }; u.onboundary = (e) => { boundIdx = e.charIndex || 0; boundAt = performance.now(); setAud(true); };
     u.onend = u.onerror = () => { setAud(false); onEnd && onEnd(); };
     ss.speak(u);
   }
@@ -81,7 +103,7 @@
         const url = await reqs[i];
         if (my !== token) { URL.revokeObjectURL(url); reqs.slice(i + 1).forEach((r) => r.then((u) => URL.revokeObjectURL(u)).catch(() => {})); go(false); return; }
         go(true);
-        await playUrl(url);
+        await playUrl(url, parts[i]);
         if (my !== token) return;
       }
       onEnd && onEnd();
@@ -233,7 +255,7 @@
     function beginHold(x) {
       if (!on || holding || !alive || phase === 'thinking' || !stream || !window.MediaRecorder) return;
       if (phase === 'speaking') stopSpeech(); // talking over her cuts her off, like a voice message app
-      clearTimeout(hintTimer); holding = true; slideCancel = false; startX = x || 0; holdStart = Date.now(); phase = 'listening'; interim = ''; chunks = [];
+      unlockAudio(); clearTimeout(hintTimer); holding = true; slideCancel = false; startX = x || 0; holdStart = Date.now(); phase = 'listening'; interim = ''; chunks = [];
       stream.getAudioTracks().forEach((t) => { t.enabled = true; });
       try { recMime = pickMime(); rec = new MediaRecorder(stream, recMime ? { mimeType: recMime } : undefined); rec.ondataavailable = (ev) => { if (ev.data && ev.data.size) chunks.push(ev.data); }; rec.start(); } catch (e) { holding = false; phase = 'ready'; say('norec'); setBtn(); return; }
       myBubble = bubble('me', '…', 'interim'); startSR(); holdClock.textContent = '0:00'; holdTimer = setInterval(() => { holdClock.textContent = clock(Date.now() - holdStart); }, 200);
@@ -243,7 +265,7 @@
     function endHold(cancelled) {
       if (!holding) return; holding = false; clearInterval(holdTimer); holdTimer = 0;
       const id = callId, dur = Date.now() - holdStart, bub = myBubble, r = rec, discard = cancelled || slideCancel || dur < MIN_HOLD_MS, short = !cancelled && !slideCancel && dur < MIN_HOLD_MS;
-      myBubble = null; rec = null; stopSR(); stream && stream.getAudioTracks().forEach((t) => { t.enabled = false; }); // mic off the moment you let go
+      unlockAudio(); myBubble = null; rec = null; stopSR(); stream && stream.getAudioTracks().forEach((t) => { t.enabled = false; }); // mic off the moment you let go
       slideCancel = false;
       const finish = () => {
         const blob = new Blob(chunks, { type: (r && r.mimeType) || recMime || 'audio/webm' }); chunks = [];
@@ -267,7 +289,7 @@
       ctl = new AbortController(); let spoke = false;
       try {
         const res = await fetch(voiceUrl + '?business_id=' + encodeURIComponent(businessId), { method: 'POST', body: fd, headers: isText ? { 'Content-Type': 'application/json' } : undefined, credentials: 'same-origin', signal: ctl.signal });
-        const j = await res.json().catch(() => ({}));
+        const j = await res.json().catch(() => ({})); if (j && typeof j.reply === 'string') j.reply = scrub(j.reply);
         if (!res.ok) throw new Error(j.error || 'Something went wrong');
         if (id !== callId || !on) return;
         if (!j.transcript) { if (bub) bub.remove(); throw new Error('noise'); }
@@ -341,8 +363,10 @@
         if (now > blinkAt) { blinkUntil = now + 140; blinkAt = now + 2600 + Math.random() * 3400; }
         const blink = now < blinkUntil;
         if (phase === 'speaking' && audible) {
-          const o = outLevel(), lv = o >= 0 ? o : 0.05 + 0.1 * Math.abs(Math.sin(now / 105)); // no analyser (browser voice): a gentle mouth rhythm instead
-          peak = Math.max(lv, peak * 0.997, 0.03); mouthS = Math.max(lv / peak, mouthS * 0.55);
+          const o = outLevel(); if (o > 0.012) sawSig = true;
+          const useEnv = o < 0 || (!sawSig && now - audStart > 350); // no analyser (browser voice) or it reads flat (iOS Safari): follow the syllables of the text instead
+          if (useEnv) mouthS = Math.max(envLevel(now), mouthS * 0.6);
+          else { peak = Math.max(o, peak * 0.997, 0.03); mouthS = Math.max(o / peak, mouthS * 0.55); }
           showF(mouthS < 0.16 ? 'idle' : mouthS < 0.4 ? 'talk1' : mouthS < 0.68 ? 'talk2' : 'talk3'); charEl.style.setProperty('--bob', Math.min(1, mouthS).toFixed(2));
         } else { mouthS = 0; charEl.style.setProperty('--bob', '0'); showF(phase === 'thinking' ? 'think' : phase === 'listening' ? 'listen' : blink ? 'blink' : 'idle'); }
       };

@@ -72,6 +72,17 @@ function cards(j, bid) {
   return { images, orderConfirmation, whatsappHandoff };
 }
 
+// Defense in depth: nothing internal (timestamps in brackets, UUIDs, ids, field names, JSON) may reach the chat or be read aloud, even if the model slips.
+export function scrubReply(txt, ar) {
+  const raw = String(txt || '');
+  const hard = /[{}]|"\s*:|\b(?:uuid|created_at|updated_at|item_?id|store_?id|tenant_?id|business_?id|extra_fields)\b|\bids?\s*[:=]/i.test(raw);
+  const cl = raw.replace(/\[\s*\d{1,2}:\d{2}[^\]]*\]/g, ' ').replace(/\[\s*STORE SYSTEM[^\]]*\]/gi, ' ').replace(/\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}[\d:.Z+-]*/g, ' ')
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, ' ').replace(/\(\s*(?:id|ref)\s*[:=#]?\s*[\w-]+\s*\)/gi, ' ')
+    .replace(/\s*#(?:[0-9a-f-]{8,}|id\b)/gi, ' ').replace(/\s{2,}/g, ' ').replace(/\s+([,.!?؟،])/g, '$1').trim();
+  if (hard || cl.replace(/[^\p{L}]/gu, '').length < 2) return /[\u0600-\u06FF]/.test(raw) || ar ? 'بقدر ساعدك بس بالمنتجات والأسعار وطلبك. شو بتحب تعرف؟' : 'I can only help with our products, prices and your order. What would you like to know?';
+  return cl;
+}
+
 export async function proxyVoice(request, env) {
   if (!originOk(request)) return json({ error: 'Not allowed from this site' }, 403);
   const bid = new URL(request.url).searchParams.get('business_id') || '';
@@ -87,7 +98,7 @@ export async function proxyVoice(request, env) {
     const j = await r.json().catch(() => null);
     if (!r.ok || !j || typeof j.reply !== 'string') return json({ error: 'The receptionist is not answering right now' }, 502);
     const c = cards(j, bid); if (!c.images.length && Array.isArray(j.show)) c.images = await imagesFor(env, bid, j.show); // n8n sends images[]; older builds send show ids
-    return json({ reply: j.reply, transcript: j.transcript || '', order_saved: !!j.order_saved, missed_saved: !!j.missed_saved, ...c });
+    return json({ reply: scrubReply(j.reply), transcript: j.transcript || '', order_saved: !!j.order_saved, missed_saved: !!j.missed_saved, ...c });
   } catch {
     return json({ error: 'The receptionist took too long. Try again.' }, 504);
   }
@@ -96,7 +107,7 @@ export async function proxyVoice(request, env) {
 export async function proxyTts(request, env) {
   if (!originOk(request)) return json({ error: 'Not allowed from this site' }, 403);
   const b = await request.json().catch(() => ({}));
-  const text = String(b.text || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+  const text = scrubReply(String(b.text || '').replace(/\s+/g, ' ').trim()).slice(0, 200);
   if (!text) return json({ error: 'No text' }, 400);
   const lang = b.lang === 'ar' || b.lang === 'en' ? b.lang : ''; // the active tab locks the voice (Arabic voice / English voice)
   try {
