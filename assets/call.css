@@ -163,3 +163,11 @@ button.va-card-img{padding:0;font:inherit;color:inherit;cursor:zoom-in}button.va
 .va-wa:hover{background:#116B33}.va-wa:active{transform:scale(.98)}
 .va-wa:focus-visible{outline:2px solid #fff;outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.va-chipbtn,.va-wa{transition:none}}
+/* one product asked for: big photo card (photo on top, tap to zoom) + owner-request confirmation card */
+.va-card.big{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"img img" "body chip"}
+.va-card.big .va-card-img{grid-area:img;width:100%;height:auto;aspect-ratio:4/3;border-radius:10px}
+.va-card.big .va-card-b{grid-area:body}.va-card.big .va-chipbtn{grid-area:chip}
+.va-req{display:grid;gap:3px;padding:10px 12px;border-radius:12px;background:var(--accent-soft);border:1px solid var(--accent-line);font-size:13.5px;min-width:0;overflow-wrap:anywhere;unicode-bidi:plaintext;text-align:start}
+.va-req-h{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--night-ink)}
+.va-req-h::before{content:"";width:16px;height:16px;flex:none;border-radius:50%;background:var(--night-accent);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/12px no-repeat,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.va-req-d{color:var(--night-mute);font-size:12.5px}

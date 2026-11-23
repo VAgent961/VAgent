@@ -54,7 +54,7 @@ async function imagesFor(env, bid, show) {
 }
 
 // Structured sales cards from n8n, re-checked here so the page only ever gets clean, bounded data:
-// images[] {id,title,price,in_stock,url (our own /api/public-item-image link or '')}, orderConfirmation (receipt), whatsappHandoff (wa.me link).
+// images[] {id,title,price,in_stock,url (our own /api/public-item-image link or '')}, orderConfirmation (receipt), whatsappHandoff (wa.me link), ownerRequest {item,name,phone}.
 const str = (v, n) => String(v == null ? '' : v).slice(0, n);
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
 function cards(j, bid) {
@@ -69,7 +69,9 @@ function cards(j, bid) {
   } : null;
   const h = j.whatsappHandoff;
   const whatsappHandoff = h && /^https:\/\/wa\.me\/\d{8,15}(\?text=[^\s"'<>]{0,1500})?$/.test(String(h.url || '')) ? { url: String(h.url), label: str(h.label, 60) || 'Chat with Store on WhatsApp', phone: str(h.phone, 20) } : null;
-  return { images, orderConfirmation, whatsappHandoff };
+  const q = j.ownerRequest; // skill 10: the customer asked to notify the store owner about an item not in the catalog
+  const ownerRequest = q && q.item ? { item: str(q.item, 200), name: str(q.name, 120), phone: str(q.phone, 30) } : null;
+  return { images, orderConfirmation, whatsappHandoff, ownerRequest };
 }
 
 // Defense in depth: nothing internal (timestamps in brackets, UUIDs, ids, field names, JSON) may reach the chat or be read aloud, even if the model slips.
