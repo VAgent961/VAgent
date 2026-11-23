@@ -757,7 +757,8 @@
       + `<details class="more"><summary>What it does (${d.steps.length} steps)</summary><ol class="steps">${steps}</ol></details>`
       + `<details class="more"><summary>Recent runs</summary><ul class="runs">${runs}</ul></details>`
       + `<div class="row"><a class="btn" href="${esc(d.link)}" target="_blank" rel="noopener">Open in n8n</a><button class="btn ${d.active ? 'danger' : ''}" type="button" id="toggle">${d.active ? 'Turn off' : 'Turn on'}</button></div>`;
-    if (VOICE && window.VoiceClients) VoiceClients.mount(inner.querySelector('#voice-mount'), { api, toast, esc, ago });   // Voice Receptionist = Customers & Clients only (test calls: the public pages) else bindChat('agent:' + key, d.name);
+    // Voice Receptionist = Customers & Clients only (test calls: the public pages); every other agent gets its chat
+    if (VOICE && window.VoiceClients) VoiceClients.mount(inner.querySelector('#voice-mount'), { api, toast, esc, ago }); else bindChat('agent:' + key, d.name);
     const rn = () => { const n = prompt('New name for this agent (empty = its n8n name):', d.name); if (n === null) return; api('agent', { body: { key, action: 'rename', name: n } }).then(async () => { toast('Renamed'); await load(); openAgent(key); }).catch((x) => toast(x.message)); };
     $('#rename').onclick = rn;
     const saveAssign = async () => { try { await api('agent', { body: { key, action: 'assign', deptId: $('#dept').value || null, teamId: $('#team').value || null } }); toast('Moved'); load(); } catch (x) { toast(x.message); } };
@@ -922,6 +923,7 @@
   // Set just before opening a drawer: the chat there sends this message as soon as it is painted.
   // The Sniper chat always offers "Check the website": the lead answers with the newest build's link (or that it is still building).
   const SNIPER = (k) => !!k && ((D && D.departments) || []).some((x) => x.lead_key === k && /sniper/i.test(x.name)), CHECK_SITE = '<button class="pick" type="button" data-say="build: latest">🔗 Check the website</button>';
+  document.addEventListener('submit', (e) => { if (e.target && e.target.id === 'f-chat') e.preventDefault(); }, true);
   let pendingSay = null, chatOpen = null; // chatOpen: the chat on screen, so a delivered website link shows at once
   const store = { get: (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v.slice(-30))); } catch {} } };
   const ACT = { create_department: (a) => 'Create department "' + a.name + '"', rename_department: (a) => 'Rename ' + a.department + ' to "' + a.name + '"', set_mission: (a) => 'New mission for ' + a.department + ': ' + a.mission, delete_department: (a) => 'Delete department ' + a.department,
@@ -952,27 +954,32 @@
   function bindChat(to, who) {
     const f = $('#f-chat'), log = () => store.get(chatKey(to));
     const save = (l) => store.set(chatKey(to), l);
-    const paint = () => { const c = $('#chat'); if (!c) return; c.innerHTML = log().map(bubble).join(''); c.lastElementChild && c.lastElementChild.scrollIntoView({ block: 'nearest' }); };
+    const toBottom = () => { const c = $('#chat'); if (c) c.scrollTop = c.scrollHeight; };
+    const paint = () => { const c = $('#chat'); if (!c) return; c.innerHTML = log().map(bubble).join(''); toBottom(); requestAnimationFrame(() => { toBottom(); setTimeout(toBottom, 260); }); };   // chat always shows its newest message (also after the drawer animation)
+    let epoch = 0;   // bumped by Start over: replies that were still on their way for the old thread are dropped
     chatOpen = { to, paint };
-    const settle = (id, entry) => { const l = log(), i = l.findIndex((x) => x.id === id); if (i >= 0) l[i] = entry; else l.push(entry); save(l); paint(); };
+    const settle = (id, entry, ep) => { if (ep !== undefined && ep !== epoch) return; const l = log(), i = l.findIndex((x) => x.id === id); if (i >= 0) l[i] = entry; else l.push(entry); save(l); paint(); };
     const send = async (m) => {
-      const id = Date.now();
+      const id = Date.now(), ep = epoch;
       const l = log(); const history = l.slice(-8).map((x) => ({ me: !!x.me, t: x.t }));
       // the pending bubble is saved too, so it is still there if the drawer is closed and reopened
       l.push({ me: 1, t: m }); l.push({ id, pending: 1, at: id, t: who + ' is working on it…' }); save(l); paint();
       const btn = f.querySelector('button'); if (btn) btn.disabled = true;
       try { const r = await api('talk', { body: { to, message: m, history } });
-        settle(id, { id, t: r.reply, buttons: r.buttons, actions: r.actions, prompt: r.prompt, project: r.project, bad: r.ok === false }); }
-      catch (x) { settle(id, { id, t: x.message, bad: 1 }); }
+        settle(id, { id, t: r.reply, buttons: r.buttons, actions: r.actions, prompt: r.prompt, project: r.project, bad: r.ok === false }, ep); }
+      catch (x) { settle(id, { id, t: x.message, bad: 1 }, ep); }
       if (btn) btn.disabled = false;
       if (to.startsWith('agent:')) load();
     };
-    f.onsubmit = (e) => { e.preventDefault(); const m = f.m.value.trim(); if (m) { f.m.value = ''; send(m); } };
+    // Start over (button, or typing "start"): drop the old thread, any pending reply and the busy state, then ask for Step 1 again. Never goes to the CEO: `to` is this chat's own target.
+    const restart = () => { epoch++; save([]); const btn = f.querySelector('button'); if (btn) btn.disabled = false; paint(); return send('start'); };
+    const isStart = (t) => to !== 'ceo' && /^\s*start(\s+over)?\s*$/i.test(t);
+    f.onsubmit = (e) => { e.preventDefault(); const m = f.m.value.trim(); if (m) { f.m.value = ''; isStart(m) ? restart() : send(m); } };
     inner.onclick = async (e) => {
       const say = e.target.closest('[data-say]'); // works for chips painted after load too
-      if (say) { e.preventDefault(); return send(say.dataset.say); }
+      if (say) { e.preventDefault(); return isStart(say.dataset.say) ? restart() : send(say.dataset.say); }
       const fl = e.target.closest('[data-flow]');
-      if (fl) { e.preventDefault(); pendingSay = 'start'; return openAgent(fl.dataset.flow); } // this one has no webhook: start the department's chat agent
+      if (fl) { e.preventDefault(); pendingSay = { to: 'agent:' + fl.dataset.flow, m: 'start' }; return openAgent(fl.dataset.flow); } // this one has no webhook: start the department's chat agent
       if (e.target.closest('[data-reset]')) { save([]); paint(); toast('Started over'); return; } // no webhook: a fresh thread
       const ap = e.target.closest('[data-approve],[data-skip],[data-copy],[data-start]'); if (!ap) return;
       const l = log(), m = l.find((x) => String(x.id) === (ap.dataset.approve || ap.dataset.skip || ap.dataset.copy || ap.dataset.start)); if (!m) return;
@@ -992,7 +999,7 @@
       save(l); paint(); load();
     };
     paint();
-    if (pendingSay) { const m = pendingSay; pendingSay = null; send(m); }
+    if (pendingSay) { const ps = pendingSay; pendingSay = null; if (ps.to === to) restart(); }   // only the chat it was meant for may start (never the CEO chat)
   }
   // Reports agents post to /hook/daily (Sniper Daily's 9:00 list used to go to Telegram).
   async function openDaily() {

@@ -333,3 +333,7 @@ a.pick{display:inline-flex;align-items:center;text-decoration:none;color:inherit
 }
 @media (max-width:560px){.top .actions a.btn{width:44px;padding:0}}
 @media (max-width:430px){.top .name{display:none}.top .logo{flex:1}}
+
+/* Chat in a drawer: the drawer is a column flexbox, so the chat (overflow:auto) was squeezed to 0px height when the drawer had a lot of content, hiding the replies and the option buttons behind it. Keep its natural height (max 46vh, scrolls inside). */
+.drawer .chat{flex:none}
+.drawer .chips .pick{min-height:44px;padding:0 16px}
