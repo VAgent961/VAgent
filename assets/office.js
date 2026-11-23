@@ -713,7 +713,7 @@
 
   // ---------- drawer ----------
   const drawer = $('#drawer'), inner = $('#drawer-in'), scrim = $('#scrim');
-  function open(html, name) { current = name; inner.innerHTML = html; drawer.classList.add('open'); drawer.setAttribute('aria-hidden', 'false'); scrim.hidden = false; inner.scrollTop = 0; setTimeout(() => (inner.querySelector('[autofocus]') || $('#drawer-close')).focus(), 50); }
+  function open(html, name, wide) { current = name; inner.innerHTML = html; drawer.classList.toggle('wide', !!wide); drawer.classList.add('open'); drawer.setAttribute('aria-hidden', 'false'); scrim.hidden = false; inner.scrollTop = 0; setTimeout(() => (inner.querySelector('[autofocus]') || $('#drawer-close')).focus(), 50); }
   function close() { current = null; drawer.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true'); scrim.hidden = true; }
   const botSvg = (c, s = 40, ref = '#bot') => `<svg aria-hidden="true" width="${s}" height="${s}" viewBox="-17 -79 34 34"><use href="${ref}" style="color:${c}"/></svg>`;
   const leadSvg = (c, s = 40) => `<svg aria-hidden="true" width="${s}" height="${s}" viewBox="-17 -79 34 34"><use href="#lead" style="color:${c}"/></svg>`;
@@ -725,7 +725,7 @@
       ? `<svg aria-hidden="true" width="40" height="40" viewBox="-17 -79 34 34"><use href="#msgbot" style="color:${colorOf(key)}"/></svg>`
       : botSvg(colorOf(key), 40, personRef(a));
     const head = `<div class="d-head"><span class="avatar">${avatarSvg}</span><div><h2 class="d-title">${esc(a.name)} <button class="rename" type="button" id="rename" aria-label="Rename" title="Rename">✎</button></h2><div class="status ${a.status}">● ${esc(STATUS[a.status])}${a.status === 'working' && a.startedAt ? ' · for ' + dur(Date.now() - Date.parse(a.startedAt)) : ''}</div><div class="d-sub">${esc(TRIG[a.trigger] || a.trigger)} · ${esc(a.inst)} · ${a.runs24} runs today</div></div></div>`;
-    open(head + '<p class="empty">Loading its work…</p>', 'agent:' + key);
+    open(head + '<p class="empty">Loading its work…</p>', 'agent:' + key, /voice receptionist/i.test(a.name));   // only the Voice Receptionist gets the wide client-dashboard drawer
     let d; try { d = await api('agent?key=' + encodeURIComponent(key)); } catch (e) { inner.innerHTML = head + `<p class="empty">${esc(e.message)}</p>`; return; }
     if (current !== 'agent:' + key) return;
     const runs = d.runs.map((r) => `<li><span class="sd ${r.status}"></span><span class="when">${r.status === 'running' ? 'Running now' : esc(r.status === 'success' ? 'Finished' : r.status)} · ${ago(r.stoppedAt || r.startedAt)}</span><span class="dur">${r.stoppedAt ? dur(Date.parse(r.stoppedAt) - Date.parse(r.startedAt)) : ''}</span><a class="see" href="${esc(d.link)}/executions/${r.id}" target="_blank" rel="noopener" aria-label="See this run in n8n">${/error|crashed/.test(r.status) ? 'See why ↗' : '↗'}</a></li>`).join('') || '<li class="empty">No runs yet.</li>';
@@ -747,16 +747,23 @@
         ? `<div class="row"><span class="pick" aria-pressed="true" style="display:inline-flex;align-items:center;gap:6px">⭐ Lead of ${esc(aInD.name)}</span><button class="btn" type="button" id="clear-lead">Remove as lead</button></div>`
         : `<button class="btn primary" type="button" id="set-lead">⭐ Make lead of ${esc(aInD.name)}</button>`
       : '';
-    inner.innerHTML = head + (d.runnable && SNIPER(key) ? sqHtml() : '')
-      + (d.canRun ? `<button class="btn primary" type="button" id="run-now">▶ Run now</button>` : '')
-      + leadRow
-      + (VOICE ? `<p class="label">Customers &amp; Clients</p><div id="voice-mount"></div>` : `<p class="label">Talk to ${esc(d.name)}</p>`
-      + chatUI('agent:' + key, 'Ask it something…')
-      + `<div class="chips"><button class="pick" type="button" ${d.runnable ? 'data-say="start"' : flow ? `data-flow="${esc(flow.key)}"` : 'data-reset'}>▶ Start over</button>${d.runnable && SNIPER(key) ? CHECK_SITE : ''}</div>` + `<p class="help">${how}</p>`)
-      + `<div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1"><label for="dept">Department</label><select class="input" id="dept">${opts}</select></div><div class="field" style="flex:1"><label for="team">Team</label><select class="input" id="team">${teamOpts(d.dept)}</select></div></div>`
-      + `<details class="more"><summary>What it does (${d.steps.length} steps)</summary><ol class="steps">${steps}</ol></details>`
+    const deptRow = `<div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1"><label for="dept">Department</label><select class="input" id="dept">${opts}</select></div><div class="field" style="flex:1"><label for="team">Team</label><select class="input" id="team">${teamOpts(d.dept)}</select></div></div>`;
+    const stepsRuns = `<details class="more"><summary>What it does (${d.steps.length} steps)</summary><ol class="steps">${steps}</ol></details>`
       + `<details class="more"><summary>Recent runs</summary><ul class="runs">${runs}</ul></details>`
       + `<div class="row"><a class="btn" href="${esc(d.link)}" target="_blank" rel="noopener">Open in n8n</a><button class="btn ${d.active ? 'danger' : ''}" type="button" id="toggle">${d.active ? 'Turn off' : 'Turn on'}</button></div>`;
+    if (VOICE) {
+      // Voice Receptionist: compact header bar (title + status pill left, lead pill right), the client dashboard, and the agent settings folded away below
+      const vlead = aInD ? (isLeadOf ? `<span class="vh-lead">⭐ Lead of ${esc(aInD.name)}</span><button class="vh-btn" type="button" id="clear-lead">Remove as lead</button>` : `<button class="vh-btn" type="button" id="set-lead">⭐ Make lead of ${esc(aInD.name)}</button>`) : '';
+      inner.innerHTML = `<div class="vh"><div class="vh-l"><span class="avatar">${avatarSvg}</span><div class="vh-t"><h2 class="d-title">${esc(a.name)} <button class="rename" type="button" id="rename" aria-label="Rename" title="Rename">✎</button></h2><div class="vh-pill ${a.status}">● ${esc(STATUS[a.status])} · ${a.runs24} runs today</div></div></div><div class="vh-r">${vlead}</div></div>`
+        + `<div id="voice-mount"></div>`
+        + `<details class="more vh-set"><summary>Agent settings, steps &amp; runs</summary>${d.canRun ? `<button class="btn primary" type="button" id="run-now">▶ Run now</button>` : ''}${deptRow}${stepsRuns}</details>`;
+    } else inner.innerHTML = head + (d.runnable && SNIPER(key) ? sqHtml() : '')
+      + (d.canRun ? `<button class="btn primary" type="button" id="run-now">▶ Run now</button>` : '')
+      + leadRow
+      + `<p class="label">Talk to ${esc(d.name)}</p>`
+      + chatUI('agent:' + key, 'Ask it something…')
+      + `<div class="chips"><button class="pick" type="button" ${d.runnable ? 'data-say="start"' : flow ? `data-flow="${esc(flow.key)}"` : 'data-reset'}>▶ Start over</button>${d.runnable && SNIPER(key) ? CHECK_SITE : ''}</div>` + `<p class="help">${how}</p>`
+      + deptRow + stepsRuns;
     // Voice Receptionist = Customers & Clients only (test calls: the public pages); every other agent gets its chat
     if (VOICE && window.VoiceClients) VoiceClients.mount(inner.querySelector('#voice-mount'), { api, toast, esc, ago }); else { bindChat('agent:' + key, d.name); refreshQuota(true); }
     const rn = () => { const n = prompt('New name for this agent (empty = its n8n name):', d.name); if (n === null) return; api('agent', { body: { key, action: 'rename', name: n } }).then(async () => { toast('Renamed'); await load(); openAgent(key); }).catch((x) => toast(x.message)); };
