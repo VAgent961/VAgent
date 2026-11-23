@@ -27,7 +27,13 @@
     } catch (e) { sctx = null; }
   }
   function outLevel() { if (!sAn || player.paused) return -1; sAn.getByteTimeDomainData(sBuf); let t = 0; for (let i = 0; i < sBuf.length; i++) { const v = (sBuf[i] - 128) / 128; t += v * v; } return Math.sqrt(t / sBuf.length); }
-  function stopSpeech() { token++; try { player.pause(); } catch (e) {} if (window.speechSynthesis) speechSynthesis.cancel(); }
+  // audible = real sound is coming out right now (drives the mouth). armed = a TTS clip was loaded into the player (the silent unlock clip must not count).
+  let audible = false, armed = false, audHook = null;
+  function setAud(v) { if (audible === v) return; audible = v; if (audHook) audHook(v); }
+  const realPlay = () => armed && !player.paused && !player.ended && player.currentTime > 0 && player.readyState >= 3;
+  ['playing', 'timeupdate'].forEach((n) => player.addEventListener(n, () => { if (realPlay()) setAud(true); }));
+  ['ended', 'pause', 'error', 'emptied', 'waiting'].forEach((n) => player.addEventListener(n, () => setAud(false)));
+  function stopSpeech() { token++; armed = false; setAud(false); try { player.pause(); } catch (e) {} if (window.speechSynthesis) speechSynthesis.cancel(); setAud(false); }
   function chunks(text) {
     const out = []; let cur = '', first = true;
     for (const p of (text.match(/[^.!?\u061F\n]+[.!?\u061F]*/g) || [text]).map((x) => x.trim()).filter(Boolean)) {
@@ -46,7 +52,7 @@
     return new Promise((resolve, reject) => {
       player.onended = () => { URL.revokeObjectURL(url); resolve(); };
       player.onerror = () => { URL.revokeObjectURL(url); reject(new Error('play')); };
-      player.src = url; player.play().catch(reject);
+      armed = true; player.src = url; player.play().catch(reject);
     });
   }
   function browserSpeak(text, onEnd) {
@@ -58,7 +64,8 @@
     u.lang = ar ? 'ar-SA' : 'en-US';
     const v = ss.getVoices().find((x) => x.lang && x.lang.toLowerCase().startsWith(ar ? 'ar' : 'en'));
     if (v) u.voice = v;
-    u.onend = u.onerror = () => onEnd && onEnd();
+    u.onstart = () => setAud(true); u.onboundary = () => setAud(true);
+    u.onend = u.onerror = () => { setAud(false); onEnd && onEnd(); };
     ss.speak(u);
   }
   // onStart(ok) fires right before the first sound, so the caller can show the text at the very same moment.
@@ -214,7 +221,7 @@
         if (!j.transcript) { if (bub) bub.remove(); throw new Error('noise'); }
         if (bub) { setBubbleText(bub, j.transcript); bub.classList.remove('interim'); } else bubble('me', j.transcript);
         history.push({ role: 'user', content: j.transcript });
-        phase = 'speaking'; setBtn(); say('speaking'); spoke = true;
+        spoke = true; audHook = (v) => { if (v && id === callId && on && phase === 'thinking') { phase = 'speaking'; setBtn(); say('speaking'); } }; // thinking until sound is really playing
         // the text and the sound start together
         await new Promise((done) => speak(j.reply, done, (ok) => {
           if (ok && id === callId && on) {
@@ -223,7 +230,9 @@
             if (j.missed_saved) bubble('note', L().missed);
           }
         }));
+        audHook = null;
       } catch (err) {
+        audHook = null;
         if (id !== callId || !on) return;
         if (bub && bub.classList.contains('interim')) bub.remove();
         if (err && err.name !== 'AbortError') bubble('note', err.message === 'noise' ? L().nocatch : err.message);
@@ -279,7 +288,7 @@
         animH = requestAnimationFrame(animate); if (document.hidden || !alive) return;
         if (now > blinkAt) { blinkUntil = now + 140; blinkAt = now + 2600 + Math.random() * 3400; }
         const blink = now < blinkUntil;
-        if (phase === 'speaking') {
+        if (phase === 'speaking' && audible) {
           const o = outLevel(), lv = o >= 0 ? o : 0.05 + 0.1 * Math.abs(Math.sin(now / 105)); // no analyser (browser voice): a gentle mouth rhythm instead
           peak = Math.max(lv, peak * 0.997, 0.03); mouthS = Math.max(lv / peak, mouthS * 0.55);
           showF(mouthS < 0.16 ? 'idle' : mouthS < 0.4 ? 'talk1' : mouthS < 0.68 ? 'talk2' : 'talk3'); charEl.style.setProperty('--bob', Math.min(1, mouthS).toFixed(2));
