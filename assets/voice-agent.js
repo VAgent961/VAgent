@@ -1,4 +1,4 @@
-// Voice Receptionist panel. VoiceAgent.mount(element, businessId): one click starts a continuous call; each turn ends after 3 s of silence.
+// Voice Receptionist panel. VoiceAgent.mount(element, businessId): one click starts a continuous call; each turn ends after 1 s of silence.
 // mic (MediaRecorder + Web Audio silence detector) -> POST /api/voice (audio + history) -> reply spoken by /api/tts (Groq Orpheus), browser voice as fallback.
 (function () {
   const MAX_HISTORY = 12;
@@ -72,9 +72,9 @@
   }
 
   // ctx.public = true: the public call page (no tabs, no business picker, no manage panel, no login).
-  // One-click call: Start Call opens the mic and keeps it open. Speech turns are cut by silence (SILENCE_MS after you stop talking),
+  // One-click call: Start Call opens the mic and keeps it open. Speech turns are cut by silence (1 s after you stop talking),
   // sent to the receptionist, answered by voice; the mic is muted (no capture at all) while the AI thinks and speaks, then listening resumes.
-  const cfg = { silenceMs: 3000 };
+  const cfg = { silenceMs: 1000 };
   const ICON_MIC = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2Z"/></svg>';
   const ICON_END = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.99.99 0 0 1-.29-.7c0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28a11.27 11.27 0 0 0-2.67-1.85.996.996 0 0 1-.56-.9v-3.1C15.15 9.25 13.6 9 12 9Z"/></svg>';
   const hhmm = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
