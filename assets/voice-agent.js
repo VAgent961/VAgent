@@ -15,6 +15,7 @@
   const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
   const player = new Audio();
   let token = 0;
+  let replyTab = 'en'; // active tab: locks the language of the reply AND of the voice (set by setLang)
   let voiceUrl = '/api/voice', ttsUrl = '/api/tts'; // public mode (call.html) uses the open, rate-limited /api/public-* endpoints
   function prime() { try { player.src = SILENT; player.play().catch(() => {}); } catch (e) {} } // unlocks audio on Safari (runs inside the button press)
   // level of the voice that is playing (drives the lip-sync); the player is routed through one analyser, created inside the Start Call click
@@ -44,7 +45,7 @@
     return out;
   }
   async function fetchAudio(text) {
-    const r = await fetch(ttsUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }), credentials: 'same-origin' });
+    const r = await fetch(ttsUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, lang: replyTab }), credentials: 'same-origin' });
     if (!r.ok) throw new Error('tts ' + r.status);
     return URL.createObjectURL(await r.blob());
   }
@@ -60,7 +61,7 @@
     if (!ss) { onEnd && onEnd(); return; }
     ss.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    const ar = /[\u0600-\u06FF]/.test(text);
+    const ar = replyTab ? replyTab === 'ar' : /[\u0600-\u06FF]/.test(text);
     u.lang = ar ? 'ar-SA' : 'en-US';
     const v = ss.getVoices().find((x) => x.lang && x.lang.toLowerCase().startsWith(ar ? 'ar' : 'en'));
     if (v) u.voice = v;
@@ -132,6 +133,7 @@
     let history = [], alive = true, on = false, phase = 'idle', callId = 0, stream = null, rec = null, chunks = [], recMime = '', holding = false, holdStart = 0, holdTimer = 0, slideCancel = false, startX = 0;
     let ac = null, an = null, raf = 0, sr = null, interim = '', myBubble = null, ctl = null, hintTimer = 0, lang = (navigator.language || '').toLowerCase().startsWith('ar') ? 'ar-LB' : 'en-US';
     try { const sv = localStorage.getItem('va-lang'); if (sv === 'en' || sv === 'ar') lang = sv === 'ar' ? 'ar-LB' : 'en-US'; } catch (e) {}
+    replyTab = pub ? (lang.startsWith('ar') ? 'ar' : 'en') : ''; // the HQ test call has no tabs: the reply follows the customer's words
     const L = () => (lang.startsWith('ar') ? I18N.ar : I18N.en);
     let curKey = 'idle';
     const say = (k) => { curKey = k; stEl.textContent = L()[k] || k; va.dataset.v = phase === 'listening' ? 'listening' : phase === 'thinking' ? 'thinking' : phase === 'speaking' ? 'speaking' : 'idle'; };
@@ -146,7 +148,7 @@
       tabs.forEach((t) => { const on_ = (t.dataset.l === 'ar') === ar; t.setAttribute('aria-selected', on_ ? 'true' : 'false'); t.classList.toggle('on', on_); });
       setBtn(); say(curKey); if (ctx && ctx.onLang) ctx.onLang(ar ? 'ar' : 'en', L());
     }
-    function setLang(l) { lang = l === 'ar' ? 'ar-LB' : 'en-US'; try { localStorage.setItem('va-lang', l); } catch (e) {} paintLang(); if (holding) { stopSR(); startSR(); } }
+    function setLang(l) { if (pub) replyTab = l === 'ar' ? 'ar' : 'en'; lang = l === 'ar' ? 'ar-LB' : 'en-US'; try { localStorage.setItem('va-lang', l); } catch (e) {} paintLang(); if (holding) { stopSR(); startSR(); } }
     tabs.forEach((t) => t.addEventListener('click', () => setLang(t.dataset.l)));
     va.dataset.v = 'idle';
     const bubble = (who, text, extra) => {
@@ -211,6 +213,7 @@
     async function send(blob, bub, id) {
       const mime = blob.type, fd = new FormData();
       fd.append('audio', blob, 'audio.' + (/mp4/.test(mime) ? 'mp4' : /ogg/.test(mime) ? 'ogg' : 'webm'));
+      if (replyTab) fd.append('replyLanguage', replyTab);
       fd.append('history', JSON.stringify(history.slice(-10)));
       ctl = new AbortController(); let spoke = false;
       try {

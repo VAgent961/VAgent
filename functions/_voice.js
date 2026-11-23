@@ -63,8 +63,9 @@ export async function proxyTts(request, env) {
   const b = await request.json().catch(() => ({}));
   const text = String(b.text || '').replace(/\s+/g, ' ').trim().slice(0, 200);
   if (!text) return json({ error: 'No text' }, 400);
+  const lang = b.lang === 'ar' || b.lang === 'en' ? b.lang : ''; // the active tab locks the voice (Arabic voice / English voice)
   try {
-    const r = await fetch(env.TTS_URL || N8N_TTS, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }), signal: AbortSignal.timeout(35000) });
+    const r = await fetch(env.TTS_URL || N8N_TTS, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, lang }), signal: AbortSignal.timeout(35000) });
     if (!r.ok) return json({ error: 'Voice not available' }, 503);
     return new Response(r.body, { headers: { 'Content-Type': r.headers.get('content-type') || 'audio/wav', 'Cache-Control': 'no-store' } });
   } catch {
