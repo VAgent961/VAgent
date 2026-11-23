@@ -8,7 +8,7 @@ import { readSession, json, sql } from './_lib.js';
 // Non-HQ hosts have an allow-list: nothing of the HQ (office, owner APIs) is reachable there.
 const BASE = 'vagent.online', ADMIN_HOST = 'adminvoice.vagent.online', VOICE_HOST = 'voice.vagent.online';
 const RESERVED = new Set(['www', 'adminvoice', 'voice', 'api', 'admin', 'mail', 'app', 'hq', 'office', 'call', 'login', 'static', 'assets', 'ftp', 'n8n', 'hassan', 'boudy', 'fayez']);
-const isStatic = (p) => p.startsWith('/assets/') || /^\/(favicon\.ico|favicon-32x32\.png|logo\.png|apple-touch-icon\.png|icon-192\.png|icon-512\.png)$/.test(p);
+const isStatic = (p) => p.startsWith('/assets/') || /^\/(favicon\.ico|favicon-32x32\.png|apple-touch-icon\.png|icon-192\.png|icon-512\.png)$/.test(p);
 const notFound = () => new Response('Not found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } });
 const isDev = (h) => h === 'localhost' || h === '127.0.0.1';
 

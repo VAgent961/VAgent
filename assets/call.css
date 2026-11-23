@@ -7,7 +7,7 @@ body{display:grid;place-items:center;padding:max(20px,env(safe-area-inset-top)) 
 @keyframes callBreath{0%,100%{opacity:.55;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.06)}}
 .call-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;min-height:28px}
 .call-brand{display:inline-flex;align-items:center;gap:8px;font-family:var(--f-display);font-weight:600;font-size:15px;color:var(--night-ink)}
-.call-mark{width:26px;height:26px;border-radius:8px;background:var(--accent);color:#fff;display:grid;place-items:center}
+.call-mark{width:26px;height:26px;display:grid;place-items:center}.call-mark img{width:26px;height:26px;display:block}
 .call .vx-chip.call-chip{background:rgba(88,214,141,.12);border-color:rgba(88,214,141,.32);color:var(--night-ok)}
 .call .vx-chip.call-chip.off{background:rgba(152,161,182,.12);border-color:rgba(152,161,182,.3);color:var(--night-mute)}.call-chip.off .vx-dot::after{display:none}
 .call h1{font-size:28px;line-height:1.15;color:#fff;overflow-wrap:anywhere}

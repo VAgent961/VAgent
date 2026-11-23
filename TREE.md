@@ -1,6 +1,7 @@
 # TREE — the whole project on one page (keep it updated, one line per item)
 
 ## Files
+- `assets/brand/` — THE logo (locked, see CLAUDE.md): `mark*.svg`, `lockup*.svg` (light/dark/mono/mono-white), `favicon.svg`, `app-icon.svg`. Root `favicon.ico`, `favicon-32x32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png` are rendered from them. Used in office.html top bar, admin-voice.html, call.html and every `<head>`.
 - `index.html` — sign-in page (one screen, no scroll). Posts to /api/login.
 - `office.html` — office app: top bar (task, settings), left sidebar (filters, search, agent list, activity), office stage. Needs session.
 - `assets/office.css` — office styles (layout, drawers, mobile).
