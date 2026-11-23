@@ -124,3 +124,17 @@ body{display:grid;place-items:center;padding:max(20px,env(safe-area-inset-top)) 
 .va-end{margin-top:6px;min-height:46px;padding:0 20px;border:1px solid rgba(255,122,112,.45);border-radius:999px;background:none;color:#FF9A92;display:inline-flex;align-items:center;gap:8px;font:600 14.5px var(--f-body);cursor:pointer;transition:background-color .15s}
 .va-end:hover{background:rgba(255,122,112,.12)}.va-end:focus-visible{outline:2px solid var(--night-accent);outline-offset:3px}.va-end svg{width:18px;height:18px;transform:rotate(135deg)}
 @media (prefers-reduced-motion:reduce){.va-hold.on::after{animation:none;opacity:.5}}
+
+/* product photo cards inside an AI bubble + lightbox */
+.va-imgs{display:flex;flex-direction:column;gap:8px;margin-top:8px;width:min(240px,62vw)}
+.va-img{display:block;width:100%;max-width:260px;padding:0;border:1px solid var(--night-line,rgba(255,255,255,.14));border-radius:12px;overflow:hidden;background:rgba(255,255,255,.04);cursor:zoom-in;color:inherit;font:inherit;text-align:start}
+.va-img img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:rgba(255,255,255,.06)}
+.va-img .va-cap{display:block;padding:7px 10px;font-size:13px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.va-img .va-nophoto{display:grid;place-items:center;aspect-ratio:4/3;font-size:13px;opacity:.7}.va-img.bad{cursor:default}
+.va-img:focus-visible,.va-lb-x:focus-visible{outline:2px solid var(--accent,#2448C8);outline-offset:2px}
+.va-lb{position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;background:rgba(8,10,16,.88);animation:va-lb-in .18s ease}
+.va-lb img{max-width:min(94vw,900px);max-height:78vh;object-fit:contain;border-radius:12px;cursor:default}
+.va-lb-cap{color:#fff;font-size:15px;font-weight:600;text-align:center}
+.va-lb-x{position:absolute;top:14px;right:14px;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:26px;line-height:1;cursor:pointer}
+@keyframes va-lb-in{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.va-lb{animation:none}}

@@ -38,6 +38,21 @@ export async function limited(env, request, scope, max, windowSec) {
   } catch { return false; } // never block real users because the counter failed
 }
 
+// The n8n workflow answers "show these item ids"; the photo itself (https link or uploaded data: image) never goes through the LLM.
+// Returns [{url, title, price}] for items of THIS business only; uploaded photos are served by /api/public-item-image.
+async function imagesFor(env, bid, show) {
+  const ids = (Array.isArray(show) ? show : []).map((x) => parseInt(x, 10)).filter((x) => x > 0).slice(0, 3);
+  if (!ids.length) return [];
+  try {
+    const rows = await sql(env, "SELECT id, name, price, image_url FROM items WHERE business_id = $1 AND id = ANY($2::bigint[]) AND coalesce(image_url, '') <> ''", [bid, '{' + ids.join(',') + '}']);
+    return ids.map((id) => rows.find((r) => Number(r.id) === id)).filter(Boolean).map((r) => {
+      const u = String(r.image_url);
+      const url = /^https:\/\//i.test(u) ? u : /^data:image\//i.test(u) ? '/api/public-item-image?id=' + r.id : '';
+      return url ? { url, title: String(r.name), price: Number(r.price) > 0 ? '$' + Number(r.price).toFixed(2).replace(/\.00$/, '') : '' } : null;
+    }).filter(Boolean);
+  } catch { return []; }
+}
+
 export async function proxyVoice(request, env) {
   if (!originOk(request)) return json({ error: 'Not allowed from this site' }, 403);
   const bid = new URL(request.url).searchParams.get('business_id') || '';
@@ -52,7 +67,7 @@ export async function proxyVoice(request, env) {
     });
     const j = await r.json().catch(() => null);
     if (!r.ok || !j || typeof j.reply !== 'string') return json({ error: 'The receptionist is not answering right now' }, 502);
-    return json({ reply: j.reply, transcript: j.transcript || '', order_saved: !!j.order_saved, missed_saved: !!j.missed_saved });
+    return json({ reply: j.reply, transcript: j.transcript || '', order_saved: !!j.order_saved, missed_saved: !!j.missed_saved, images: await imagesFor(env, bid, j.show) });
   } catch {
     return json({ error: 'The receptionist took too long. Try again.' }, 504);
   }

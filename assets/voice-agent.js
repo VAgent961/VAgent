@@ -156,6 +156,32 @@
       if (who === 'note') d.textContent = text; else { const m = document.createElement('span'); m.className = 'va-tx'; m.textContent = text; const t = document.createElement('time'); t.textContent = hhmm(); d.append(m, t); }
       log.appendChild(d); log.scrollTop = log.scrollHeight; return d;
     };
+    // product photo cards inside an AI bubble (reply.images = [{url,title,price}]): crisp cover crop, caption, tap = lightbox, broken image = quiet fallback, chat scrolls smoothly once each photo has loaded
+    const smoothDown = () => { try { log.scrollTo({ top: log.scrollHeight, behavior: matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth' }); } catch (e) { log.scrollTop = log.scrollHeight; } };
+    const zoom = (im) => {
+      const o = document.createElement('div'); o.className = 'va-lb'; o.setAttribute('role', 'dialog'); o.setAttribute('aria-modal', 'true'); o.setAttribute('aria-label', im.title || 'Photo');
+      const pic = document.createElement('img'); pic.src = im.url; pic.alt = im.title || '';
+      const cap = document.createElement('div'); cap.className = 'va-lb-cap'; cap.textContent = [im.title, im.price].filter(Boolean).join(' · ');
+      const x = document.createElement('button'); x.type = 'button'; x.className = 'va-lb-x'; x.setAttribute('aria-label', 'Close'); x.textContent = '×';
+      const off = () => { o.remove(); document.removeEventListener('keydown', key); };
+      const key = (e) => { if (e.key === 'Escape') off(); };
+      o.addEventListener('click', (e) => { if (e.target !== pic) off(); }); document.addEventListener('keydown', key);
+      o.append(pic, cap, x); document.body.appendChild(o); x.focus();
+    };
+    const addImages = (d, images) => {
+      const list = (Array.isArray(images) ? images : []).filter((i) => i && /^(https:\/\/|\/api\/public-item-image\?)/.test(String(i.url || ''))).slice(0, 3);
+      if (!list.length) return;
+      const box = document.createElement('div'); box.className = 'va-imgs';
+      list.forEach((im) => {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'va-img'; b.setAttribute('aria-label', 'Enlarge ' + (im.title || 'photo'));
+        const pic = document.createElement('img'); pic.alt = im.title || ''; pic.loading = 'lazy'; pic.decoding = 'async';
+        const cap = document.createElement('span'); cap.className = 'va-cap'; cap.textContent = [im.title, im.price].filter(Boolean).join(' · ');
+        pic.onload = smoothDown;
+        pic.onerror = () => { b.classList.add('bad'); b.disabled = true; pic.remove(); const f = document.createElement('span'); f.className = 'va-nophoto'; f.textContent = 'Photo unavailable'; b.prepend(f); };
+        b.onclick = () => zoom(im); pic.src = im.url; b.append(pic, cap); box.appendChild(b);
+      });
+      const t = d.querySelector('time'); d.insertBefore(box, t); smoothDown();
+    };
     const setBubbleText = (b, text) => { const m = b.querySelector('.va-tx'); if (m) m.textContent = text; log.scrollTop = log.scrollHeight; };
 
     // ── mic level (only to make the character bounce while you hold the button) ──
@@ -228,7 +254,7 @@
         // the text and the sound start together
         await new Promise((done) => speak(j.reply, done, (ok) => {
           if (ok && id === callId && on) {
-            bubble('ai', j.reply); history.push({ role: 'assistant', content: j.reply }); history = history.slice(-MAX_HISTORY);
+            addImages(bubble('ai', j.reply), j.images); history.push({ role: 'assistant', content: j.reply }); history = history.slice(-MAX_HISTORY);
             if (j.order_saved) bubble('note', L().saved);
             if (j.missed_saved) bubble('note', L().missed);
           }
