@@ -83,3 +83,20 @@ body{display:grid;place-items:center;padding:max(20px,env(safe-area-inset-top)) 
 }
 @media (max-height:700px){.va-log{height:120px}}
 @media (prefers-reduced-motion:reduce){.va-btn.on .va-ring{animation:none;opacity:.5}.call-glow{animation:none}}
+
+/* ---- one-click continuous call (voice-agent.js): Start Call / End Call pill, live timer, chat thread with timestamps ---- */
+.va-stage{order:1}.va-state{order:2}.va-call{order:3}.va-lang{order:4}.va-log{order:5}.va-reset{order:6}
+.va-core{position:absolute;display:grid;place-items:center;color:#fff;opacity:.92;pointer-events:none}
+.va-call{margin-top:8px;min-height:54px;min-width:188px;padding:0 28px;border:0;border-radius:999px;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:10px;font:600 16px var(--f-body);cursor:pointer;box-shadow:0 10px 30px -8px rgba(61,95,224,.75),0 1px 0 rgba(255,255,255,.22) inset;transition:transform .18s var(--ease),background-color .15s}
+.va-call:hover{background:var(--accent-h)}.va-call:active{transform:scale(.97)}.va-call:disabled{opacity:.6;cursor:default}
+.va-call.on{background:#D6453C;box-shadow:0 10px 30px -8px rgba(214,69,60,.7),0 1px 0 rgba(255,255,255,.2) inset}.va-call.on:hover{background:#BE372F}
+.va-call:focus-visible{outline:2px solid #fff;outline-offset:4px}
+.va-call-i{display:inline-grid;place-items:center}.va-call.on .va-call-i svg{transform:rotate(135deg)}
+.va-timer{font-variant-numeric:tabular-nums;color:var(--night-mute);padding-left:8px;border-left:1px solid var(--night-line)}.va-timer[hidden]{display:none}
+.va-lang{margin-top:2px;min-height:36px;padding:0 12px;border:0;background:none;color:var(--night-mute);font-size:12.5px;cursor:pointer}.va-lang:hover{color:#fff}
+.va-log{height:clamp(170px,26vh,280px)}
+.va-msg .va-tx{display:block}.va-msg time{display:block;margin-top:3px;font-size:11px;opacity:.6;text-align:end}
+.va-msg.interim{opacity:.8;border-style:dashed}.va-msg.interim .va-tx::after{content:"";display:inline-block;width:6px;height:6px;margin-inline-start:6px;border-radius:50%;background:currentColor;animation:vaBlink 1s ease-in-out infinite}
+@keyframes vaBlink{0%,100%{opacity:.2}50%{opacity:1}}
+.va[data-v=idle] .va-call-i svg{transform:none}
+@media (prefers-reduced-motion:reduce){.va-msg.interim .va-tx::after{animation:none}}
