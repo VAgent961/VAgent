@@ -104,7 +104,7 @@ a{color:var(--accent)}
 /* ---- frosted-glass modal: the scrim blur fades in (opacity), the sheet scales in */
 .vx-modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;overflow:auto;visibility:hidden}
 .vx-modal.open,.vx-modal.closing{visibility:visible}
-.vx-modal::before{content:"";position:fixed;inset:0;background:rgba(13,16,23,.42);-webkit-backdrop-filter:blur(10px) saturate(1.1);backdrop-filter:blur(10px) saturate(1.1);opacity:0;transition:opacity var(--t-med) var(--ease)}
+.vx-modal::before{content:"";position:fixed;inset:0;background:rgba(5,7,11,.66);opacity:0;transition:opacity var(--t-med) var(--ease)}
 .vx-modal.open::before{opacity:1}
 .vx-sheet{position:relative;width:100%;max-width:580px;max-height:calc(100dvh - 32px);overflow:auto;background:rgba(18,22,32,.94);border:1px solid rgba(255,255,255,.1);border-radius:var(--r-l);box-shadow:var(--sh-3);padding:24px;opacity:0;transform:translateY(10px) scale(.96);transition:opacity var(--t-med) var(--ease),transform var(--t-med) var(--ease);overscroll-behavior:contain}
 .vx-modal.open .vx-sheet{opacity:1;transform:none}

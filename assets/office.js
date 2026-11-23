@@ -53,7 +53,7 @@
   let cullQ = false;
   const cull = () => { cullQ = false; const els = svg.getElementsByClassName('desk'), x0 = vb.x - 130, x1 = vb.x + vb.w + 130, y0 = vb.y - 150, y1 = vb.y + vb.h + 90;
     for (let k = 0; k < els.length; k++) { const e = els[k], p = S.desks && S.desks[+e.dataset.desk]; if (!p) continue; const hide = !!lodNear && (p[0] < x0 || p[0] > x1 || p[1] < y0 || p[1] > y1); if (e._h !== hide) { e._h = hide; e.style.display = hide ? 'none' : ''; } } };
-  if (window.ResizeObserver) new ResizeObserver(() => { szW = 0; lod(); }).observe(stage);
+  if (window.ResizeObserver) new ResizeObserver(window.VPerf ? VPerf.debounce(() => { szW = 0; lod(); }) : () => { szW = 0; lod(); }).observe(stage);
   stage.insertAdjacentHTML('beforeend', '<button type="button" class="legend-btn" aria-expanded="false" aria-controls="legend">Legend</button><div class="legend" id="legend" hidden><p><i class="sd working"></i>Working at a desk</p><p><i class="sd idle"></i>Resting in the lounge or café</p><p><i class="sd help"></i>Needs help (last run failed)</p><p><i class="sd off"></i>Turned off</p><p class="muted">Zoom in to see rooms, signs and desk details.</p></div><div class="floor-badge" id="floor-badge" hidden></div>');
   stage.addEventListener('click', (e) => { const b = e.target.closest('.legend-btn'); if (!b) return; const l = $('#legend'); l.hidden = !l.hidden; b.setAttribute('aria-expanded', String(!l.hidden)); });
   const setVB = () => { if (CITY) { svg.setAttribute('viewBox', VB0.x + ' ' + VB0.y + ' ' + VB0.w + ' ' + VB0.h); szW = 0; lod(); return; } const v = vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h; svg.setAttribute('viewBox', v); if (bgL) { bgL.setAttribute('viewBox', v); topL.setAttribute('viewBox', v); } lod(); };

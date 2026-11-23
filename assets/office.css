@@ -323,7 +323,7 @@ a.pick{display:inline-flex;align-items:center;text-decoration:none;color:inherit
   .va-ccard{padding:14px}
   .va-days b{font-size:30px}
   /* + New Client opens as a bottom sheet: sticky title row with an easy close, sticky Create button */
-  .va-new[open]::before{content:"";position:fixed;inset:0;z-index:30;background:rgba(20,20,19,.42);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .va-new[open]::before{content:"";position:fixed;inset:0;z-index:30;background:rgba(20,20,19,.42);}
   .va-new[open] .va-cform{position:fixed;left:0;right:0;bottom:0;z-index:31;max-height:calc(100dvh - max(12px,env(safe-area-inset-top)));overflow-y:auto;overscroll-behavior:contain;margin:0;padding:0 16px;border:0;border-radius:20px 20px 0 0;box-shadow:0 -12px 40px rgba(20,20,19,.25)}
   .va-fh{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--card);padding:14px 0 10px}
   .va-fh b{font-family:Newsreader,Georgia,serif;font-weight:500;font-size:22px}
@@ -410,10 +410,10 @@ a.pick{display:inline-flex;align-items:center;text-decoration:none;color:inherit
 }
 @media (prefers-reduced-motion:reduce){.drawer{transition:transform .28s ease}.vcd-ok,.vcd-kpi{transition:none}}
 /* ── live Beirut sky (assets/sky.js) ─ only transform/opacity animate ── */
-.stage{isolation:isolate}
-#sky{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:#0B0D12}
+.stage{isolation:isolate;contain:layout paint}
+#sky{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:#0B0D12;contain:strict}
 #sky>*{position:absolute;pointer-events:none}
-#sky .sk-glow{width:70%;height:46%;transform:translate(-50%,-50%);mix-blend-mode:screen}
+#sky .sk-glow{width:70%;height:46%;transform:translate(-50%,-50%)}
 #sky .sk-stars{inset:0;opacity:0;background:
   radial-gradient(1.4px 1.4px at 8% 14%,#fff,transparent),radial-gradient(1px 1px at 21% 33%,rgba(255,255,255,.7),transparent),radial-gradient(1.6px 1.6px at 34% 9%,#fff,transparent),radial-gradient(1px 1px at 47% 24%,rgba(255,255,255,.65),transparent),
   radial-gradient(1.4px 1.4px at 58% 41%,rgba(255,255,255,.85),transparent),radial-gradient(1px 1px at 69% 17%,rgba(255,255,255,.75),transparent),radial-gradient(1.6px 1.6px at 83% 30%,#fff,transparent),radial-gradient(1px 1px at 91% 44%,rgba(255,255,255,.65),transparent),
@@ -440,3 +440,7 @@ a.pick{display:inline-flex;align-items:center;text-decoration:none;color:inherit
 @media (max-width:560px){.sky-pill{height:32px;padding:0 9px;gap:5px;font-size:12.5px}.sky-pill .sp-time{display:none}.sky-pill .sp-time+i{display:none}}
 @media (prefers-reduced-motion:reduce){#sky .sk-clouds i,#sky .sk-rain,#sky[data-storm="1"] .sk-flash{animation:none}}
 .sky-pill:empty{display:none}
+
+/* ── zoom / resize smoothness (assets/perf.js sets html[data-zooming] while the viewport changes) ── */
+#sky .sk-clouds i,#sky .sk-rain{will-change:transform}
+html[data-zooming] #sky .sk-clouds i,html[data-zooming] #sky .sk-rain,html[data-zooming] #sky .sk-flash{animation-play-state:paused!important}

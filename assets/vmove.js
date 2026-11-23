@@ -186,7 +186,7 @@
 
   // ---------- public ----------
   function init(H) {
-    st.H = H; if (st.timer) return; const loop = (t) => { requestAnimationFrame(loop); if (document.hidden) return; const dt = Math.min(0.1, st.last ? (t - st.last) / 1000 : 0.016); st.last = t; for (let n = 0; n < st.ts; n++) tick(dt); }; requestAnimationFrame(loop); st.timer = true;
+    st.H = H; if (st.timer) return; const loop = (t) => { requestAnimationFrame(loop); if (document.hidden || (window.VPerf && VPerf.busy())) return; const dt = Math.min(0.1, st.last ? (t - st.last) / 1000 : 0.016); st.last = t; for (let n = 0; n < st.ts; n++) tick(dt); }; requestAnimationFrame(loop); st.timer = true;
   }
   // give a managed agent back to the original office (it will be placed by sceneRender again)
   function release(key) { const l = st.loc[key]; if (!l) return; delete st.loc[key]; delete st.jr[key]; st.H.release(key); sync(); }

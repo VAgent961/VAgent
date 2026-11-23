@@ -32,7 +32,7 @@
     ind.style.transform = 'translateX(' + on.offsetLeft + 'px) scaleX(' + on.offsetWidth + ')';
   }
   const slideAll = () => $$('.vx-tabs').forEach((n) => { if (n.offsetParent) slide(n); });
-  window.addEventListener('resize', slideAll);
+  window.addEventListener('resize', (window.VPerf ? VPerf.debounce(slideAll) : slideAll));
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(slideAll);
 
   // ---------------- count-up for the KPI numbers

@@ -215,7 +215,7 @@
     const q = new URLSearchParams(location.search);
     if (q.get('sky')) simulate({ time: q.get('sky'), code: q.get('code'), cloud: q.get('cloud'), temp: q.get('temp') });
     render(); loadWeather().then(render);
-    setInterval(render, 30000);
+    setInterval(() => { if (!document.hidden) render(); }, 30000);
     setInterval(() => loadWeather(true).then(render), TTL);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) loadWeather().then(render); });
     // office.js builds the stage after load: retry until it exists

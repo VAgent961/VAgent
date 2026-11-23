@@ -136,7 +136,8 @@
       if (drag.moved) { st.vb.x = drag.vx - dx * k; st.vb.y = drag.vy - dy * k; setVB(); } };
     const up = (e) => { pts.delete(e.pointerId); pinch = 0; st.dragged = !!(drag && drag.moved); if (!pts.size) { drag = null; window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); } };
     stage.addEventListener('pointerdown', (e) => { e.stopPropagation(); if (e.target.closest('.vc-ui,.vc-bar')) return; pts.set(e.pointerId, [e.clientX, e.clientY]); drag = { x: e.clientX, y: e.clientY, vx: st.vb.x, vy: st.vb.y, moved: false }; st.dragged = false; window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up); });
-    if (window.ResizeObserver) new ResizeObserver(() => { if (!st.busy) frame(false); }).observe(stage);
+    const reframe = window.VPerf ? VPerf.debounce(() => { if (!st.busy) frame(false); }) : () => { if (!st.busy) frame(false); }; st.seen = window.VPerf ? VPerf.watch(stage) : { visible: true };
+    if (window.ResizeObserver) new ResizeObserver(reframe).observe(stage);
   }
 
   // ---------- the original office, mounted INSIDE the world ----------
@@ -319,7 +320,7 @@
       c.el.setAttribute('transform', `translate(${sp[0].toFixed(1)} ${sp[1].toFixed(1)})`); c.el.setAttribute('opacity', Math.max(0, fade).toFixed(2));
       { const hb = Math.round(c.ang / (Math.PI * 2) * 120); if (hb !== c.hb) { c.hb = hb; c.in.innerHTML = VCityKit.vehicleAt(c.kind, c.col, c.ang); } }; }
   }
-  function tick(t) { requestAnimationFrame(tick); watchTick(t); const dt = Math.min(0.1, lastT ? (t - lastT) / 1000 : 0.016); lastT = t; if (document.hidden) return; clock += dt; carStep(dt);
+  function tick(t) { requestAnimationFrame(tick); watchTick(t); const dt = Math.min(0.1, lastT ? (t - lastT) / 1000 : 0.016); lastT = t; if (document.hidden || (window.VPerf && VPerf.busy()) || (st.seen && !st.seen.visible)) return; clock += dt; carStep(dt);
     const m = clock % 18, ew = m < 8 ? 'g' : m < 9 ? 'y' : 'r', ns = m >= 10 && m < 16 ? 'g' : m >= 16 && m < 17 ? 'y' : 'r'; if (ew !== seenSig[0] || ns !== seenSig[1]) { seenSig[0] = ew; seenSig[1] = ns; VCityKit.setSignals(st.svg, ew, ns); } }
   function mount(H) {
     st.H = H; st.stage = H.stage; const old = st.stage.querySelector('#vc-root'); if (old) old.remove();
