@@ -39,7 +39,7 @@ export async function limited(env, request, scope, max, windowSec) {
 }
 
 // The n8n workflow answers "show these item ids"; the photo itself (https link or uploaded data: image) never goes through the LLM.
-// Returns [{url, title, price}] for items of THIS business only; uploaded photos are served by /api/public-item-image.
+// Fallback when n8n sends only `show` ids: returns cards {id,title,price,in_stock,url} for items of THIS business only.
 async function imagesFor(env, bid, show) {
   const ids = (Array.isArray(show) ? show : []).map((x) => parseInt(x, 10)).filter((x) => x > 0).slice(0, 3);
   if (!ids.length) return [];
@@ -47,10 +47,29 @@ async function imagesFor(env, bid, show) {
     const rows = await sql(env, "SELECT id, name, price, image_url FROM items WHERE business_id = $1 AND id = ANY($2::bigint[]) AND coalesce(image_url, '') <> ''", [bid, '{' + ids.join(',') + '}']);
     return ids.map((id) => rows.find((r) => Number(r.id) === id)).filter(Boolean).map((r) => {
       const u = String(r.image_url);
-      const url = /^https:\/\//i.test(u) ? u : /^data:image\//i.test(u) ? '/api/public-item-image?id=' + r.id : '';
-      return url ? { url, title: String(r.name), price: Number(r.price) > 0 ? '$' + Number(r.price).toFixed(2).replace(/\.00$/, '') : '' } : null;
+      const url = /^https:\/\//i.test(u) || /^data:image\//i.test(u) ? '/api/public-item-image?business_id=' + bid + '&id=' + r.id : '';
+      return url ? { id: Number(r.id), title: String(r.name).slice(0, 120), price: Number(r.price), in_stock: true, url } : null;
     }).filter(Boolean);
   } catch { return []; }
+}
+
+// Structured sales cards from n8n, re-checked here so the page only ever gets clean, bounded data:
+// images[] {id,title,price,in_stock,url (our own /api/public-item-image link or '')}, orderConfirmation (receipt), whatsappHandoff (wa.me link).
+const str = (v, n) => String(v == null ? '' : v).slice(0, n);
+const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+function cards(j, bid) {
+  const imgRe = new RegExp('^/api/public-item-image\\?business_id=' + bid.replace(/[^a-z0-9-]/gi, '') + '&id=\\d{1,10}$', 'i');
+  const images = (Array.isArray(j.images) ? j.images : []).slice(0, 3).filter((x) => x && x.title)
+    .map((x) => ({ id: num(x.id), title: str(x.title, 120), price: num(x.price), in_stock: x.in_stock !== false, url: imgRe.test(String(x.url || '')) ? String(x.url) : '' }));
+  const o = j.orderConfirmation;
+  const orderConfirmation = o && o.id ? {
+    id: str(o.id, 12).replace(/\D/g, ''), status: 'Pending', total: num(o.total),
+    items: (Array.isArray(o.items) ? o.items : []).slice(0, 10).map((l) => ({ name: str(l.name, 120), qty: Math.max(1, parseInt(l.qty, 10) || 1), price: num(l.price) })),
+    summary: str(o.summary, 400), name: str(o.name, 120), phone: str(o.phone, 30), address: str(o.address, 300),
+  } : null;
+  const h = j.whatsappHandoff;
+  const whatsappHandoff = h && /^https:\/\/wa\.me\/\d{8,15}(\?text=[^\s"'<>]{0,1500})?$/.test(String(h.url || '')) ? { url: String(h.url), label: str(h.label, 60) || 'Chat with Store on WhatsApp', phone: str(h.phone, 20) } : null;
+  return { images, orderConfirmation, whatsappHandoff };
 }
 
 export async function proxyVoice(request, env) {
@@ -67,7 +86,8 @@ export async function proxyVoice(request, env) {
     });
     const j = await r.json().catch(() => null);
     if (!r.ok || !j || typeof j.reply !== 'string') return json({ error: 'The receptionist is not answering right now' }, 502);
-    return json({ reply: j.reply, transcript: j.transcript || '', order_saved: !!j.order_saved, missed_saved: !!j.missed_saved, images: await imagesFor(env, bid, j.show) });
+    const c = cards(j, bid); if (!c.images.length && Array.isArray(j.show)) c.images = await imagesFor(env, bid, j.show); // n8n sends images[]; older builds send show ids
+    return json({ reply: j.reply, transcript: j.transcript || '', order_saved: !!j.order_saved, missed_saved: !!j.missed_saved, ...c });
   } catch {
     return json({ error: 'The receptionist took too long. Try again.' }, 504);
   }

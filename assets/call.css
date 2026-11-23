@@ -125,16 +125,41 @@ body{display:grid;place-items:center;padding:max(20px,env(safe-area-inset-top)) 
 .va-end:hover{background:rgba(255,122,112,.12)}.va-end:focus-visible{outline:2px solid var(--night-accent);outline-offset:3px}.va-end svg{width:18px;height:18px;transform:rotate(135deg)}
 @media (prefers-reduced-motion:reduce){.va-hold.on::after{animation:none;opacity:.5}}
 
-/* product photo cards inside an AI bubble + lightbox */
-.va-imgs{display:flex;flex-direction:column;gap:8px;margin-top:8px;width:min(240px,62vw)}
-.va-img{display:block;width:100%;max-width:260px;padding:0;border:1px solid var(--night-line,rgba(255,255,255,.14));border-radius:12px;overflow:hidden;background:rgba(255,255,255,.04);cursor:zoom-in;color:inherit;font:inherit;text-align:start}
-.va-img img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:rgba(255,255,255,.06)}
-.va-img .va-cap{display:block;padding:7px 10px;font-size:13px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
-.va-img .va-nophoto{display:grid;place-items:center;aspect-ratio:4/3;font-size:13px;opacity:.7}.va-img.bad{cursor:default}
-.va-img:focus-visible,.va-lb-x:focus-visible{outline:2px solid var(--accent,#2448C8);outline-offset:2px}
+/* photo lightbox (tap a product card photo) */
 .va-lb{position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;background:rgba(8,10,16,.88);animation:va-lb-in .18s ease}
 .va-lb img{max-width:min(94vw,900px);max-height:78vh;object-fit:contain;border-radius:12px;cursor:default}
 .va-lb-cap{color:#fff;font-size:15px;font-weight:600;text-align:center}
 .va-lb-x{position:absolute;top:14px;right:14px;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:26px;line-height:1;cursor:pointer}
+.va-lb-x:focus-visible{outline:2px solid var(--night-accent);outline-offset:2px}
 @keyframes va-lb-in{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion:reduce){.va-lb{animation:none}}
+/* sales cards inside AI bubbles: product (photo, title, price, Order this chip), order receipt, WhatsApp handoff. Dark only, no overflow. */
+.va-msg.has-cards{max-width:94%;width:94%}
+.va-cards{display:grid;gap:8px;margin-top:8px;min-width:0}
+.va-card{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--night-line);min-width:0}
+.va-card-img{width:52px;height:52px;border-radius:10px;overflow:hidden;background:var(--night);border:1px solid var(--night-line);display:grid;place-items:center}
+.va-card-img::before{content:"";width:20px;height:20px;background:var(--night-mute);opacity:.5;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Crect x='3' y='3' width='18' height='18' rx='3'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-5-5L5 21'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Crect x='3' y='3' width='18' height='18' rx='3'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-5-5L5 21'/%3E%3C/svg%3E") center/contain no-repeat}
+.va-card-img:has(img)::before{display:none}
+button.va-card-img{padding:0;font:inherit;color:inherit;cursor:zoom-in}button.va-card-img:disabled{cursor:default}button.va-card-img:focus-visible{outline:2px solid var(--night-accent);outline-offset:2px}
+.va-card-img img{width:100%;height:100%;object-fit:cover;display:block}
+.va-card-b{display:grid;gap:2px;min-width:0}
+.va-card-t{font-size:14px;font-weight:600;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere;unicode-bidi:plaintext;text-align:start}
+.va-card-p{font-size:12.5px;color:var(--night-mute);font-variant-numeric:tabular-nums}
+.va-chipbtn{min-height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--night-accent);font:600 12.5px/1 var(--f-body);cursor:pointer;white-space:nowrap;transition:background-color var(--t-fast),transform var(--t-fast) var(--ease)}
+.va-chipbtn:hover{background:rgba(88,120,255,.24)}.va-chipbtn:active{transform:scale(.96)}
+.va-chipbtn:focus-visible{outline:2px solid var(--night-accent);outline-offset:2px}
+.va-receipt{padding:10px 12px;border-radius:12px;background:var(--ok-soft);border:1px solid var(--ok-line);display:grid;gap:6px;min-width:0}
+.va-rc-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px}
+.va-rc-st{height:22px;padding:0 9px;border-radius:999px;display:inline-flex;align-items:center;font-size:12px;font-weight:600;color:var(--warn);background:var(--warn-soft);border:1px solid var(--warn-line)}
+.va-rc-l{list-style:none;margin:0;padding:0;display:grid;gap:3px}
+.va-rc-l li{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;min-width:0}
+.va-rc-l li span:first-child{min-width:0;overflow-wrap:anywhere;unicode-bidi:plaintext}
+.va-rc-l li span:last-child,.va-rc-t b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.va-rc-t{display:flex;justify-content:space-between;padding-top:6px;border-top:1px solid var(--ok-line);font-size:14px}
+.va-rc-t b{color:var(--ok)}
+.va-rc-d{margin:0;font-size:12.5px;color:var(--night-mute);overflow-wrap:anywhere;unicode-bidi:plaintext;text-align:start}
+.va-wa{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 14px;border-radius:12px;background:#15803D;color:#fff;font-weight:600;font-size:14px;text-decoration:none;transition:background-color var(--t-fast),transform var(--t-fast) var(--ease)}
+.va-wa::before{content:"";width:18px;height:18px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.2-.8-2.7-1.1-4.4-3.9-4.5-4.1-.1-.2-1.1-1.4-1.1-2.7 0-1.3.7-1.9.9-2.2.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.4 0 .5l-.3.5-.4.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l1.8.9c.3.1.5.2.5.3.1.2.1.6-.1 1.1Z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.2-.8-2.7-1.1-4.4-3.9-4.5-4.1-.1-.2-1.1-1.4-1.1-2.7 0-1.3.7-1.9.9-2.2.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.4 0 .5l-.3.5-.4.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l1.8.9c.3.1.5.2.5.3.1.2.1.6-.1 1.1Z'/%3E%3C/svg%3E") center/contain no-repeat}
+.va-wa:hover{background:#116B33}.va-wa:active{transform:scale(.98)}
+.va-wa:focus-visible{outline:2px solid #fff;outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.va-chipbtn,.va-wa{transition:none}}

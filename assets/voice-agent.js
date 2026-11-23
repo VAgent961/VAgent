@@ -93,8 +93,8 @@
   const ICON_MIC = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12h-2Z"/></svg>';
   const ICON_END = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.99.99 0 0 1-.29-.7c0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28a11.27 11.27 0 0 0-2.67-1.85.996.996 0 0 1-.56-.9v-3.1C15.15 9.25 13.6 9 12 9Z"/></svg>';
   const I18N = {
-    en: { start: 'Start Call', end: 'End Call', hold: 'Hold to Talk', recording: 'Recording… Release to send', cancelHint: 'Release to cancel', tooShort: 'Hold longer to talk', ready: 'Hold the mic button and talk', idle: 'Ready to call', connecting: 'Connecting…', thinking: 'Thinking…', speaking: 'Speaking…', ended: 'Call ended', allow: 'Allow the microphone to start the call.', norec: 'This browser cannot record. Use Chrome, Edge or Safari.', nocatch: 'I could not hear you. Hold the button and try again.', reset: 'Start a new call', empty: 'Your conversation appears here.', saved: '✓ Order saved', missed: '📝 Request sent to the owner', help: 'Tap Start Call, then hold the mic button to send a voice message.', sub: 'It answers in Lebanese Arabic or English.' },
-    ar: { start: 'بدء المكالمة', end: 'إنهاء المكالمة', hold: 'اضغط مطوّلاً للتحدّث', recording: 'جارٍ التسجيل… ارفع إصبعك للإرسال', cancelHint: 'ارفع إصبعك للإلغاء', tooShort: 'اضغط أطول للتحدّث', ready: 'اضغط مطوّلاً على زر الميكروفون وتحدّث', idle: 'جاهزين للمكالمة', connecting: 'عم نوصّل…', thinking: 'عم فكّر…', speaking: 'عم بحكي…', ended: 'انتهت المكالمة', allow: 'اسمح بالميكروفون لتبدأ المكالمة.', norec: 'هالمتصفح ما بيقدر يسجّل. استعمل Chrome أو Edge أو Safari.', nocatch: 'ما قدرت سمعك. اضغط مطوّلاً على الزر وجرّب مرة تانية.', reset: 'مكالمة جديدة', empty: 'محادثتك بتظهر هون.', saved: '✓ انحفظ الطلب', missed: '📝 انبعت الطلب للمسؤول', help: 'اضغط بدء المكالمة، ثم اضغط مطوّلاً على زر الميكروفون لإرسال رسالة صوتية.', sub: 'بجاوب بالعربي اللبناني أو بالإنجليزي.' }
+    en: { start: 'Start Call', end: 'End Call', hold: 'Hold to Talk', recording: 'Recording… Release to send', cancelHint: 'Release to cancel', tooShort: 'Hold longer to talk', ready: 'Hold the mic button and talk', idle: 'Ready to call', connecting: 'Connecting…', thinking: 'Thinking…', speaking: 'Speaking…', ended: 'Call ended', allow: 'Allow the microphone to start the call.', norec: 'This browser cannot record. Use Chrome, Edge or Safari.', nocatch: 'I could not hear you. Hold the button and try again.', reset: 'Start a new call', empty: 'Your conversation appears here.', saved: '✓ Order saved', missed: '📝 Request sent to the owner', orderThis: 'Order this', orderMsg: (t) => "I'd like to order " + t, inStock: 'In stock', outStock: 'Out of stock', order: 'Order', pending: 'Pending', total: 'Total', deliver: 'Delivery', wa: 'Chat with Store on WhatsApp', help: 'Tap Start Call, then hold the mic button to send a voice message.', sub: 'It answers in Lebanese Arabic or English.' },
+    ar: { start: 'بدء المكالمة', end: 'إنهاء المكالمة', hold: 'اضغط مطوّلاً للتحدّث', recording: 'جارٍ التسجيل… ارفع إصبعك للإرسال', cancelHint: 'ارفع إصبعك للإلغاء', tooShort: 'اضغط أطول للتحدّث', ready: 'اضغط مطوّلاً على زر الميكروفون وتحدّث', idle: 'جاهزين للمكالمة', connecting: 'عم نوصّل…', thinking: 'عم فكّر…', speaking: 'عم بحكي…', ended: 'انتهت المكالمة', allow: 'اسمح بالميكروفون لتبدأ المكالمة.', norec: 'هالمتصفح ما بيقدر يسجّل. استعمل Chrome أو Edge أو Safari.', nocatch: 'ما قدرت سمعك. اضغط مطوّلاً على الزر وجرّب مرة تانية.', reset: 'مكالمة جديدة', orderThis: 'اطلب هيدا', orderMsg: (t) => 'بدي اطلب ' + t, inStock: 'متوفّر', outStock: 'خلصان', order: 'طلب', pending: 'قيد التحضير', total: 'المجموع', deliver: 'التوصيل', wa: 'احكي مع المحل عالواتساب', empty: 'محادثتك بتظهر هون.', saved: '✓ انحفظ الطلب', missed: '📝 انبعت الطلب للمسؤول', help: 'اضغط بدء المكالمة، ثم اضغط مطوّلاً على زر الميكروفون لإرسال رسالة صوتية.', sub: 'بجاوب بالعربي اللبناني أو بالإنجليزي.' }
   };
   const HEADSET = '<svg class="va-hs" viewBox="0 0 280 280" aria-hidden="true"><path d="M82 120Q78 22 140 22Q202 22 198 120" fill="none" stroke="#252B38" stroke-width="7" stroke-linecap="round"/><path d="M90 96Q94 40 140 33" fill="none" stroke="#5A6580" stroke-width="2" stroke-linecap="round" opacity=".7"/><rect x="68" y="102" width="22" height="42" rx="11" fill="#252B38"/><rect class="acc" x="72" y="110" width="7" height="26" rx="3.5"/><rect x="190" y="102" width="22" height="42" rx="11" fill="#252B38"/><rect class="acc" x="201" y="110" width="7" height="26" rx="3.5"/><path d="M76 142Q76 176 114 178" fill="none" stroke="#252B38" stroke-width="4.5" stroke-linecap="round"/><rect x="110" y="172" width="22" height="11" rx="5.5" fill="#252B38"/><rect class="acc" x="113" y="175" width="8" height="5" rx="2.5"/></svg>';
   const FRAMES = ['idle', 'blink', 'listen', 'think', 'talk1', 'talk2', 'talk3'];
@@ -168,21 +168,40 @@
       o.addEventListener('click', (e) => { if (e.target !== pic) off(); }); document.addEventListener('keydown', key);
       o.append(pic, cap, x); document.body.appendChild(o); x.focus();
     };
-    const addImages = (d, images) => {
-      const list = (Array.isArray(images) ? images : []).filter((i) => i && /^(https:\/\/|\/api\/public-item-image\?)/.test(String(i.url || ''))).slice(0, 3);
-      if (!list.length) return;
-      const box = document.createElement('div'); box.className = 'va-imgs';
-      list.forEach((im) => {
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'va-img'; b.setAttribute('aria-label', 'Enlarge ' + (im.title || 'photo'));
-        const pic = document.createElement('img'); pic.alt = im.title || ''; pic.loading = 'lazy'; pic.decoding = 'async';
-        const cap = document.createElement('span'); cap.className = 'va-cap'; cap.textContent = [im.title, im.price].filter(Boolean).join(' · ');
-        pic.onload = smoothDown;
-        pic.onerror = () => { b.classList.add('bad'); b.disabled = true; pic.remove(); const f = document.createElement('span'); f.className = 'va-nophoto'; f.textContent = 'Photo unavailable'; b.prepend(f); };
-        b.onclick = () => zoom(im); pic.src = im.url; b.append(pic, cap); box.appendChild(b);
-      });
-      const t = d.querySelector('time'); d.insertBefore(box, t); smoothDown();
-    };
     const setBubbleText = (b, text) => { const m = b.querySelector('.va-tx'); if (m) m.textContent = text; log.scrollTop = log.scrollHeight; };
+    // structured sales cards inside an AI bubble (all text via textContent; urls were checked by the server)
+    const el_ = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const usd = (v) => (v == null ? '' : '$' + Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    function cards(b, j) {
+      const box = el_('div', 'va-cards');
+      (j.images || []).forEach((it) => {
+        const c = el_('article', 'va-card'), ph = el_(it.url ? 'button' : 'div', 'va-card-img');
+        if (it.url) { ph.type = 'button'; ph.setAttribute('aria-label', it.title); const im = new Image(); im.alt = ''; im.loading = 'lazy'; im.decoding = 'async'; im.width = 64; im.height = 64; im.onload = smoothDown; im.onerror = () => { im.remove(); ph.disabled = true; }; im.src = it.url; ph.appendChild(im); ph.onclick = () => zoom({ url: it.url, title: it.title, price: usd(it.price) }); } // tap = their lightbox
+        const body = el_('div', 'va-card-b'); body.append(el_('b', 'va-card-t', it.title), el_('span', 'va-card-p', usd(it.price) + ' · ' + (it.in_stock ? L().inStock : L().outStock)));
+        c.append(ph, body);
+        if (it.in_stock) { const chip = el_('button', 'va-chipbtn', L().orderThis); chip.type = 'button'; chip.onclick = () => sendText(L().orderMsg(it.title)); c.appendChild(chip); }
+        box.appendChild(c);
+      });
+      const o = j.orderConfirmation;
+      if (o) {
+        const rc = el_('div', 'va-receipt'), hd = el_('div', 'va-rc-h');
+        hd.append(el_('b', '', L().order + ' #' + o.id), el_('span', 'va-rc-st', L().pending)); rc.appendChild(hd);
+        const ul = el_('ul', 'va-rc-l'); (o.items || []).forEach((l) => { const li = el_('li'); li.append(el_('span', '', l.qty + '× ' + l.name), el_('span', '', usd(l.price * l.qty))); ul.appendChild(li); });
+        if (!(o.items || []).length && o.summary) ul.appendChild(el_('li', '', o.summary));
+        rc.appendChild(ul);
+        if (o.total != null) { const t = el_('div', 'va-rc-t'); t.append(el_('span', '', L().total), el_('b', '', usd(o.total))); rc.appendChild(t); }
+        rc.appendChild(el_('p', 'va-rc-d', L().deliver + ': ' + [o.name, o.phone, o.address].filter(Boolean).join(' · ')));
+        box.appendChild(rc);
+      }
+      const h = j.whatsappHandoff;
+      if (h && /^https:\/\/wa\.me\//.test(h.url)) { const a = el_('a', 'va-wa', L().wa); a.href = h.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; box.appendChild(a); }
+      if (box.childNodes.length) { b.classList.add('has-cards'); b.appendChild(box); log.scrollTop = log.scrollHeight; }
+      return b;
+    }
+    function sendText(text) { // "Order this" chip: same path as a voice message, only while a call is on and nothing else is happening
+      if (!on || holding || phase === 'thinking' || phase === 'speaking') return;
+      stopSpeech(); const id = callId, mb = bubble('me', text); phase = 'thinking'; setBtn(); say('thinking'); send(text, mb, id);
+    }
 
     // ── mic level (only to make the character bounce while you hold the button) ──
     function openAudio(s) {
@@ -237,13 +256,17 @@
     }
 
     async function send(blob, bub, id) {
-      const mime = blob.type, fd = new FormData();
-      fd.append('audio', blob, 'audio.' + (/mp4/.test(mime) ? 'mp4' : /ogg/.test(mime) ? 'ogg' : 'webm'));
-      if (replyTab) fd.append('replyLanguage', replyTab);
-      fd.append('history', JSON.stringify(history.slice(-10)));
+      const isText = typeof blob === 'string'; let fd;
+      if (isText) fd = JSON.stringify({ text: blob, history: history.slice(-10), replyLanguage: replyTab || undefined }); // a tapped "Order this" chip
+      else {
+        const mime = blob.type; fd = new FormData();
+        fd.append('audio', blob, 'audio.' + (/mp4/.test(mime) ? 'mp4' : /ogg/.test(mime) ? 'ogg' : 'webm'));
+        if (replyTab) fd.append('replyLanguage', replyTab);
+        fd.append('history', JSON.stringify(history.slice(-10)));
+      }
       ctl = new AbortController(); let spoke = false;
       try {
-        const res = await fetch(voiceUrl + '?business_id=' + encodeURIComponent(businessId), { method: 'POST', body: fd, credentials: 'same-origin', signal: ctl.signal });
+        const res = await fetch(voiceUrl + '?business_id=' + encodeURIComponent(businessId), { method: 'POST', body: fd, headers: isText ? { 'Content-Type': 'application/json' } : undefined, credentials: 'same-origin', signal: ctl.signal });
         const j = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(j.error || 'Something went wrong');
         if (id !== callId || !on) return;
@@ -254,7 +277,7 @@
         // the text and the sound start together
         await new Promise((done) => speak(j.reply, done, (ok) => {
           if (ok && id === callId && on) {
-            addImages(bubble('ai', j.reply), j.images); history.push({ role: 'assistant', content: j.reply }); history = history.slice(-MAX_HISTORY);
+            cards(bubble('ai', j.reply), j); history.push({ role: 'assistant', content: j.reply }); history = history.slice(-MAX_HISTORY);
             if (j.order_saved) bubble('note', L().saved);
             if (j.missed_saved) bubble('note', L().missed);
           }
