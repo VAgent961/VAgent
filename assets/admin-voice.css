@@ -64,7 +64,7 @@
 
 /* ================= app shell ================= */
 #app{min-height:100vh;min-height:100dvh}
-.top{position:sticky;top:0;z-index:20;background:rgba(245,245,241,.82);-webkit-backdrop-filter:blur(12px) saturate(1.2);backdrop-filter:blur(12px) saturate(1.2);border-bottom:1px solid var(--line)}
+.top{position:sticky;top:0;z-index:20;background:rgba(11,13,18,.82);-webkit-backdrop-filter:blur(12px) saturate(1.2);backdrop-filter:blur(12px) saturate(1.2);border-bottom:1px solid var(--line)}
 .top-in{max-width:1240px;margin:0 auto;padding:12px max(24px,env(safe-area-inset-right)) 12px max(24px,env(safe-area-inset-left));display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .who{display:flex;align-items:center;gap:12px;min-width:0}
 .who-t{min-width:0}.who-sub{font-size:12.5px;color:var(--ink-3);line-height:1.2}
@@ -154,10 +154,10 @@
 /* ================= item modal ================= */
 .sheet-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
 @media (max-width:640px){
-  .sheet-h{position:sticky;top:0;z-index:3;margin:0;padding:max(14px,env(safe-area-inset-top)) 0 10px;background:#fff}
+  .sheet-h{position:sticky;top:0;z-index:3;margin:0;padding:max(14px,env(safe-area-inset-top)) 0 10px;background:var(--surface)}
   .sheet-h::before{content:"";position:absolute;left:50%;top:6px;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:var(--line-strong)}
   .sheet-h h2{padding-top:8px}
-  .foot{position:sticky;bottom:0;z-index:3;margin:16px -18px 0;padding:12px 18px max(12px,env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line)}
+  .foot{position:sticky;bottom:0;z-index:3;margin:16px -18px 0;padding:12px 18px max(12px,env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line)}
   .foot .vx-btn{flex:1}
   .vx-sheet.narrow .foot{position:static;margin:20px 0 0;padding:0;border:0;background:none}
 }

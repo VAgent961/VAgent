@@ -1,6 +1,8 @@
 # TREE — the whole project on one page (keep it updated, one line per item)
 
 ## Files
+- `assets/sky.js` — `VSky`: real Beirut sky. Sun (NOAA) + moon (Schlyter) position/phase from Asia/Beirut coords, weather from Open-Meteo (cached 12 min in localStorage `vsky-wx-v1`, solar-only fallback). Paints `#sky` (z -1) + `#sky-tint` inside `.stage` (re-attached by MutationObserver) and the `#sky-pill` top-bar pill (`Beirut · HH:MM · 21°C Clear · Day`); sets `<html data-phase data-wx>`. Test phases: `office.html?sky=2026-06-21T05:40:00%2B03:00&code=61&cloud=80&temp=18` or `VSky.simulate({...})`. Styles at the end of office.css.
+- Theme: whole site is dark (tokens in `:root` of office.css and vx.css; index.html inline). Use `--cream/--sand/--card/--ink/--muted/--line`, never hardcode light colours. On dark surfaces use `assets/brand/mark-dark.svg`.
 - `assets/brand/` — THE logo (locked, see CLAUDE.md): `mark*.svg`, `lockup*.svg` (light/dark/mono/mono-white), `favicon.svg`, `app-icon.svg`. Root `favicon.ico`, `favicon-32x32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png` are rendered from them. Used in office.html top bar, admin-voice.html, call.html and every `<head>`.
 - `index.html` — sign-in page (one screen, no scroll). Posts to /api/login.
 - `office.html` — office app: top bar (task, settings), left sidebar (filters, search, agent list, activity), office stage. Needs session.

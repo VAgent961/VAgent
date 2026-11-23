@@ -1,21 +1,21 @@
 /* VX — shared design system for the Voice AI + POS product: Client Portal (admin-voice.html) and the public call pages (call.html).
    Tokens, base, buttons, inputs, tabs, toasts, glass modal, skeletons and the motion language. Only transform + opacity are animated.
    Not used by the HQ office (vagent.online). */
-:root{
+:root{color-scheme:dark;
   /* type */
   --f-display:'Space Grotesk',Inter,system-ui,sans-serif;--f-body:Inter,system-ui,-apple-system,'Segoe UI',sans-serif;
   /* layered neutral surfaces */
-  --bg:#F5F5F1;--surface:#FFFFFF;--surface-2:#F0F0EB;--line:#E3E3DC;--line-strong:#CDCDC4;
-  --ink:#14161B;--ink-2:#444956;--ink-3:#666B7A;
-  /* the one brand accent */
-  --accent:#2448C8;--accent-h:#1B3AA6;--accent-soft:#E8EDFB;--accent-line:#B9C6F1;
+  --bg:#0B0D12;--surface:#121620;--surface-2:#171C28;--line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.16);
+  --ink:#F3F5F8;--ink-2:#C9D1DC;--ink-3:#94A3B8;
+  /* the one brand accent (electric, tuned for dark) */
+  --accent:#3D5FE0;--accent-h:#2F4FC8;--accent-soft:rgba(88,120,255,.14);--accent-line:rgba(134,162,255,.35);
   /* semantic */
-  --ok:#15803D;--ok-soft:#E6F4EA;--warn:#A15207;--warn-soft:#FDF1DC;--bad:#B42318;--bad-soft:#FCE9E7;
+  --ok:#58D68D;--ok-soft:rgba(88,214,141,.12);--warn:#FFC46B;--warn-soft:rgba(255,196,107,.12);--bad:#FF7A70;--bad-soft:rgba(255,122,112,.12);
   /* night surfaces (showcase panel, voice stage) */
   --night:#0D1017;--night-2:#141925;--night-line:#252C3D;--night-ink:#E9ECF4;--night-mute:#98A1B6;--night-accent:#86A2FF;--night-ok:#58D68D;
   /* shape + depth */
   --r-s:8px;--r-m:12px;--r-l:16px;
-  --sh-1:0 1px 2px rgba(20,22,27,.06);--sh-2:0 1px 2px rgba(20,22,27,.05),0 8px 24px -8px rgba(20,22,27,.14);--sh-3:0 2px 4px rgba(20,22,27,.06),0 24px 60px -12px rgba(20,22,27,.28);
+  --sh-1:0 1px 2px rgba(0,0,0,.4);--sh-2:0 1px 2px rgba(0,0,0,.35),0 8px 24px -8px rgba(0,0,0,.55);--sh-3:0 2px 4px rgba(0,0,0,.4),0 24px 60px -12px rgba(0,0,0,.7);
   /* motion */
   --ease:cubic-bezier(.16,1,.3,1);--t-fast:150ms;--t-med:260ms;--t-slow:600ms;
 }
@@ -51,7 +51,7 @@ a{color:var(--accent)}
 /* loading spinner: a rotating ring (transform only); the label stays, the ring leads */
 .vx-btn.is-loading{pointer-events:none;color:transparent!important;position:relative}
 .vx-btn.is-loading::after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;animation:vxSpin .7s linear infinite}
-.vx-btn:not(.primary).is-loading::after{border-color:rgba(20,22,27,.2);border-top-color:var(--ink)}
+.vx-btn:not(.primary).is-loading::after{border-color:rgba(255,255,255,.2);border-top-color:var(--ink)}
 @keyframes vxSpin{to{transform:rotate(360deg)}}
 
 /* ---- inputs */
@@ -106,13 +106,13 @@ a{color:var(--accent)}
 .vx-modal.open,.vx-modal.closing{visibility:visible}
 .vx-modal::before{content:"";position:fixed;inset:0;background:rgba(13,16,23,.42);-webkit-backdrop-filter:blur(10px) saturate(1.1);backdrop-filter:blur(10px) saturate(1.1);opacity:0;transition:opacity var(--t-med) var(--ease)}
 .vx-modal.open::before{opacity:1}
-.vx-sheet{position:relative;width:100%;max-width:580px;max-height:calc(100dvh - 32px);overflow:auto;background:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.7);border-radius:var(--r-l);box-shadow:var(--sh-3);padding:24px;opacity:0;transform:translateY(10px) scale(.96);transition:opacity var(--t-med) var(--ease),transform var(--t-med) var(--ease);overscroll-behavior:contain}
+.vx-sheet{position:relative;width:100%;max-width:580px;max-height:calc(100dvh - 32px);overflow:auto;background:rgba(18,22,32,.94);border:1px solid rgba(255,255,255,.1);border-radius:var(--r-l);box-shadow:var(--sh-3);padding:24px;opacity:0;transform:translateY(10px) scale(.96);transition:opacity var(--t-med) var(--ease),transform var(--t-med) var(--ease);overscroll-behavior:contain}
 .vx-modal.open .vx-sheet{opacity:1;transform:none}
 .vx-sheet.narrow{max-width:420px}
 
 /* ---- skeletons */
 .vx-sk{position:relative;overflow:hidden;background:var(--surface-2);border-radius:var(--r-s)}
-.vx-sk::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);transform:translateX(-100%);animation:vxShimmer 1.4s linear infinite}
+.vx-sk::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);transform:translateX(-100%);animation:vxShimmer 1.4s linear infinite}
 @keyframes vxShimmer{to{transform:translateX(100%)}}
 
 /* ---- touch + small screens (mobile-first additions): 44px targets, 48px fields, bottom-sheet modal with safe-area padding */
