@@ -132,3 +132,4 @@ a{color:var(--link)}
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;animation-delay:0ms!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
   .vx-dot::after{display:none}
 }
+input[type=checkbox],input[type=radio]{accent-color:#B5532F}

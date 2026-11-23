@@ -103,7 +103,7 @@
     g.innerHTML = `<circle class="ring" cy="-38" r="40" fill="none" stroke="${isHelper(a) ? '#9FD0D6' : a.isLead ? '#E9C46A' : '#B5532F'}" stroke-width="3"/>${isHelper(a) ? SONIC_FX : ''}<g class="body"><use href="${personRef(a)}" style="color:${colorOf(a.key)}"/></g>
       <g class="props"><g class="p p-book" transform="translate(-12 -36)"><rect x="-3.5" y="-6" width="7" height="11" rx="1" fill="#D8D3C6"/><rect x="-3.5" y="-6" width="1.6" height="11" fill="#9A968A"/></g><g class="p p-pad" transform="translate(12 -37)"><rect x="-4" y="-6" width="8" height="11" rx="1.4" fill="#2A2B2F"/><rect x="-3" y="-5" width="6" height="9" rx=".8" fill="#9DB7CE"/></g><g class="p p-phone" transform="translate(12 -36)"><rect x="-2.6" y="-5" width="5.2" height="9" rx="1.3" fill="#17181B"/><rect x="-1.9" y="-4" width="3.8" height="6.6" rx=".6" fill="#7FB0E0"/></g><g class="p p-mug" transform="translate(12 -35)"><rect x="-3" y="-4" width="6" height="7" rx="1.4" fill="#F1EEE7"/><path d="M3 -2.6 q3 .6 0 3.8" stroke="#F1EEE7" stroke-width="1.3" fill="none"/></g><g class="p p-music" transform="translate(-12 -37)"><rect x="-5" y="-4" width="10" height="7" rx="1" fill="#B9BDC4"/><rect x="-5" y="2" width="10" height="1.4" fill="#8D939B"/></g><g class="p p-rest"></g></g>
       <g class="bubble typing" transform="translate(17 -80)"><rect x="-11" y="-7" width="22" height="13" rx="6.5" fill="#FAF9F5" stroke="#E3E0D5"/><circle cx="-4.5" cy="-.5" r="1.7" fill="#B5532F"/><circle cx="0" cy="-.5" r="1.7" fill="#B5532F"/><circle cx="4.5" cy="-.5" r="1.7" fill="#B5532F"/></g>
-      <g class="bubble alert" transform="translate(15 -82)"><circle r="8" fill="#B3261E"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">!</text></g>
+      <g class="bubble alert" transform="translate(15 -82)"><circle r="8" fill="var(--bad)"/><text y="4" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">!</text></g>
       <g class="tag" transform="translate(0 -98)"><rect y="-12" height="22" rx="11"/><circle class="tdot" cy="-1" r="3.5"/><text y="3" text-anchor="middle"></text></g>`;
     return g;
   }
@@ -572,7 +572,7 @@
   if (DBG) window.__vo = { SPEED, HELPER_MULT, scene: () => S, els, places, dest, goTo, inv, proj, movers: () => movers.size };
 
   const where = (a) => { const x = D.departments.find((y) => y.id === a.dept); if (!x) return 'No department'; const t = x.teams.find((y) => y.id === a.team); return x.name + (t ? ' / ' + t.name : ''); };
-  const dotColor = { working: '#3F7D4E', help: '#B3261E', idle: '#B5532F', off: '#B0AEA5' };
+  const dotColor = { working: '#3F7D4E', help: 'var(--bad)', idle: '#B5532F', off: '#B0AEA5' };
   const itemAgent = (a) => `<button class="item" type="button" data-agent="${esc(a.key)}"><span class="sd ${a.status}"></span><span class="grow"><b>${esc(a.name)}</b><small>${esc(a.status === 'idle' && D.departments.some((d) => d.id === a.dept) ? 'Resting in the lounge' : STATUS[a.status].split(' · ')[0])} · ${esc(where(a))}</small></span><span aria-hidden="true">›</span></button>`;
 
   let filter = 'all', q = '', inst = '', prevStatus = null;
@@ -907,13 +907,13 @@
         const host = f.url.value.trim().replace(/^https?:\/\//, '').split('/')[0];
         const r = await api('n8n', { body: { label: myName() + "'s n8n", url: host, key: f.key.value } });
         close(); toast('Connected · ' + r.workflows + ' agents are walking in'); load();
-      } catch (x) { $('#conn-msg').textContent = x.message; $('#conn-msg').style.color = '#B3261E'; b.disabled = false; b.textContent = 'Connect and bring my agents in'; }
+      } catch (x) { $('#conn-msg').textContent = x.message; $('#conn-msg').style.color = 'var(--bad)'; b.disabled = false; b.textContent = 'Connect and bring my agents in'; }
     };
   }
 
   function openSettings() {
     open(`<h2 class="d-title">Settings</h2>
-      <p class="label">Connected n8n</p><div class="items">${D.instances.map((i) => { const er = D.errors.find((e) => e.id === i.id); return `<div class="item" style="cursor:default"><span class="sd ${er ? 'help' : 'working'}"></span><span class="grow"><b>${esc(i.label)}</b><small>${esc(i.url.replace('https://', ''))} · ${D.agents.filter((a) => a.instId === i.id).length} agents${er ? ' · <span style="color:#B3261E">' + esc(er.error) + '</span>' : ''}</small></span><button class="btn" type="button" data-reconnect="${esc(i.url)}">${er ? 'Fix key' : 'New key'}</button><button class="btn icon danger" type="button" data-del-n8n="${i.id}" aria-label="Remove ${esc(i.label)}">✕</button></div>`; }).join('') || '<p class="empty">Nothing connected yet.</p>'}
+      <p class="label">Connected n8n</p><div class="items">${D.instances.map((i) => { const er = D.errors.find((e) => e.id === i.id); return `<div class="item" style="cursor:default"><span class="sd ${er ? 'help' : 'working'}"></span><span class="grow"><b>${esc(i.label)}</b><small>${esc(i.url.replace('https://', ''))} · ${D.agents.filter((a) => a.instId === i.id).length} agents${er ? ' · <span style="color:var(--bad)">' + esc(er.error) + '</span>' : ''}</small></span><button class="btn" type="button" data-reconnect="${esc(i.url)}">${er ? 'Fix key' : 'New key'}</button><button class="btn icon danger" type="button" data-del-n8n="${i.id}" aria-label="Remove ${esc(i.label)}">✕</button></div>`; }).join('') || '<p class="empty">Nothing connected yet.</p>'}
       <button class="btn primary" type="button" data-open="connect">+ Connect an n8n</button></div>
       <p class="label">Departments</p><div class="items">${D.departments.map((d) => `<button class="item" type="button" data-dept="${d.id}"><span class="sd" style="background:${d.color}"></span><span class="grow"><b>${esc(d.name)}</b><small>${D.agents.filter((a) => a.dept === d.id).length} agents</small></span>›</button>`).join('')}<button class="btn" type="button" data-open="new-dept">+ New department</button></div>
       <p class="label">Account</p><div class="row" style="align-items:center"><span class="muted" style="flex:1;font-size:14px">Signed in as ${esc(D.me)}</span><form method="post" action="/api/logout"><button class="btn" type="submit">Sign out</button></form></div>`, 'settings');
