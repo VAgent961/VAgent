@@ -972,7 +972,7 @@
   };
   function snBind(key) {
     const panel = inner.querySelector('[data-sn="ig"]'); if (!panel) return;
-    VIgLookup.mount(panel, { api, agent: key });
+    VIgLookup.mount(panel, { api, toast, agent: key });
     inner.querySelectorAll('[data-sn-tab]').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); snShow(b.dataset.snTab); }; });
   }
   document.addEventListener('submit', (e) => { if (e.target && e.target.id === 'f-chat') e.preventDefault(); }, true);
