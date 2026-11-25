@@ -480,3 +480,7 @@ input[type=checkbox],input[type=radio]{accent-color:#B5532F}
 .ap-actions{display:flex;flex-wrap:wrap;gap:8px}.ap-actions .btn{flex:1 1 110px}.drawer .ap-actions .btn.primary{flex:1 1 110px}
 .ap-err{margin:0;font-size:13px;color:var(--bad)}.ap-note{margin:0;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
 .ap-done summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--muted);font-size:13px}.ap-done .ap-row{margin-bottom:8px}
+.ap-list [hidden]{display:none!important}.ap-cards{display:flex;flex-direction:column;gap:12px}.ap-cards:empty{display:none}.drawer-in:has([data-approvals]){overflow-anchor:none}
+.ap-jump{position:sticky;top:0;z-index:2;flex:none;height:0;margin-bottom:-18px;display:flex;justify-content:center;align-items:flex-start}.ap-jump[hidden]{display:none}.ap-jump button{flex:none;min-height:44px;padding:0 16px;border:0;border-radius:999px;background:var(--clay);color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+.ap-card{position:relative}.ap-new::after{content:"";position:absolute;inset:-1px;border:2px solid var(--clay);border-radius:12px;pointer-events:none;animation:ap-arrive 1.2s ease 3}@keyframes ap-arrive{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.ap-new::after{animation:none}}

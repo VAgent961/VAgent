@@ -6,9 +6,13 @@ import { instances, call } from '../_n8n.js';
 const HOST = 'https://boudy.vagent.online', REQUESTS = 'kqzri6hM0ft9MH9Q', PROGRESS = 'H3Co95uEWFribCFS';
 const NAMES = { brief: 'Project brief', design: 'Page designs', site: 'Finished website', golive: 'Go live' };
 
-async function load(env) {
+async function builder(env) {
   const inst = (await instances(env)).find((i) => i.base_url.replace(/\/$/, '') === HOST);
   if (!inst) throw new Error('The website builder n8n is not connected (Settings).');
+  return inst;
+}
+async function load(env, inst) {
+  inst = inst || await builder(env);
   const rows = (t, n) => call(env, inst, `/data-tables/${t}/rows?limit=${n}&sortBy=createdAt:desc`).then((r) => r.data || []);
   const [reqs, log] = await Promise.all([rows(REQUESTS, 250), rows(PROGRESS, 250).catch(() => [])]);
   // newest request per project + stage; waiting ones count for 14 days (same rule as the PM inbox)
@@ -29,9 +33,35 @@ const view = (list) => {
   return { pending: clean.filter((r) => r.status === 'pending'), recent: clean.filter((r) => r.status !== 'pending').sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, 6) };
 };
 
-// GET /api/approvals -> {pending[], recent[]}
-export async function onRequestGet({ env, data }) {
+// Server-Sent Events: n8n cannot push, so this connection reads the table and sends the list only when it changes.
+// It ends itself after ~45 s (Workers allow 50 subrequests per invocation; 2 per tick here) and the browser reconnects.
+const TICK = 5000, TICKS = 9;
+function stream(env) {
+  const enc = new TextEncoder();
+  let n = 0, last = '', inst, closed = false, timer, wake;
+  const body = new ReadableStream({
+    async pull(c) {
+      if (n) await new Promise((done) => { wake = done; timer = setTimeout(done, TICK); });
+      if (closed) return;
+      if (n++ >= TICKS) { closed = true; return c.close(); }
+      let out;
+      try {
+        inst = inst || await builder(env);
+        const next = JSON.stringify(view(await load(env, inst)));
+        out = next === last ? 'event: ping\ndata: {}\n\n' : `data: ${next}\n\n`;
+        last = next;
+      } catch (e) { last = ''; out = `event: problem\ndata: ${JSON.stringify({ error: e.message })}\n\n`; }
+      if (!closed) c.enqueue(enc.encode((n === 1 ? 'retry: 1000\n\n' : '') + out));
+    },
+    cancel() { closed = true; clearTimeout(timer); wake?.(); },
+  });
+  return new Response(body, { headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store' } });
+}
+
+// GET /api/approvals -> {pending[], recent[]}  ·  GET /api/approvals?stream=1 -> the same, as an event stream
+export async function onRequestGet({ request, env, data }) {
   if (data.role === 'client') return bad('Not allowed', 403);
+  if (new URL(request.url).searchParams.has('stream')) return stream(env);
   try { return json(view(await load(env))); } catch (e) { return bad(e.message, 502); }
 }
 
