@@ -87,9 +87,32 @@
       steady(el, () => sync(el)); pill(el);
     });
   }
+  // Notification sound (generated, no file). Browsers allow audio only after a click/key on the page, so a chime that
+  // could not play is owed and rings on the first one, if something is still waiting.
+  let audio = null, owed = false;
+  const title = document.title;
+  function ring() {
+    [[880, 0], [1318.5, 0.18], [880, 0.55], [1318.5, 0.73]].forEach(([hz, at]) => {
+      const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + at;
+      o.frequency.value = hz; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+      o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 0.5);
+    });
+  }
+  function chime() {
+    if (audio?.state === 'running') return ring();
+    owed = true; unlock();
+  }
+  function unlock() {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx || (!navigator.userActivation?.hasBeenActive && navigator.userActivation)) return;
+    audio = audio || new Ctx();
+    const play = () => { if (owed && audio.state === 'running') { owed = false; if (data?.pending.length) ring(); } };
+    if (audio.state === 'running') play(); else audio.resume().then(play, () => {});
+  }
   function badge() {
     const n = data ? data.pending.length : 0, b = document.getElementById('btn-approvals');
     if (b) { b.querySelector('b').textContent = n || ''; b.querySelector('b').hidden = !n; b.setAttribute('aria-label', 'Approvals' + (n ? ', ' + n + ' waiting' : '')); }
+    document.title = n ? `(${n}) Approval needed · ${title}` : title;
   }
   // One entry per id; an older snapshot (slow poll, stream tick from before a decision) never overrides a newer record.
   function take(j) {
@@ -101,12 +124,13 @@
     const list = [...byId.values()];
     data = { pending: list.filter((a) => a.status === 'pending').sort((a, b) => b.id - a.id), recent: list.filter((a) => a.status !== 'pending').sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, 6) };
     failed = '';
-    const arrived = seen ? data.pending.filter((a) => !seen.has(a.id)) : [];
+    const first = !seen, arrived = seen ? data.pending.filter((a) => !seen.has(a.id)) : [];
     seen = seen || new Set();
     data.pending.forEach((a) => seen.add(a.id));
     arrived.forEach((a) => { const id = String(a.id); fresh.add(id); setTimeout(() => { fresh.delete(id); document.querySelectorAll(`[data-card="${id}"]`).forEach((c) => c.classList.remove('ap-new')); paint(); }, 12000); });
     if (arrived.length) cfg.toast?.('PM Tech needs your approval');
     badge();
+    if (arrived.length || (first && data.pending.length)) chime();
   }
   // One request at a time; a call made while one is running queues exactly one more, so nothing is missed.
   function refresh() {
@@ -142,10 +166,10 @@
   });
   document.addEventListener('scroll', (e) => { if (fresh.size && e.target.classList?.contains('drawer-in')) e.target.querySelectorAll('[data-approvals]').forEach(pill); }, { capture: true, passive: true });
 
-  // Live connection (only while the tab is visible) + polling: every 30 s while the stream is healthy, 10 s when it is not.
+  // Live connection (kept while the tab is in the background, so the sound still rings) + polling: every 30 s while the stream is healthy, 10 s when it is not.
   let on = false, source = null, healthy = false, heard = 0, polled = 0, timer = 0;
   function connect() {
-    if (!on || source || document.hidden || !window.EventSource) return;
+    if (!on || source || !window.EventSource) return;
     source = new EventSource('/api/approvals?stream=1'); heard = Date.now();
     source.onmessage = (e) => { heard = Date.now(); healthy = true; try { take(JSON.parse(e.data)); } catch { return; } paint(); };
     source.addEventListener('ping', () => { heard = Date.now(); healthy = true; });
@@ -155,18 +179,17 @@
   }
   function disconnect() { source?.close(); source = null; healthy = false; }
   function tick() {
-    if (document.hidden) return;
     const now = Date.now(), live = healthy && now - heard < 15000;
     if (source && now - heard > 30000) disconnect();   // silent socket: start a new one
     connect();
     if (now - polled >= (live ? 30000 : 10000) - 500) { polled = now; refresh(); }
   }
-  function wake() { if (!on) return; if (document.hidden) return disconnect(); connect(); polled = Date.now(); refresh(); }
+  function wake() { if (!on || document.hidden) return; connect(); polled = Date.now(); refresh(); }
   let woke = 0;
   const focus = () => { if (Date.now() - woke > 1000) { woke = Date.now(); wake(); } };   // focus + visibility fire together
-  const events = [[document, 'visibilitychange', wake], [window, 'focus', focus], [window, 'online', wake], [window, 'pageshow', focus], [window, 'pagehide', disconnect]];
+  const events = [[document, 'pointerup', unlock], [document, 'keydown', unlock], [document, 'touchend', unlock], [document, 'visibilitychange', wake], [window, 'focus', focus], [window, 'online', wake], [window, 'pageshow', focus], [window, 'pagehide', disconnect]];
   function stop() {
-    on = false; clearInterval(timer); disconnect(); events.forEach(([t, n, f]) => t.removeEventListener(n, f));
+    on = false; document.title = title; clearInterval(timer); disconnect(); events.forEach(([t, n, f]) => t.removeEventListener(n, f));
     const b = document.getElementById('btn-approvals'); if (b) b.style.display = 'none';
   }
   let refused = false;
