@@ -8,6 +8,7 @@ const sql = async (query, params = []) => {
   return (await r.json()).rows;
 };
 const steps = [
+  "CREATE TABLE IF NOT EXISTS sniper_runs (id text PRIMARY KEY, owner_email text, district text, niche text, stage text NOT NULL DEFAULT 'maps', counts jsonb NOT NULL DEFAULT '{}', status text NOT NULL DEFAULT 'running', reply text, buttons jsonb, started_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), finished_at timestamptz)",
   "CREATE TABLE IF NOT EXISTS vagent_n8n (id serial PRIMARY KEY, label text NOT NULL, base_url text NOT NULL UNIQUE, api_key_enc text NOT NULL, owner_email text, created_at timestamptz DEFAULT now())",
   "ALTER TABLE vagent_n8n ADD COLUMN IF NOT EXISTS cred_id text",
   "ALTER TABLE vagent_owners ADD COLUMN IF NOT EXISTS last_seen timestamptz",

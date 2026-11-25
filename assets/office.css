@@ -485,3 +485,18 @@ input[type=checkbox],input[type=radio]{accent-color:#B5532F}
 .ap-jump{position:sticky;top:0;z-index:2;flex:none;height:0;margin-bottom:-18px;display:flex;justify-content:center;align-items:flex-start}.ap-jump[hidden]{display:none}.ap-jump button{flex:none;min-height:44px;padding:0 16px;border:0;border-radius:999px;background:var(--clay);color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.3)}
 .ap-card{position:relative}.ap-new::after{content:"";position:absolute;inset:-1px;border:2px solid var(--clay);border-radius:12px;pointer-events:none;animation:ap-arrive 1.2s ease 3}@keyframes ap-arrive{50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.ap-new::after{animation:none}}
+
+/* Sniper hunt progress card */
+.msg.run{min-width:min(280px,100%)}
+.run-head{display:flex;justify-content:space-between;gap:12px;font-weight:600}
+.run-head time{font-variant-numeric:tabular-nums;color:var(--muted)}
+.run ol{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
+.run li{display:grid;grid-template-columns:14px 1fr auto;gap:8px;align-items:center;color:var(--muted)}
+.run li::before{content:'';width:8px;height:8px;border-radius:50%;border:1px solid var(--line)}
+.run li small{font-variant-numeric:tabular-nums}
+.run li.done{color:var(--ink)}
+.run li.done::before{background:var(--ink);border-color:var(--ink)}
+.run li.on{color:var(--ink);font-weight:600}
+.run li.on::before{background:#B5532F;border-color:#B5532F;animation:run-pulse 1.2s ease-in-out infinite}
+@keyframes run-pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.run li.on::before{animation:none}}

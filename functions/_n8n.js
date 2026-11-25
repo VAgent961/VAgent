@@ -99,7 +99,7 @@ export async function runWebhook(wh, payload, secret) {
     return { ok: r.ok, output: String(output || (r.ok ? 'Done.' : 'Failed ' + r.status)).slice(0, 12000), buttons, status: status || (r.ok ? 'ok' : 'source_down') };
   } catch (e) {
     const late = /timeout|abort/i.test(String(e));
-    return { ok: false, buttons: [], status: late ? 'partial' : 'source_down', output: late ? 'Still working after 90s. Check it in n8n.' : 'Could not reach it.' };
+    return { ok: false, late, buttons: [], status: late ? 'partial' : 'source_down', output: late ? 'Still working after 90s. Check it in n8n.' : 'Could not reach it.' };
   }
 }
 

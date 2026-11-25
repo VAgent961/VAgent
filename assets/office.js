@@ -973,6 +973,7 @@
   const bubble = (m) => {
     if (m.me) return `<div class="msg me">${linkify(m.t)}</div>`;
     // still waiting on a reply — shown again if you reopen the drawer mid-answer
+    if (m.pending && m.run) return runCard(m);
     if (m.pending) return Date.now() - (m.at || 0) > 18e4
       ? `<div class="msg it bad">That answer never came back. Send it again.</div>`
       : `<div class="msg it typing-msg">${esc(m.t)}</div>`;
@@ -983,6 +984,60 @@
     if (m.prompt) h += `<div class="plan"><p class="label">Prompt for Claude</p><pre class="prompt">${esc(m.prompt)}</pre><button class="btn" type="button" data-copy="${m.id}">Copy prompt</button></div>`;
     return h;
   };
+  // ---- Sniper hunt progress: SSE from /api/sniper/runs with polling fallback; the result is stored server-side,
+  // so it also shows up after the 90 s limit, a reload, or on another device.
+  const STEPS = [['maps', 'Maps', (c) => c.places != null && c.places + ' places'], ['ig', 'Instagram search', (c) => c.handles != null && c.handles + ' profiles'],
+    ['photos', 'Photo check', (c) => c.checked != null && (c.passed || 0) + ' passed · ' + c.checked + ' checked'], ['briefs', 'Briefs', (c) => c.leads != null && c.leads + ' leads']];
+  const clock = (s) => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+  const runCard = (m) => {
+    const r = m.progress || {}, at = Math.max(0, STEPS.findIndex((x) => x[0] === r.stage)), t0 = m.t0 || m.at;
+    return `<div class="msg it run" data-run="${esc(m.run)}"><div class="run-head"><span>Hunting…</span><time data-t0="${t0}">${clock((Date.now() - t0) / 1000)}</time></div><ol>${STEPS.map(([, label, count], i) => `<li class="${i < at ? 'done' : i === at ? 'on' : ''}"${i === at ? ' aria-current="step"' : ''}><span>${label}</span><small>${count(r.counts || {}) || ''}</small></li>`).join('')}</ol></div>`;
+  };
+  setInterval(() => document.querySelectorAll('.run time[data-t0]').forEach((t) => { t.textContent = clock((Date.now() - t.dataset.t0) / 1000); }), 1000);
+  const watching = new Map(); // run id -> stop()
+  const seenRuns = { has: (id) => store.get('vagent-runs-seen').includes(id), add: (id) => { if (!seenRuns.has(id)) store.set('vagent-runs-seen', store.get('vagent-runs-seen').concat(id)); } };
+  const runEntry = (id, r) => ({ id, t: r.reply || 'Done.', buttons: r.buttons, bad: r.status === 'quota_out' || r.status === 'source_down', warn: r.status === 'partial' });
+  function watchRun(to, run) {
+    if (watching.has(run)) return;
+    let source, timer, heard = Date.now(), missing = 0, over = false;
+    const stop = () => { over = true; source?.close(); clearInterval(timer); watching.delete(run); };
+    const find = () => store.get(chatKey(to)).find((x) => x.run === run);
+    const put = (entry) => { const l = store.get(chatKey(to)), i = l.findIndex((x) => x.run === run); if (i < 0) return; l[i] = entry; store.set(chatKey(to), l); };
+    const apply = (r) => {
+      if (over) return;
+      const m = find(); if (!m) return stop(); // Start over dropped it, or the reply already arrived
+      heard = Date.now();
+      if (!r) { // not created yet (just sent), or gone
+        if (++missing > 5 && Date.now() - m.at > 12e4) { put({ id: m.id, t: 'That answer never came back. Send it again.', bad: 1 }); stop(); if (chatOpen?.to === to) chatOpen.paint(); }
+        return;
+      }
+      if (r.status !== 'running') { put(runEntry(m.id, r)); stop(); if (chatOpen?.to === to) chatOpen.paint(); load(); refreshQuota(); return; }
+      const next = { ...m, t0: Date.now() - r.elapsed * 1000, progress: { stage: r.stage, counts: r.counts } }; put(next);
+      const card = document.querySelector(`.run[data-run="${run}"]`); if (card) card.outerHTML = runCard(next);
+    };
+    const poll = () => api('sniper/runs?id=' + encodeURIComponent(run)).then((x) => apply(x.run)).catch(() => {});
+    watching.set(run, stop);
+    if (window.EventSource) {
+      source = new EventSource('/api/sniper/runs?stream=1&id=' + encodeURIComponent(run));
+      source.onmessage = (e) => apply(JSON.parse(e.data).run);
+    }
+    timer = setInterval(() => { if (!find()) return stop(); if (!source || source.readyState !== EventSource.OPEN || Date.now() - heard > 8000) poll(); }, 3000);
+    poll();
+  }
+  // Opening the Sniper chat: resume a running hunt, and bring in the newest one if this device has not seen it.
+  async function syncRuns(to) {
+    store.get(chatKey(to)).filter((x) => x.pending && x.run).forEach((x) => watchRun(to, x.run));
+    try {
+      const { run: r } = await api('sniper/runs'); if (!r || seenRuns.has(r.id)) return;
+      const l = store.get(chatKey(to)); seenRuns.add(r.id);
+      if (l.some((x) => x.run === r.id)) return;
+      const id = Date.now(), t0 = id - r.elapsed * 1000;
+      l.push({ me: 1, t: r.district + ' | ' + r.niche });
+      l.push(r.status === 'running' ? { id, at: t0, t0, pending: 1, run: r.id, t: 'Hunting…', progress: { stage: r.stage, counts: r.counts } } : runEntry(id, r));
+      store.set(chatKey(to), l); if (chatOpen?.to === to) chatOpen.paint();
+      if (r.status === 'running') watchRun(to, r.id);
+    } catch {}
+  }
   // Every chat is kept in localStorage, so closing the drawer (or the tab) never loses the thread
   // and a reply that lands while you are away is still there when you come back.
   const chatKey = (to) => (to === 'ceo' ? 'vagent-ceo' : 'vagent-chat-' + to);
@@ -1000,11 +1055,14 @@
       const id = Date.now(), ep = epoch;
       const l = log(); const history = l.slice(-8).map((x) => ({ me: !!x.me, t: x.t }));
       // the pending bubble is saved too, so it is still there if the drawer is closed and reopened
-      l.push({ me: 1, t: m }); l.push({ id, pending: 1, at: id, t: who + ' is working on it…' }); save(l); paint();
+      const hunt = to.startsWith('agent:') && SNIPER(to.slice(6)) && m.includes('|') && !/^(pick|district|build):/i.test(m);
+      const run = hunt ? crypto.randomUUID() : undefined;
+      l.push({ me: 1, t: m }); l.push({ id, pending: 1, at: id, run, t: who + ' is working on it…' }); save(l); paint();
+      if (run) { seenRuns.add(run); setTimeout(() => watchRun(to, run), 1500); }
       const btn = f.querySelector('button'); if (btn) btn.disabled = true;
-      try { const r = await api('talk', { body: { to, message: m, history } });
-        settle(id, { id, t: r.reply, buttons: r.buttons, actions: r.actions, prompt: r.prompt, project: r.project, bad: r.ok === false || r.status === 'quota_out' || r.status === 'source_down', warn: r.status === 'partial' }, ep); }
-      catch (x) { settle(id, { id, t: x.message, bad: 1 }, ep); }
+      try { const r = await api('talk', { body: { to, message: m, history, run_id: run } });
+        if (!r.running) settle(id, { id, t: r.reply, buttons: r.buttons, actions: r.actions, prompt: r.prompt, project: r.project, bad: r.ok === false || r.status === 'quota_out' || r.status === 'source_down', warn: r.status === 'partial' }, ep); }
+      catch (x) { if (!run) settle(id, { id, t: x.message, bad: 1 }, ep); else watchRun(to, run); } // a hunt keeps going on the server
       if (btn) btn.disabled = false;
       if (to.startsWith('agent:')) { load(); if (SNIPER(to.slice(6))) refreshQuota(); }
       if (inner.querySelector('[data-netlify]')) VNetlify.paint();
@@ -1037,6 +1095,7 @@
       save(l); paint(); load();
     };
     paint();
+    if (to.startsWith('agent:') && SNIPER(to.slice(6)) && !pendingSay) syncRuns(to);
     if (pendingSay) { const ps = pendingSay; pendingSay = null; if (ps.to === to) restart(); }   // only the chat it was meant for may start (never the CEO chat)
   }
   // Reports agents post to /hook/daily (Sniper Daily's 9:00 list used to go to Telegram).

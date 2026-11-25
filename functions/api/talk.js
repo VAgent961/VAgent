@@ -2,6 +2,7 @@ import { sql, json, bad, body } from '../_lib.js';
 import { officeData, companyText } from '../_office.js';
 import { instance, call, summaries, runWebhook } from '../_n8n.js';
 import { think, parseJSON, plain } from '../_brain.js';
+import { createRun, finishRun, RUN_ID } from '../_runs.js';
 
 const ACTIONS = `{"type":"create_department","name":"","mission":""}
 {"type":"rename_department","department":"","name":""}
@@ -70,9 +71,17 @@ Return ONLY JSON: {"reply":"...","project":""}`;
     const [instId, wfId] = key.split(':');
     const inst = await instance(env, instId), wf = (await summaries(env, inst)).find((w) => w.id === wfId);
     if (wf && wf.webhook) { // a real chat agent: send the message to its own webhook
-      const r = await runWebhook(wf.webhook, { message: msg, from: data.owner, source: 'vagent-office' }, env.WEBHOOK_SECRET);
+      // a Sniper hunt ("district | type") gets a run row, so its steps and result outlive this request
+      let run = '';
+      if (RUN_ID.test(String(b.run_id || '')) && msg.includes('|') && !/^(pick|district|build):/i.test(msg)) {
+        const [district, niche = ''] = msg.split('|').map((s) => s.trim());
+        if ((await createRun(env, b.run_id, data.owner, district, niche).catch(() => [])).length) run = b.run_id;
+      }
+      const r = await runWebhook(wf.webhook, { message: msg, from: data.owner, source: 'vagent-office', ...(run ? { run_id: run } : {}) }, env.WEBHOOK_SECRET);
+      if (run && r.late) return json({ reply: 'Still hunting. The result will appear here.', running: true, run_id: run, actions: [], prompt: '', via: 'webhook', ok: true });
       // an unreachable or crashed agent gets a Retry chip (not after a timeout: it may still be running)
       const buttons = r.status === 'source_down' && !(r.buttons || []).length ? [{ label: '↻ Retry', value: msg.slice(0, 160) }] : r.buttons || [];
+      if (run) await finishRun(env, run, r.status, r.output, buttons).catch(() => {}); // in case /hook/progress never arrived
       return json({ reply: r.output, status: r.status, buttons, actions: [], prompt: '', via: 'webhook', ok: r.ok });
     }
     const runs = ((await call(env, inst, '/executions?limit=5&workflowId=' + encodeURIComponent(wfId))).data || []).map((r) => r.status + ' ' + (r.stoppedAt || r.startedAt));
