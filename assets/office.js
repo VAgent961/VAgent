@@ -959,7 +959,7 @@
       $('.sq-acc', el).onclick = () => { const o = el.classList.toggle('open'); $('.sq-acc', el).setAttribute('aria-expanded', o); };
     } catch (e) { const el2 = $('#sq'); if (el2) { el2.className = 'sq bad'; el2.innerHTML = `<span class="sq-msg">⚠ SerpApi quota unavailable: ${esc(e.message)}</span>`; } }
   }
-  const SNIPER = (k) => !!k && ((D && D.departments) || []).some((x) => x.lead_key === k && /sniper/i.test(x.name)), CHECK_SITE = '<button class="pick" type="button" data-say="build: latest">🔗 Check the website</button>';
+  const SNIPER = (k) => !!k && ((D && D.departments) || []).some((x) => x.lead_key === k && /sniper/i.test(x.name)), CHECK_SITE = '<button class="pick" type="button" data-say="build: latest">🔗 Check the website</button><button class="pick" type="button" data-say="ig:">🔎 Instagram lookup</button>';
   document.addEventListener('submit', (e) => { if (e.target && e.target.id === 'f-chat') e.preventDefault(); }, true);
   let pendingSay = null, chatOpen = null; // chatOpen: the chat on screen, so a delivered website link shows at once
   const store = { get: (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v.slice(-30))); } catch {} } };
@@ -1061,7 +1061,7 @@
       if (run) { seenRuns.add(run); setTimeout(() => watchRun(to, run), 1500); }
       const btn = f.querySelector('button'); if (btn) btn.disabled = true;
       try { const r = await api('talk', { body: { to, message: m, history, run_id: run } });
-        if (!r.running) settle(id, { id, t: r.reply, buttons: r.buttons, actions: r.actions, prompt: r.prompt, project: r.project, bad: r.ok === false || r.status === 'quota_out' || r.status === 'source_down', warn: r.status === 'partial' }, ep); }
+        if (!r.running) settle(id, { id, t: r.reply, buttons: r.buttons, actions: r.actions, prompt: r.prompt, project: r.project, bad: r.ok === false || ['quota_out', 'source_down', 'not_found'].includes(r.status), warn: r.status === 'partial' || r.status === 'private' }, ep); }
       catch (x) { if (!run) settle(id, { id, t: x.message, bad: 1 }, ep); else watchRun(to, run); } // a hunt keeps going on the server
       if (btn) btn.disabled = false;
       if (to.startsWith('agent:')) { load(); if (SNIPER(to.slice(6))) refreshQuota(); }

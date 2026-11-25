@@ -93,10 +93,10 @@ export async function runWebhook(wh, payload, secret) {
     const text = (await r.text()).slice(0, 200000); // parse the whole answer; only the shown text is capped
     let output = text, buttons = [], status = '';
     try { const j = JSON.parse(text); const v = Array.isArray(j) ? j[0] : j; output = typeof v === 'string' ? v : (v && (v.output || v.text || v.reply || v.message || v.answer)) || JSON.stringify(j, null, 1);
-      if (v && /^(ok|quota_out|source_down|partial)$/.test(v.status)) status = v.status;
+      if (v && /^(ok|quota_out|source_down|partial|private|not_found)$/.test(v.status)) status = v.status;
       if (v && Array.isArray(v.buttons)) buttons = v.buttons.slice(0, 40).map((b) => ({ label: String((b && (b.label ?? b.value)) ?? '').slice(0, 40), value: String((b && (b.value ?? b.label)) ?? '').slice(0, 160) })).filter((b) => b.label && b.value); } catch {}
     output = unwrap(output);
-    return { ok: r.ok, output: String(output || (r.ok ? 'Done.' : 'Failed ' + r.status)).slice(0, 12000), buttons, status: status || (r.ok ? 'ok' : 'source_down') };
+    return { ok: r.ok, output: String(output || (r.ok ? 'Done.' : 'Failed ' + r.status)).slice(0, 60000), buttons, status: status || (r.ok ? 'ok' : 'source_down') };
   } catch (e) {
     const late = /timeout|abort/i.test(String(e));
     return { ok: false, late, buttons: [], status: late ? 'partial' : 'source_down', output: late ? 'Still working after 90s. Check it in n8n.' : 'Could not reach it.' };
