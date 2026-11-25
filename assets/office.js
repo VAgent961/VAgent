@@ -976,7 +976,7 @@
     if (m.pending) return Date.now() - (m.at || 0) > 18e4
       ? `<div class="msg it bad">That answer never came back. Send it again.</div>`
       : `<div class="msg it typing-msg">${esc(m.t)}</div>`;
-    let h = `<div class="msg it${m.bad ? ' bad' : ''}">${linkify(m.t)}</div>`;
+    let h = `<div class="msg it${m.bad ? ' bad' : m.warn ? ' warn' : ''}">${linkify(m.t)}</div>`;
     if (m.buttons && m.buttons.length) h += `<div class="chips">${m.buttons.map((b) => isUrl(b.value) ? `<a class="pick" href="${esc(b.value.trim())}" target="_blank" rel="noopener noreferrer">${esc(b.label)} ↗</a>` : `<button class="pick" type="button" data-say="${esc(b.value)}">${esc(b.label)}</button>`).join('')}</div>`;
     if (m.actions && m.actions.length) h += `<div class="plan" data-plan="${m.id}"><p class="label">The CEO wants to</p><ul>${m.actions.map((a) => `<li>${esc((ACT[a.type] || ((x) => x.type))(a))}</li>`).join('')}</ul>${m.done ? `<div class="result">${esc(m.done)}</div>` : `<div class="row"><button class="btn primary" type="button" data-approve="${m.id}">Approve</button><button class="btn" type="button" data-skip="${m.id}">No thanks</button></div>`}</div>`;
     if (m.project) h += `<div class="plan"><p class="label">Project brief</p><div class="result">${esc(m.project)}</div>${m.done ? `<div class="result" style="margin-top:6px">${esc(m.done)}</div>` : `<div class="row"><button class="btn primary" type="button" data-start="${m.id}">Start with the team</button><button class="btn" type="button" data-skip="${m.id}">Not now</button></div>`}</div>`;
@@ -1003,7 +1003,7 @@
       l.push({ me: 1, t: m }); l.push({ id, pending: 1, at: id, t: who + ' is working on it…' }); save(l); paint();
       const btn = f.querySelector('button'); if (btn) btn.disabled = true;
       try { const r = await api('talk', { body: { to, message: m, history } });
-        settle(id, { id, t: r.reply, buttons: r.buttons, actions: r.actions, prompt: r.prompt, project: r.project, bad: r.ok === false }, ep); }
+        settle(id, { id, t: r.reply, buttons: r.buttons, actions: r.actions, prompt: r.prompt, project: r.project, bad: r.ok === false || r.status === 'quota_out' || r.status === 'source_down', warn: r.status === 'partial' }, ep); }
       catch (x) { settle(id, { id, t: x.message, bad: 1 }, ep); }
       if (btn) btn.disabled = false;
       if (to.startsWith('agent:')) { load(); if (SNIPER(to.slice(6))) refreshQuota(); }

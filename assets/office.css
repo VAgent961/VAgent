@@ -120,6 +120,7 @@ details.more summary{cursor:pointer;font-size:14px;font-weight:500;padding:6px 0
 .msg.me{align-self:flex-end;background:var(--ink);color:var(--cream);border-bottom-right-radius:4px}
 .msg.it{align-self:flex-start;background:var(--card);border:1px solid var(--line);border-bottom-left-radius:4px}
 .msg.it.bad{border-color:rgba(255,122,112,.4)}
+.msg.it.warn{border-color:#D98E04}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-size:14px;font-weight:500}

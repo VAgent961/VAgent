@@ -71,7 +71,9 @@ Return ONLY JSON: {"reply":"...","project":""}`;
     const inst = await instance(env, instId), wf = (await summaries(env, inst)).find((w) => w.id === wfId);
     if (wf && wf.webhook) { // a real chat agent: send the message to its own webhook
       const r = await runWebhook(wf.webhook, { message: msg, from: data.owner, source: 'vagent-office' }, env.WEBHOOK_SECRET);
-      return json({ reply: r.output, buttons: r.buttons || [], actions: [], prompt: '', via: 'webhook', ok: r.ok });
+      // an unreachable or crashed agent gets a Retry chip (not after a timeout: it may still be running)
+      const buttons = r.status === 'source_down' && !(r.buttons || []).length ? [{ label: '↻ Retry', value: msg.slice(0, 160) }] : r.buttons || [];
+      return json({ reply: r.output, status: r.status, buttons, actions: [], prompt: '', via: 'webhook', ok: r.ok });
     }
     const runs = ((await call(env, inst, '/executions?limit=5&workflowId=' + encodeURIComponent(wfId))).data || []).map((r) => r.status + ' ' + (r.stoppedAt || r.startedAt));
     const dept = d.departments.find((x) => x.id === a.dept), team = dept && dept.teams.find((t) => t.id === a.team);
