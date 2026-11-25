@@ -706,6 +706,7 @@
       document.body.dataset.role = D.role || 'owner';
       if (D.role !== 'client') $('#btn-clients').style.display = '';
       $('#live-dot').className = 'dot ' + (D.errors.length ? 'err' : 'on'); $('#live-text').textContent = 'Live · ' + hhmm(new Date());
+      if (D.role !== 'client') $('#btn-netlify').style.display = '';
       if (D.role !== 'client') { $('#btn-approvals').style.display = ''; VApprovals.start({ toast }); }
       render(); handleBuilds();
     } catch (e) { console.error(e); $('#live-dot').className = 'dot err'; $('#live-text').textContent = 'Offline, retrying'; }
@@ -801,7 +802,7 @@
     const leadPickOpts = '<option value="">— no lead —</option>' + team.map((a) => `<option value="${esc(a.key)}" ${a.key === d.lead_key ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
     open(`<div class="d-head"><span class="avatar">${leadAvatarSvg}</span><div><h2 class="d-title">${leadTitle}</h2><div class="d-sub">${team.length} employees · ${can} can take tasks${d.mission ? '<br>' + esc(d.mission) : ''}</div></div></div>
       ${leadHook && SNIPER(leadAgent.key) ? sqHtml() : ''}
-      ${!isClient && /website/i.test(d.name) ? '<p class="label">Approvals</p><div class="ap-list" data-approvals></div>' : ''}
+      ${!isClient && /website/i.test(d.name) ? '<p class="label">Approvals</p><div class="ap-list" data-approvals></div><p class="label">Netlify account limits</p><div data-netlify></div>' : ''}
       ${isClient ? '' : `<div class="field"><label for="lead-pick">Lead</label><select class="input" id="lead-pick">${leadPickOpts}</select></div>`}
       <p class="label">Talk to the lead</p>${chatUI(leadTo, 'Ask the ' + d.name + ' lead…')}<div class="chips"><button class="pick" type="button" ${leadHook ? 'data-say="start"' : 'data-reset'}>▶ Start over</button>${leadHook && SNIPER(leadAgent.key) ? CHECK_SITE : ''}</div>
       <form id="f-task" class="field"><label for="task">Give the lead a task</label><textarea class="input" id="task" name="t" required placeholder="Example: check vagent.online and report anything broken" ${focusTask ? 'autofocus' : ''}></textarea>
@@ -820,6 +821,7 @@
       <div class="row"><button class="btn" type="submit">Save</button><button class="btn danger" type="button" id="del-dept">Delete department</button></div></form>`}`, 'dept:' + d.id);
     let color = d.color;
     if (inner.querySelector('[data-approvals]')) VApprovals.paint();
+    if (inner.querySelector('[data-netlify]')) VNetlify.paint();
     bindChat(leadTo, leadHook ? leadAgent.name : d.name + ' lead'); if (leadHook && SNIPER(leadAgent.key)) refreshQuota(true);
     if ($('#lead-pick')) $('#lead-pick').onchange = async (e) => {
       try { await api('departments', { body: { deptId: d.id, leadKey: e.target.value || '' } }); toast(e.target.value ? 'Lead set' : 'Lead cleared'); await load(); openDept(d.id, focusTask); } catch (x) { toast(x.message); }
@@ -873,6 +875,10 @@
     VApprovals.paint();
   }
   $('#btn-approvals').onclick = openApprovals;
+  $('#btn-netlify').onclick = () => {
+    open('<div class="d-head"><div><h2 class="d-title">Netlify limits</h2><div class="d-sub">PM Tech account pool</div></div></div><div data-netlify></div>', 'netlify', true);
+    VNetlify.paint();
+  };
   const taskBox = (r) => `<div class="box dark"><span class="label" style="color:#B0AEA5">Final result · ${esc(r.status)}</span><div class="result">${esc(r.final)}</div></div>`
     + r.results.map((x) => `<details class="item" style="display:block"><summary style="cursor:pointer">${x.ok ? '✓' : '✗'} ${esc(x.name)}</summary><div class="result" style="margin-top:8px">${esc(x.output)}</div></details>`).join('');
 

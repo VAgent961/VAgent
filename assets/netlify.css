@@ -1,0 +1,10 @@
+/* Netlify account pool card (netlify.js) */
+[data-netlify]{display:flex;flex-direction:column;gap:10px;flex:none}[data-netlify] p{margin:0;overflow-wrap:anywhere}
+.nf-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.nf-row{border:1px solid var(--line2);background:var(--card);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;min-width:0;font-size:14px}
+.nf-row header{display:flex;align-items:center;gap:10px}.nf-row header b{flex:1;min-width:0;overflow-wrap:anywhere}
+.nf-n{width:24px;height:24px;border-radius:50%;border:1px solid var(--line2);display:grid;place-items:center;font-size:12px;color:var(--muted);flex:none}
+.nf-badge{font-size:12px;font-weight:600;padding:3px 8px;border-radius:999px;border:1px solid var(--line2);color:var(--muted);white-space:nowrap}
+.nf-row.available .nf-badge{color:#8FD6A8;border-color:rgba(143,214,168,.4)}.nf-row.limit .nf-badge,.nf-row.token .nf-badge{color:var(--bad);border-color:currentColor}.nf-row.limit{border-color:var(--bad)}
+.nf-why{color:var(--bad);font-size:13px}.nf-warn{color:#F0C27A;font-size:13px}
+.nf-meter{height:6px;border-radius:3px;background:var(--sand);overflow:hidden}.nf-meter i{display:block;height:100%;background:var(--clay);transform-origin:left}
