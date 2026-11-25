@@ -468,3 +468,15 @@ html[data-zooming] #sky .sk-clouds i,html[data-zooming] #sky .sk-rain,html[data-
 @media (max-width:560px){.live{margin-left:0}.live .dot{margin-right:4px}.top .sky-pill{margin-left:6px}}
 @media (max-width:700px){.vh .d-title{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;font-size:20px}.vh-l{flex:1 1 100%}.vh-r{flex:1 1 100%}}
 input[type=checkbox],input[type=radio]{accent-color:#B5532F}
+
+/* PM Tech approvals */
+#btn-approvals{position:relative}.ap-count{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--clay);color:#fff;font-size:12px;line-height:20px;text-align:center}.ap-count[hidden]{display:none}
+.ap-list{display:flex;flex-direction:column;gap:12px;flex:none}
+.ap-card,.ap-row{border:1px solid var(--line2);background:var(--card);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.ap-card header,.ap-row header{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ap-badge{font-size:12px;font-weight:600;padding:3px 8px;border-radius:999px;border:1px solid var(--line2);color:var(--muted);white-space:nowrap}.ap-badge.pending{color:#F0C27A;border-color:rgba(240,194,122,.45)}.ap-badge.approved{color:#8FC79D;border-color:rgba(143,199,157,.45)}.ap-badge.rejected{color:var(--bad);border-color:rgba(255,122,112,.45)}
+.ap-msg{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.55;max-height:46vh;overflow-y:auto;background:var(--sand);border:1px solid var(--line);border-radius:10px;padding:12px}.ap-msg a{color:#F0946A}
+.ap-card textarea.input{min-height:76px;font-size:16px}
+.ap-actions{display:flex;flex-wrap:wrap;gap:8px}.ap-actions .btn{flex:1 1 110px}.drawer .ap-actions .btn.primary{flex:1 1 110px}
+.ap-err{margin:0;font-size:13px;color:var(--bad)}.ap-note{margin:0;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+.ap-done summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--muted);font-size:13px}.ap-done .ap-row{margin-bottom:8px}

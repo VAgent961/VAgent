@@ -706,6 +706,7 @@
       document.body.dataset.role = D.role || 'owner';
       if (D.role !== 'client') $('#btn-clients').style.display = '';
       $('#live-dot').className = 'dot ' + (D.errors.length ? 'err' : 'on'); $('#live-text').textContent = 'Live · ' + hhmm(new Date());
+      if (D.role !== 'client') { $('#btn-approvals').style.display = ''; VApprovals.start({ toast }); }
       render(); handleBuilds();
     } catch (e) { console.error(e); $('#live-dot').className = 'dot err'; $('#live-text').textContent = 'Offline, retrying'; }
     api('me').then((me) => { if (me.owners) renderOwners(me.owners); }).catch(() => {});
@@ -800,6 +801,7 @@
     const leadPickOpts = '<option value="">— no lead —</option>' + team.map((a) => `<option value="${esc(a.key)}" ${a.key === d.lead_key ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
     open(`<div class="d-head"><span class="avatar">${leadAvatarSvg}</span><div><h2 class="d-title">${leadTitle}</h2><div class="d-sub">${team.length} employees · ${can} can take tasks${d.mission ? '<br>' + esc(d.mission) : ''}</div></div></div>
       ${leadHook && SNIPER(leadAgent.key) ? sqHtml() : ''}
+      ${!isClient && /website/i.test(d.name) ? '<p class="label">Approvals</p><div class="ap-list" data-approvals></div>' : ''}
       ${isClient ? '' : `<div class="field"><label for="lead-pick">Lead</label><select class="input" id="lead-pick">${leadPickOpts}</select></div>`}
       <p class="label">Talk to the lead</p>${chatUI(leadTo, 'Ask the ' + d.name + ' lead…')}<div class="chips"><button class="pick" type="button" ${leadHook ? 'data-say="start"' : 'data-reset'}>▶ Start over</button>${leadHook && SNIPER(leadAgent.key) ? CHECK_SITE : ''}</div>
       <form id="f-task" class="field"><label for="task">Give the lead a task</label><textarea class="input" id="task" name="t" required placeholder="Example: check vagent.online and report anything broken" ${focusTask ? 'autofocus' : ''}></textarea>
@@ -817,6 +819,7 @@
       ${isClient ? '' : `<p class="label">Edit</p><form id="f-edit" class="field"><input class="input" name="n" value="${esc(d.name)}" aria-label="Department name" required><div class="sw">${DEPT_COLORS.map((c) => `<button type="button" aria-label="Color ${c}" aria-pressed="${c === d.color}" data-c="${c}" style="background:${c}"></button>`).join('')}</div>
       <div class="row"><button class="btn" type="submit">Save</button><button class="btn danger" type="button" id="del-dept">Delete department</button></div></form>`}`, 'dept:' + d.id);
     let color = d.color;
+    if (inner.querySelector('[data-approvals]')) VApprovals.paint();
     bindChat(leadTo, leadHook ? leadAgent.name : d.name + ' lead'); if (leadHook && SNIPER(leadAgent.key)) refreshQuota(true);
     if ($('#lead-pick')) $('#lead-pick').onchange = async (e) => {
       try { await api('departments', { body: { deptId: d.id, leadKey: e.target.value || '' } }); toast(e.target.value ? 'Lead set' : 'Lead cleared'); await load(); openDept(d.id, focusTask); } catch (x) { toast(x.message); }
@@ -865,6 +868,11 @@
     const history = async () => { try { const h = await api('tasks?deptId=' + d.id); $('#history').innerHTML = h.map((t) => `<details class="item" style="display:block"><summary style="cursor:pointer"><b style="font-weight:500">${esc(t.text.slice(0, 80))}</b> <small class="muted">· ${esc(t.status)} · ${ago(t.created_at)}</small></summary><div class="result" style="margin-top:8px">${esc(t.final || '')}</div></details>`).join('') || '<p class="empty">No tasks yet.</p>'; } catch { $('#history').innerHTML = ''; } };
     history();
   }
+  function openApprovals() {
+    open('<div class="d-head"><div><h2 class="d-title">Approvals</h2><div class="d-sub">PM Tech · same requests as Telegram</div></div></div><div class="ap-list" data-approvals></div>', 'approvals', true);
+    VApprovals.paint();
+  }
+  $('#btn-approvals').onclick = openApprovals;
   const taskBox = (r) => `<div class="box dark"><span class="label" style="color:#B0AEA5">Final result · ${esc(r.status)}</span><div class="result">${esc(r.final)}</div></div>`
     + r.results.map((x) => `<details class="item" style="display:block"><summary style="cursor:pointer">${x.ok ? '✓' : '✗'} ${esc(x.name)}</summary><div class="result" style="margin-top:8px">${esc(x.output)}</div></details>`).join('');
 
