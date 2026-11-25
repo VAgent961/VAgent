@@ -91,12 +91,13 @@ export async function runWebhook(wh, payload, secret) {
     const url = isGet ? wh.url + '?' + new URLSearchParams(Object.entries(payload).map(([k, v]) => [k, String(v)])) : wh.url;
     const r = await fetch(url, { method: wh.method || 'POST', headers: { ...(isGet ? {} : { 'Content-Type': 'application/json' }), ...(secret ? { 'X-VAgent-Secret': secret } : {}) }, body: isGet ? undefined : JSON.stringify(payload), signal: AbortSignal.timeout(90000) });
     const text = (await r.text()).slice(0, 200000); // parse the whole answer; only the shown text is capped
-    let output = text, buttons = [], status = '';
+    let output = text, buttons = [], status = '', profile = null;
     try { const j = JSON.parse(text); const v = Array.isArray(j) ? j[0] : j; output = typeof v === 'string' ? v : (v && (v.output || v.text || v.reply || v.message || v.answer)) || JSON.stringify(j, null, 1);
       if (v && /^(ok|quota_out|source_down|partial|private|not_found)$/.test(v.status)) status = v.status;
+      if (v && v.profile && typeof v.profile === 'object') profile = v.profile;
       if (v && Array.isArray(v.buttons)) buttons = v.buttons.slice(0, 40).map((b) => ({ label: String((b && (b.label ?? b.value)) ?? '').slice(0, 40), value: String((b && (b.value ?? b.label)) ?? '').slice(0, 160) })).filter((b) => b.label && b.value); } catch {}
     output = unwrap(output);
-    return { ok: r.ok, output: String(output || (r.ok ? 'Done.' : 'Failed ' + r.status)).slice(0, 60000), buttons, status: status || (r.ok ? 'ok' : 'source_down') };
+    return { ok: r.ok, output: String(output || (r.ok ? 'Done.' : 'Failed ' + r.status)).slice(0, 60000), buttons, profile, status: status || (r.ok ? 'ok' : 'source_down') };
   } catch (e) {
     const late = /timeout|abort/i.test(String(e));
     return { ok: false, late, buttons: [], status: late ? 'partial' : 'source_down', output: late ? 'Still working after 90s. Check it in n8n.' : 'Could not reach it.' };

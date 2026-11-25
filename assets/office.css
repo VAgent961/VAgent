@@ -500,3 +500,23 @@ input[type=checkbox],input[type=radio]{accent-color:#B5532F}
 .run li.on::before{background:#B5532F;border-color:#B5532F;animation:run-pulse 1.2s ease-in-out infinite}
 @keyframes run-pulse{50%{opacity:.35}}
 @media (prefers-reduced-motion:reduce){.run li.on::before{animation:none}}
+
+/* Sniper drawer tabs + Instagram Lookup */
+.sn-tabs .pick{min-height:44px;padding:0 16px;font-size:13.5px}
+.sn-panel{display:flex;flex-direction:column;gap:10px;min-width:0;flex:none}
+.sn-panel[hidden]{display:none}
+.ig-form{flex-wrap:nowrap}.ig-form .input{flex:1;min-width:0;font-size:16px}.ig-form .btn{flex:none}
+[data-ig-out]{display:flex;flex-direction:column;gap:10px;overflow-wrap:anywhere}
+.ig-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--line);border-radius:10px}
+.ig-status.private{border-color:#D98E04}.ig-status.not_found,.ig-status.quota_out,.ig-status.source_down{border-color:rgba(255,122,112,.4)}
+.ig-status span{color:var(--muted)}.ig-status .btn{margin-left:auto}
+.ig-card,.ig-post{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:12px 14px}
+.ig-card h3,.ig-card p,.ig-post p{margin:0}
+.ig-links{display:flex;gap:14px;flex-wrap:wrap;margin-top:4px!important}
+[data-ig-out] a{color:#B5532F;font-weight:600}
+.ig-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.ig-stats dt{font-size:12px;color:var(--muted)}.ig-stats dd{margin:0;font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+.ig-tags{display:flex;flex-wrap:wrap;gap:6px}.ig-tags span{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px}
+.ig-text{margin:0;white-space:pre-wrap;font-size:14px;line-height:1.5;unicode-bidi:plaintext}
+.ig-list{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:14px}.ig-list small{display:block;color:var(--muted)}
+.ig-post{display:grid;gap:8px}.ig-post header{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted)}

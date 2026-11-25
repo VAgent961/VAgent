@@ -761,12 +761,13 @@
     } else inner.innerHTML = head + (d.runnable && SNIPER(key) ? sqHtml() : '') + (PMTECH(a) ? NF_BAR : '')
       + (d.canRun ? `<button class="btn primary" type="button" id="run-now">▶ Run now</button>` : '')
       + leadRow
+      + snOpen(d.runnable && SNIPER(key))
       + `<p class="label">Talk to ${esc(d.name)}</p>`
       + chatUI('agent:' + key, 'Ask it something…')
-      + `<div class="chips"><button class="pick" type="button" ${d.runnable ? 'data-say="start"' : flow ? `data-flow="${esc(flow.key)}"` : 'data-reset'}>▶ Start over</button>${d.runnable && SNIPER(key) ? CHECK_SITE : ''}</div>` + `<p class="help">${how}</p>`
+      + `<div class="chips"><button class="pick" type="button" ${d.runnable ? 'data-say="start"' : flow ? `data-flow="${esc(flow.key)}"` : 'data-reset'}>▶ Start over</button>${d.runnable && SNIPER(key) ? CHECK_SITE : ''}</div>` + `<p class="help">${how}</p>` + snClose(d.runnable && SNIPER(key))
       + deptRow + stepsRuns;
     // Voice Receptionist = Customers & Clients only (test calls: the public pages); every other agent gets its chat
-    if (VOICE && window.VoiceClients) VoiceClients.mount(inner.querySelector('#voice-mount'), { api, toast, esc, ago }); else { bindChat('agent:' + key, d.name); refreshQuota(true); if (inner.querySelector('[data-netlify]')) VNetlify.paint(); }
+    if (VOICE && window.VoiceClients) VoiceClients.mount(inner.querySelector('#voice-mount'), { api, toast, esc, ago }); else { bindChat('agent:' + key, d.name); snBind(key); refreshQuota(true); if (inner.querySelector('[data-netlify]')) VNetlify.paint(); }
     const rn = () => { const n = prompt('New name for this agent (empty = its n8n name):', d.name); if (n === null) return; api('agent', { body: { key, action: 'rename', name: n } }).then(async () => { toast('Renamed'); await load(); openAgent(key); }).catch((x) => toast(x.message)); };
     $('#rename').onclick = rn;
     const saveAssign = async () => { try { await api('agent', { body: { key, action: 'assign', deptId: $('#dept').value || null, teamId: $('#team').value || null } }); toast('Moved'); load(); } catch (x) { toast(x.message); } };
@@ -803,7 +804,7 @@
       ${leadHook && SNIPER(leadAgent.key) ? sqHtml() : ''}${!isClient && /website/i.test(d.name) ? NF_BAR : ''}
       ${!isClient && /website/i.test(d.name) ? '<p class="label">Approvals</p><div class="ap-list" data-approvals></div>' : ''}
       ${isClient ? '' : `<div class="field"><label for="lead-pick">Lead</label><select class="input" id="lead-pick">${leadPickOpts}</select></div>`}
-      <p class="label">Talk to the lead</p>${chatUI(leadTo, 'Ask the ' + d.name + ' lead…')}<div class="chips"><button class="pick" type="button" ${leadHook ? 'data-say="start"' : 'data-reset'}>▶ Start over</button>${leadHook && SNIPER(leadAgent.key) ? CHECK_SITE : ''}</div>
+      ${snOpen(leadHook && SNIPER(leadAgent.key))}<p class="label">Talk to the lead</p>${chatUI(leadTo, 'Ask the ' + d.name + ' lead…')}<div class="chips"><button class="pick" type="button" ${leadHook ? 'data-say="start"' : 'data-reset'}>▶ Start over</button>${leadHook && SNIPER(leadAgent.key) ? CHECK_SITE : ''}</div>${snClose(leadHook && SNIPER(leadAgent.key))}
       <form id="f-task" class="field"><label for="task">Give the lead a task</label><textarea class="input" id="task" name="t" required placeholder="Example: check vagent.online and report anything broken" ${focusTask ? 'autofocus' : ''}></textarea>
       <button class="btn primary" type="submit">Send to the team</button><p class="help">The lead sends it to every agent here that has a webhook, waits for them, and gives you one final result.</p></form>
       <div id="task-out"></div>
@@ -821,7 +822,7 @@
     let color = d.color;
     if (inner.querySelector('[data-approvals]')) VApprovals.paint();
     if (inner.querySelector('[data-netlify]')) VNetlify.paint();
-    bindChat(leadTo, leadHook ? leadAgent.name : d.name + ' lead'); if (leadHook && SNIPER(leadAgent.key)) refreshQuota(true);
+    bindChat(leadTo, leadHook ? leadAgent.name : d.name + ' lead'); if (leadHook) snBind(leadAgent.key); if (leadHook && SNIPER(leadAgent.key)) refreshQuota(true);
     if ($('#lead-pick')) $('#lead-pick').onchange = async (e) => {
       try { await api('departments', { body: { deptId: d.id, leadKey: e.target.value || '' } }); toast(e.target.value ? 'Lead set' : 'Lead cleared'); await load(); openDept(d.id, focusTask); } catch (x) { toast(x.message); }
     };
@@ -959,7 +960,21 @@
       $('.sq-acc', el).onclick = () => { const o = el.classList.toggle('open'); $('.sq-acc', el).setAttribute('aria-expanded', o); };
     } catch (e) { const el2 = $('#sq'); if (el2) { el2.className = 'sq bad'; el2.innerHTML = `<span class="sq-msg">⚠ SerpApi quota unavailable: ${esc(e.message)}</span>`; } }
   }
-  const SNIPER = (k) => !!k && ((D && D.departments) || []).some((x) => x.lead_key === k && /sniper/i.test(x.name)), CHECK_SITE = '<button class="pick" type="button" data-say="build: latest">🔗 Check the website</button><button class="pick" type="button" data-say="ig:">🔎 Instagram lookup</button>';
+  const SNIPER = (k) => !!k && ((D && D.departments) || []).some((x) => x.lead_key === k && /sniper/i.test(x.name)), CHECK_SITE = '<button class="pick" type="button" data-say="build: latest">🔗 Check the website</button>';
+  // Sniper drawers have two tabs: the hunt chat and Instagram Lookup (iglookup.js), which stays out of the chat.
+  const IG_INPUT = /^(ig:|@[A-Za-z0-9._]{1,30}$|(https?:\/\/)?(www\.|m\.)?(instagram\.com|instagr\.am)\/)/i;
+  const snOpen = (on) => on && D.role !== 'client'
+    ? '<div class="chips sn-tabs" role="tablist"><button class="pick" type="button" role="tab" data-sn-tab="hunt" aria-selected="true" aria-pressed="true">Hunt chat</button><button class="pick" type="button" role="tab" data-sn-tab="ig" aria-selected="false" aria-pressed="false">Instagram Lookup</button></div><div data-sn="hunt" class="sn-panel" role="tabpanel">' : '';
+  const snClose = (on) => on && D.role !== 'client' ? '</div><div data-sn="ig" class="sn-panel" role="tabpanel" hidden></div>' : '';
+  const snShow = (tab) => {
+    inner.querySelectorAll('[data-sn-tab]').forEach((b) => { const on = b.dataset.snTab === tab; b.setAttribute('aria-selected', on); b.setAttribute('aria-pressed', on); });
+    inner.querySelectorAll('[data-sn]').forEach((p) => { p.hidden = p.dataset.sn !== tab; });
+  };
+  function snBind(key) {
+    const panel = inner.querySelector('[data-sn="ig"]'); if (!panel) return;
+    VIgLookup.mount(panel, { api, agent: key });
+    inner.querySelectorAll('[data-sn-tab]').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); snShow(b.dataset.snTab); }; });
+  }
   document.addEventListener('submit', (e) => { if (e.target && e.target.id === 'f-chat') e.preventDefault(); }, true);
   let pendingSay = null, chatOpen = null; // chatOpen: the chat on screen, so a delivered website link shows at once
   const store = { get: (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v.slice(-30))); } catch {} } };
@@ -1052,6 +1067,8 @@
     chatOpen = { to, paint };
     const settle = (id, entry, ep) => { if (ep !== undefined && ep !== epoch) return; const l = log(), i = l.findIndex((x) => x.id === id); if (i >= 0) l[i] = entry; else l.push(entry); save(l); paint(); };
     const send = async (m) => {
+      // an Instagram handle or link typed here opens the lookup tab instead of going into the hunt chat
+      if (inner.querySelector('[data-sn="ig"]') && IG_INPUT.test(m)) { snShow('ig'); if (!/^ig:\s*$/i.test(m)) VIgLookup.run(m); return; }
       const id = Date.now(), ep = epoch;
       const l = log(); const history = l.slice(-8).map((x) => ({ me: !!x.me, t: x.t }));
       // the pending bubble is saved too, so it is still there if the drawer is closed and reopened
