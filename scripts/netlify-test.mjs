@@ -15,4 +15,8 @@ assert.equal(v.accounts[0].status, 'available'); assert.equal(v.accounts[0].last
 v = view({ ...snap, accounts: [acc('main', { periodStart: ago(5) })] }, [], [{ step: 'Netlify', message: msg, createdAt: ago(10) }], now);
 assert.equal(v.accounts[0].status, 'available');
 assert.equal(view(snap, null, null, now + 3600000).stale, true);
+// Netlify's own wording when a build is skipped for lack of credits
+const skipped = 'Netlify account: b2 - FAILOVER used. Problems: main build: Skipped due to account credit usage exceeded';
+v = view(snap, [{ account: 'b2', status: 'ready', updatedAt: ago(1), detail: skipped }], [{ step: 'Netlify', message: skipped, createdAt: ago(1) }], now);
+assert.deepEqual(v.accounts.slice(0, 2).map((a) => a.status), ['limit', 'available']);
 console.log('netlify card logic ok');

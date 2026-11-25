@@ -1,6 +1,6 @@
 // Pure logic for the Netlify pool card (tested by scripts/netlify-test.mjs).
 const STALE = 25 * 60000; // the status workflow runs every 10 minutes
-const LIMIT = /HTTP 402|(usage|credits?|bandwidth|build.?minutes?|plan|account|team|deploy|site|project)s?[ _-]*(limit|quota)|(limit|quota)[ _-]*(reached|exceeded)|exceeded.{0,40}(limit|quota|usage|credit|bandwidth)|out of credits|insufficient credits/i;
+const LIMIT = /HTTP 402|(usage|credits?|bandwidth|build.?minutes?|plan|account|team|deploy|site|project)s?[ _-]*(limit|quota)|(limit|quota)[ _-]*(reached|exceeded)|exceeded.{0,40}(limit|quota|usage|credit|bandwidth)|(usage|credits?|bandwidth|build.?minutes?)[ _-]+(usage[ _-]+)?exceeded|out of credits|insufficient credits/i;
 const kindOf = (text) => (LIMIT.test(text) ? 'limit' : /HTTP 40[13]|credential/i.test(text) ? 'auth' : /HTTP 429/.test(text) ? 'rate' : 'other');
 
 // "... Problems: main upload: HTTP 402 ...; b2 find: HTTP 401 ..." (written by the pool) -> one entry per account
