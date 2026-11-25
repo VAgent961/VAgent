@@ -8,3 +8,6 @@
 .nf-row.available .nf-badge{color:#8FD6A8;border-color:rgba(143,214,168,.4)}.nf-row.limit .nf-badge,.nf-row.token .nf-badge{color:var(--bad);border-color:currentColor}.nf-row.limit{border-color:var(--bad)}
 .nf-why{color:var(--bad);font-size:13px}.nf-warn{color:#F0C27A;font-size:13px}
 .nf-meter{height:6px;border-radius:3px;background:var(--sand);overflow:hidden}.nf-meter i{display:block;height:100%;background:var(--clay);transform-origin:left}
+/* no room for a sixth top-bar button on phones: the card opens from the Approvals drawer there */
+.nf-open{display:none;flex:none}
+@media (max-width:560px){#btn-netlify{display:none!important}.nf-open{display:block;margin-bottom:12px;min-height:44px}}

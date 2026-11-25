@@ -871,8 +871,9 @@
     history();
   }
   function openApprovals() {
-    open('<div class="d-head"><div><h2 class="d-title">Approvals</h2><div class="d-sub">PM Tech · same requests as Telegram</div></div></div><div class="ap-list" data-approvals></div>', 'approvals', true);
+    open('<div class="d-head"><div><h2 class="d-title">Approvals</h2><div class="d-sub">PM Tech · same requests as Telegram</div></div></div><button class="btn nf-open" type="button">🌐 Netlify limits</button><div class="ap-list" data-approvals></div>', 'approvals', true);
     VApprovals.paint();
+    $('.nf-open').onclick = () => $('#btn-netlify').click();
   }
   $('#btn-approvals').onclick = openApprovals;
   $('#btn-netlify').onclick = () => {
