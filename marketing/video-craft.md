@@ -6,6 +6,9 @@
 4. `worlds/<world>.json`: tail (pacing), sound (bpm, chords, arp, instrument, drums, transition sound, base note). New tempo, instrument and transition sound; add a synth in `sfx.py` if needed.
 5. `node tools/marketing-render/lint.test.mjs`, check still frames, push. Server: `check_timeline.py` -> render -> `qa_video.py`; a FAIL never reaches review.
 
+A render never stops for a missing world: `newworld.py` + `worlds/auto.mjs` generate one from the post id (repeatable). Hand-made worlds are still the standard.
+Deploy the site before pushing renderer changes; the job waits until the new code answers.
+
 ## Fixed
 - Vee: the blocky terracotta pixel pet (12x8 grid, `character.js`), no accessories. Official lockup top-left, "AI character" label.
 - Voice: Kokoro `af_heart` 1.05, not processed. Music 20 dB under speech, 12 dB in gaps; -14 LUFS plus limiter.

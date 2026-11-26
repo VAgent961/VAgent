@@ -3,6 +3,7 @@ import base64, difflib, json, os, re, subprocess, sys, wave
 from pathlib import Path
 import numpy as np
 from music import mix
+import newworld
 
 FPS = 30
 ROOT = Path(__file__).resolve().parent
@@ -111,15 +112,21 @@ def master(wav):
     return chain(gain + (-14 - float(json.loads(log[log.rindex("{"):log.rindex("}") + 1])["input_i"])))
 
 def direction(post):
-    """No default look: every video names its own world, and no two drafts may share one."""
-    name = (post.get("direction") or {}).get("world", "")
+    """Every video gets its own world, and a render never stops for want of one: the post's world, else the
+    repo draft's, else (or when another draft owns that name) one generated from the post id."""
+    drafts = {p["id"]: p for p in (json.loads(f.read_text()) for f in (ROOT / "posts").glob("*.json"))}
+    draft = drafts.get(post["id"], {})
+    d = post.get("direction") or draft.get("direction") or {}
+    name = d.get("world") or ""
+    taken = any(p["id"] != post["id"] and p.get("direction", {}).get("world") == name for p in drafts.values())
+    if taken or name in ("lib", "auto") or not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,40}", name):
+        name = f"auto-{post['id']}"[:41]
     files = [ROOT / "worlds" / f"{name}.mjs", ROOT / "worlds" / f"{name}.json"]
-    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,40}", name) or name == "lib" or not all(f.is_file() for f in files):
-        raise RuntimeError(f"no direction: add worlds/{name or '<name>'}.mjs and .json for this video")
-    others = [p["id"] for p in (json.loads(f.read_text()) for f in (ROOT / "posts").glob("*.json"))
-              if p["id"] != post["id"] and p.get("direction", {}).get("world") == name]
-    if others:
-        raise RuntimeError(f"world {name} already belongs to {others[0]}: every video needs its own")
+    if not all(f.is_file() for f in files):
+        newworld.write(name)
+    title = post["scenes"][0]["title"]
+    post["direction"] = {"world": name, "concept": d.get("concept") or title}
+    post["keyword"] = post.get("keyword") or draft.get("keyword") or re.sub(r"[^A-Z0-9]", "", title.upper().split()[-1]) or "DEMO"
     return name, json.loads(files[1].read_text())
 
 def render_video(post, out, tmp):

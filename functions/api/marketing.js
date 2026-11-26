@@ -6,7 +6,7 @@ export async function onRequestGet({ request, env, data }) {
   if (data.role !== 'owner') return bad('Owners only', 403);
   const id = new URL(request.url).searchParams.get('video');
   if (id) return mk.video(env, request, id);
-  const posts = await sql(env, `SELECT id, post, version, status, slot, approved_by, dry_run_at, ig_media_id, error, video_sha IS NOT NULL AS has_video FROM marketing_posts
+  const posts = await sql(env, `SELECT id, post, version, status, slot, approved_by, dry_run_at, ig_media_id, error, attempts, video_sha IS NOT NULL AS has_video FROM marketing_posts
     ORDER BY array_position(ARRAY['review','failed','publishing','scheduled','rendering','published','declined'], status), slot, created_at, id`);
   const user = await mk.setting(env, 'ig_user');
   return json({ posts, live: (await mk.setting(env, 'live')) === 'true', instagram: user ? JSON.parse(user).name : null });
@@ -19,6 +19,7 @@ export async function onRequestPost({ request, env, data }) {
   if (b.action === 'approve') err = await mk.approve(env, id, b.version, who);
   else if (b.action === 'decline') err = await mk.decline(env, id, who);
   else if (b.action === 'edit') err = await mk.edit(env, id, b.version, b.post, who);
+  else if (b.action === 'retry') err = await mk.retry(env, id, b.version, who);
   else if (b.action === 'connect') {
     try { await mk.connect(env, String(b.token || '').trim(), who); } catch (e) { err = 'Instagram did not accept the token: ' + e.message; }
   } else if (b.action === 'live') {

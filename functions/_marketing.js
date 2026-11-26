@@ -66,7 +66,7 @@ export async function decline(env, id, who) {
 export async function edit(env, id, version, input, who) {
   const row = await one(env, id);
   if (!row || !['rendering', 'review', 'scheduled', 'failed'].includes(row.status) || Number(row.version) !== Number(version)) return 'This post changed. Reload first.';
-  const next = { ...row.post, ...input, id, direction: row.post.direction }; // the direction belongs to the repo
+  const next = { ...row.post, ...input, id, direction: row.post.direction || autoDirection({ ...row.post, id }) }; // the direction belongs to the repo
   const err = lint(next) || await taken(env, next); if (err) return err;
   const post = clean(next);
   const redo = !row.video_sha || row.status === 'failed' || JSON.stringify(post.scenes) !== JSON.stringify(clean(row.post).scenes);
@@ -86,34 +86,48 @@ async function taken(env, p) {
 }
 
 // ── renderer (GitHub Actions) ──
+// A post without its own direction gets one named after it; the renderer generates the world files.
+const autoDirection = (p) => ({ world: `auto-${p.id}`.slice(0, 41), concept: String(p.scenes?.[0]?.title || p.id).slice(0, 200) });
+// Fills what an older row is missing from the repo draft. A post the owner edited keeps their wording.
+function heal(row, draft) {
+  const old = row.post;
+  if (old.keyword && old.info && old.direction) return old;
+  if (!draft || lint(draft)) return { ...old, direction: old.direction || autoDirection({ ...old, id: row.id }) };
+  const next = clean(draft);
+  if (!row.edited) return next;
+  const ask = draft.caption.split('\n\n').at(-1);
+  return { ...next, scenes: [...old.scenes.slice(0, -1), next.scenes.at(-1)], caption: `${old.caption}\n\n${ask}`, hashtags: old.hashtags };
+}
+// Unpublished: waiting, or failed while rendering (a failed publish is never retried by itself).
+const OPEN = "(status IN ('rendering', 'review', 'scheduled') OR (status = 'failed' AND video_sha IS NULL AND publish_started_at IS NULL))";
+const RESET = "version = version + 1, status = 'rendering', slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, ig_container_id = NULL, publish_started_at = NULL, error = NULL, attempts = 0, video_sha = NULL, updated_at = now()";
+export async function retry(env, id, version, who) {
+  const r = await sql(env, `UPDATE marketing_posts SET ${RESET} WHERE id = $1 AND version = $2 AND status = 'failed' AND ${OPEN} RETURNING id`, [id, version]);
+  if (!r.length) return 'This post cannot be rendered again. Reload first.';
+  await dropMedia(env, id); await log(env, id, 'retry', who); return '';
+}
 export async function seed(env, posts) {
-  for (const p of posts) {
+  for (let p of posts) {
+    if (p?.id && p.scenes && !p.direction) p = { ...p, direction: autoDirection(p) };
     if (p?.id && await one(env, String(p.id))) continue;
     const err = lint(p) || await taken(env, p);
     if (err) { await log(env, String(p?.id), 'rejected_seed', err); continue; }
     await sql(env, 'INSERT INTO marketing_posts (id, post) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING', [p.id, JSON.stringify(clean(p))]);
   }
 }
-// A new renderer look re-renders every unpublished video. Like any edit, it clears the approval.
-// Rows also pick up the repo draft; a post the owner edited keeps their wording and only gains what is missing.
+// Runs on every renderer check. Re-renders (clearing approval, like any edit) when the look changed, or when a row
+// was missing its keyword or direction and could be completed.
 export async function relook(env, look, drafts = []) {
-  if (!/^[a-z0-9-]{1,40}$/.test(look || '') || (await setting(env, 'look')) === look) return;
-  const rows = await sql(env, "SELECT id, post, EXISTS (SELECT 1 FROM marketing_events e WHERE e.post_id = p.id AND e.event = 'edited') AS edited FROM marketing_posts p WHERE status IN ('rendering', 'review', 'scheduled')");
-  await setSetting(env, `backup:${look}`, JSON.stringify(rows)); // the posts as they were
-  for (const r of rows) {
-    const draft = drafts.find((d) => d?.id === r.id);
-    let post = r.post;
-    if (draft && !lint(draft)) {
-      post = clean(draft);
-      if (r.edited) {
-        const ask = draft.caption.split('\n\n').at(-1);
-        post = { ...post, scenes: [...r.post.scenes.slice(0, -1), post.scenes.at(-1)], caption: `${r.post.caption}\n\n${ask}`, hashtags: r.post.hashtags };
-      }
-    }
-    await sql(env, `UPDATE marketing_posts SET post = $2, version = version + 1, status = 'rendering', slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, ig_container_id = NULL, publish_started_at = NULL, error = NULL, attempts = 0, video_sha = NULL, updated_at = now() WHERE id = $1 AND status IN ('rendering', 'review', 'scheduled')`, [r.id, JSON.stringify(post)]);
-    await dropMedia(env, r.id); await log(env, r.id, 'new_look', look);
+  if (!/^[a-z0-9-]{1,40}$/.test(look || '')) return;
+  const changed = (await setting(env, 'look')) !== look;
+  const rows = await sql(env, `SELECT id, post, EXISTS (SELECT 1 FROM marketing_events e WHERE e.post_id = p.id AND e.event = 'edited') AS edited FROM marketing_posts p WHERE ${OPEN}`);
+  const todo = rows.map((r) => ({ ...r, next: heal(r, drafts.find((d) => d?.id === r.id)) })).filter((r) => changed || JSON.stringify(r.next) !== JSON.stringify(r.post));
+  if (todo.length) await setSetting(env, `backup:${look}:${Date.now()}`, JSON.stringify(todo.map(({ id, post }) => ({ id, post })))); // the posts as they were
+  for (const r of todo) {
+    const done = await sql(env, `UPDATE marketing_posts SET post = $2, ${RESET} WHERE id = $1 AND ${OPEN} RETURNING id`, [r.id, JSON.stringify(r.next)]);
+    if (done.length) { await dropMedia(env, r.id); await log(env, r.id, changed ? 'new_look' : 'healed', look); }
   }
-  await setSetting(env, 'look', look);
+  if (changed) await setSetting(env, 'look', look);
 }
 export const queue = (env) => sql(env, "SELECT id, version, post FROM marketing_posts WHERE status = 'rendering' ORDER BY created_at, id LIMIT 10");
 export async function putChunk(env, id, version, n, bytes) {

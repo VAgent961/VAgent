@@ -9,6 +9,7 @@
 - Only drafts are automated; claims about built agents need an owner's check at review (say "ready", never invent clients or numbers; demo data only).
 
 - Every video has its own world (look, layout, camera, transition, sound) and a 1-2 word comment keyword. The post record (`marketing_posts.post`) holds `keyword`, `info {title, summary}` and `direction`; the future comment auto-reply reads them. Rules: `marketing/video-craft.md`. The auto-reply is not built yet.
+- Failed renders show their error on /marketing, retry up to 3 times, then offer "Render again". Rows missing a keyword or direction are completed from the repo draft on the next render check.
 
 ## How it works
 `drafts in repo -> HQ queue (Neon) -> render job (GitHub Actions) -> HQ /marketing review -> n8n tick -> Instagram`

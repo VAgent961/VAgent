@@ -5,7 +5,7 @@ from pathlib import Path
 
 HQ = "https://vagent.online/hook/marketing"
 UA = "vagent-marketing-render"
-LOOK = "worlds-1"  # change when the look changes: HQ re-renders unpublished videos, which need approval again
+LOOK = "worlds-2"  # change when the look changes: HQ re-renders unpublished videos, which need approval again
 
 def http(url, data=None, headers=None):
     req = urllib.request.Request(url, data=data, headers={"User-Agent": UA, **(headers or {})})
@@ -37,7 +37,12 @@ def send(body, raw, query):
 def main():
     if sys.argv[1] == "check":
         posts = [json.loads(f.read_text()) for f in sorted((Path(__file__).parent / "posts").glob("*.json"))]
-        hq({"action": "seed", "posts": posts, "look": LOOK})
+        for attempt in range(20):  # a push can arrive before the new site code is live everywhere: wait for it
+            if hq({"action": "seed", "posts": posts, "look": LOOK}).get("sync") == 2:
+                break
+            if attempt == 19:
+                raise RuntimeError("HQ is still running old code: deploy the site first")
+            time.sleep(15)
         n = len(hq({"action": "queue"})["posts"])
         print("queued:", n)
         with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
@@ -58,6 +63,7 @@ def main():
             print("ready for review:", item["id"], len(data))
         except Exception as e:  # report to HQ and carry on with the next post
             failed += 1; print("failed:", item["id"], type(e).__name__, e)
+            print(f"::error title=Render {item['id']}::" + f"{type(e).__name__}: {e}".replace("%", "%25").replace("\n", "%0A")[:900], flush=True)
             hq({"action": "fail", "why": f"{type(e).__name__}: {e}", **ref})
     sys.exit(1 if failed else 0)
 
