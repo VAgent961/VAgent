@@ -140,7 +140,7 @@ function seek(i) {
   const talking = k < s.voice, face = shot === 'approve' && k > s.dur * .68 ? 'joy' : shot === 'hook' && k > 1.4 ? 'worried' : g[4];
   draw({ t, pose: g[3], from: prev[3], k: clamp(k / .45), face, level: talking ? level : 0 });
   const lk = $('lockup'); lk.style.display = shot === 'cta' ? 'block' : 'none'; lk.style.opacity = out((k - .2) / .4);
-  $('cap').style.top = shot === 'cta' ? '1455px' : '1425px';
+  $('cap').style.top = shot === 'cta' ? '1455px' : shot === 'hook' ? '1425px' : '1445px';
   const title = $('title'), a = back(k / .45);
   title.textContent = s.title; title.style.opacity = clamp(k / .15); title.style.transform = `translateY(${(1 - a) * 50}px) scale(${.9 + .1 * a})`;
   // kinetic captions: short groups, the spoken word is highlighted
