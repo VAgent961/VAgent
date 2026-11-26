@@ -88,13 +88,15 @@
     if (!p) return;
     const last = p.steps[p.steps.length - 1], age = Math.round((Date.now() - new Date(last.at).getTime()) / 60000);
     const over = /^(PM Tech|Request Client Approval)$/.test(last.step), stopped = /STOPPED/.test(last.text);
-    const state = stopped ? ['bad', 'Stopped'] : over ? ['', 'Waiting for you'] : age >= 4 ? ['bad', 'No update for ' + age + ' min'] : ['on', 'Working'];
+    const isLive = over && /WEBSITE IS LIVE|Go-live complete/i.test(last.text);
+    const state = stopped ? ['bad', 'Stopped'] : isLive ? ['on', 'Live'] : over ? ['', 'Waiting for you'] : age >= 4 ? ['bad', 'No update for ' + age + ' min'] : ['on', 'Working'];
     const line = (s) => s.text.split('\n').find((x) => x.trim()) || '';
     const html = `<header><b>Live build</b><span class="pm-state ${state[0]}">${state[1]}</span></header><p class="help">${esc(p.project)}</p><ol>${p.steps.map((s) => `<li><time>${new Date(s.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</time><span><b>${esc(s.step)}</b> ${linked(line(s).slice(0, 220))}</span></li>`).join('')}</ol>`
       + (over ? `<details><summary>Latest message</summary><div class="ap-msg">${linked(last.text)}</div></details>` : '');
     if (el._h === html) return;
     const open = el.querySelector('details')?.open;
     el._h = html; el.innerHTML = html;
+    el.querySelector('ol').scrollTop = el.querySelector('ol').scrollHeight;
     if (open && el.querySelector('details')) el.querySelector('details').open = true;
   }
   function paint() {
