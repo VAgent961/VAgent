@@ -39,7 +39,7 @@ export async function onRequestPost({ request, env, data }) {
   const platform = pub.PLATFORMS.includes(b.platform) ? b.platform : 'instagram';
   let err = '', notice;
   try {
-    if (b.action === 'approve') { err = await mk.approve(env, id, b.version, who, pub.defaultTargets(await pub.connected(env))); if (!err) notice = 'Approved. The post moved to "Approved, waiting for their time" below.'; }
+    if (b.action === 'approve') { err = await mk.approve(env, id, b.version, who, pub.defaultTargets(await pub.connected(env))); if (!err) notice = 'Approved. The post is now in the Approved tab.'; }
     else if (b.action === 'decline') err = await mk.decline(env, id, who);
     else if (b.action === 'edit') err = await mk.edit(env, id, b.version, b.post, who);
     else if (b.action === 'retry') err = await mk.retry(env, id, b.version, who);

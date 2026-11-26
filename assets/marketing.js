@@ -7,9 +7,10 @@
   const NAMES = { instagram: 'Instagram', tiktok: 'TikTok' };
   const STATE = { starting: 'starting', processing: 'processing', publishing: 'publishing', published: 'published', failed: 'failed', dry_run: 'dry run, not posted' };
   const check = (label, checked, onchange, disabled) => el('label', { className: 'check' }, el('input', { type: 'checkbox', checked, disabled: !!disabled, onchange }), label);
-  async function send(payload) {
+  async function send(payload, answered) {
     $('msg').textContent = ''; $('msg').className = '';
     const r = await fetch('/api/marketing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    answered?.();
     if (r.status === 401) return signedOut();
     if (!r.ok) { $('msg').textContent = (await r.json().catch(() => ({}))).error || 'Something went wrong.'; $('msg').scrollIntoView({ block: 'nearest' }); return false; }
     const d = await r.json().catch(() => ({}));
@@ -45,7 +46,61 @@
   }
   // datetime-local value in Beirut time
   const local = (s) => new Date(s).toLocaleString('sv-SE', { timeZone: 'Asia/Beirut' }).slice(0, 16).replace(' ', 'T');
-  const GROUPS = { review: 'Waiting for your approval', failed: 'Failed', publishing: 'Publishing now', scheduled: 'Approved, waiting for their time', rendering: 'Rendering', published: 'Published', declined: 'Declined' };
+  // the first four tabs are always shown, the others only while they hold posts
+  const TABS = { review: 'Waiting for approval', scheduled: 'Approved', publishing: 'Publishing now', published: 'Published', failed: 'Failed', rendering: 'Rendering', declined: 'Declined' };
+  const ALWAYS = ['review', 'scheduled', 'publishing', 'published'];
+  let data = null, tab = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'review';
+  function renderList() {
+    const count = (k) => data.posts.filter((p) => p.status === k).length;
+    const shown = Object.keys(TABS).filter((k) => ALWAYS.includes(k) || count(k));
+    if (!shown.includes(tab)) tab = 'review';
+    const open = (k, focus) => { tab = k; editing = null; history.replaceState(null, '', '#' + k); renderList(); if (focus) $('tab-' + k).focus(); };
+    $('tabs').replaceChildren(...shown.map((k, i) => {
+      const b = el('button', { type: 'button', id: 'tab-' + k, role: 'tab', tabIndex: k === tab ? 0 : -1, onclick: () => open(k),
+        onkeydown: (e) => { const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (step) open(shown[(i + step + shown.length) % shown.length], true); } }, TABS[k], el('span', { className: 'count', textContent: count(k) }));
+      b.setAttribute('aria-selected', String(k === tab)); b.setAttribute('aria-controls', 'list');
+      return b;
+    }));
+    const live = Object.fromEntries(Object.keys(NAMES).map((n) => [n, data.platforms[n].live]));
+    const posts = data.posts.filter((p) => p.status === tab);
+    if (tab === 'published') posts.reverse(); // newest slot first
+    $('list').setAttribute('aria-labelledby', 'tab-' + tab);
+    $('list').replaceChildren(...(posts.length ? posts.map((p) => card({ ...p, live })) : [el('p', { className: 'meta', textContent: `Nothing in "${TABS[tab]}".` })]));
+  }
+  // ── progress bar: posts being published now, plus results from the last 2 minutes ──
+  const STAGES = {
+    sending: [10, () => 'Sending the request'],
+    starting: [30, (n) => (n === 'Instagram' ? 'Creating the Reel container' : 'Uploading to TikTok')],
+    processing: [60, (n) => (n === 'Instagram' ? 'Waiting for Instagram to report FINISHED (checked about every 5 minutes)' : 'TikTok is processing the video')],
+    publishing: [85, (n) => (n === 'Instagram' ? 'Publishing the Reel' : 'Publishing')],
+    published: [100, () => 'Published'], failed: [100, () => 'Failed'], dry_run: [100, () => 'Dry run: simulated, nothing posted'], simulating: [50, () => 'Simulating (Dry Run): nothing is posted'],
+  };
+  const pending = new Map(); // "Publish now" requests still waiting for the server
+  const recent = (s) => s && Date.now() - Date.parse(s.at) < 12e4;
+  function progress() {
+    const rows = [];
+    for (const p of data?.posts || []) {
+      if (pending.has(p.id)) continue;
+      const targets = p.effective.map((n) => [n, p.pub?.[n]]);
+      const show = p.status === 'publishing' || (['published', 'failed'].includes(p.status) && targets.some(([, s]) => recent(s))) || (p.status === 'scheduled' && targets.some(([, s]) => s?.state === 'dry_run' && recent(s)));
+      if (show) for (const [n, s] of targets) rows.push({ p, name: NAMES[n], state: s?.state || 'starting', error: s?.error });
+    }
+    for (const x of pending.values()) rows.push(x);
+    const box = $('progress'); box.hidden = !rows.length;
+    // rows are reused so the bar moves from its old width to the new one
+    const old = new Map([...box.children].map((n) => [n.dataset.key, n]));
+    box.replaceChildren(...rows.map(({ p, name, state, error }) => {
+      const key = `${p.id}:${name}`, [pct, text] = STAGES[state] || STAGES.starting;
+      const n = old.get(key) || el('div', {}, el('strong'), el('div', { className: 'meta' }), el('div', { className: 'bar', role: 'progressbar' }, el('span')));
+      n.dataset.key = key; n.className = 'run ' + state;
+      const [title, line, bar] = n.children;
+      title.textContent = `${p.post.scenes[0].say} (${p.id})`;
+      line.textContent = `${name ? name + ': ' : ''}${text(name)}${error ? ' · ' + error : ''}`;
+      bar.setAttribute('aria-valuenow', pct); bar.setAttribute('aria-label', `${p.id} ${line.textContent}`);
+      requestAnimationFrame(() => { bar.firstChild.style.transform = `scaleX(${pct / 100})`; });
+      return n;
+    }));
+  }
   // platforms this post would really reach now (empty = Publish now only simulates)
   const reach = (p) => p.effective.filter((n) => p.live[n] && p.pub?.[n]?.state !== 'published').map((n) => NAMES[n]);
   function publishNow(p) {
@@ -53,7 +108,17 @@
     return btn(real.length ? 'Publish now' : 'Publish now (dry run)', async (e) => {
       if (real.length && !confirm(`Publish this post NOW, for real, on ${real.join(' and ')}? This cannot be undone.`)) return;
       const b = e.currentTarget; b.disabled = true; b.textContent = real.length ? 'Publishing…' : 'Simulating…';
-      if (!(await send({ action: 'publish_now', id: p.id, version: p.version, confirm: real.length ? 'PUBLISH' : '' }))) { last = ''; load(); }
+      pending.set(p.id, { p, name: real.join(' and '), state: real.length ? 'sending' : 'simulating' }); progress();
+      const watch = setInterval(async () => { // show the server's own stage while the request runs
+        const r = await fetch('/api/marketing').catch(() => null); if (!r?.ok) return;
+        const now = (await r.json()).posts.find((x) => x.id === p.id);
+        if (pending.has(p.id) && now?.status === 'publishing') pending.set(p.id, { ...pending.get(p.id), state: now.pub?.instagram?.state || 'starting' });
+        progress();
+      }, 2000);
+      let ok;
+      try { ok = await send({ action: 'publish_now', id: p.id, version: p.version, confirm: real.length ? 'PUBLISH' : '' }, () => { clearInterval(watch); pending.delete(p.id); }); }
+      finally { clearInterval(watch); pending.delete(p.id); progress(); }
+      if (!ok) { last = ''; load(); }
     }, 'primary');
   }
   function schedule(p) {
@@ -63,7 +128,7 @@
   }
   function card(p) {
     const open = ['rendering', 'review', 'scheduled', 'failed'].includes(p.status);
-    const state = p.status === 'scheduled' ? `Approved · ${when(p.slot)}${p.dry_run_at ? ' · dry run done, nothing posted' : ''}` : p.status === 'review' ? 'Waiting for your approval' : p.status === 'rendering' ? (p.error ? `Last render failed (try ${p.attempts} of 3). Trying again automatically` : 'Rendering (usually within 15 to 30 minutes)') : p.status === 'failed' ? 'Failed' : p.status;
+    const state = p.status === 'scheduled' ? `Approved · ${when(p.slot)}${p.dry_run_at ? ' · dry run done, nothing posted' : ''}` : p.status === 'review' ? 'Waiting for your approval' : p.status === 'rendering' ? (p.error ? `Last render failed (try ${p.attempts} of 3). Trying again automatically` : 'Rendering (usually within 15 to 30 minutes)') : p.status === 'failed' ? 'Failed' : TABS[p.status] || p.status;
     const stuck = p.status === 'failed' && !p.has_video;
     const side = el('div', {}, el('h2', { textContent: p.post.scenes[0].say }), el('div', { className: 'meta', textContent: `${state} · version ${p.version}` }), p.error && el('div', { style: 'color:var(--bad)', textContent: `Error: ${p.error}` }));
     if (editing === p.id) side.append(editor(p));
@@ -157,7 +222,7 @@
     return box;
   }
   function signedOut() {
-    $('app').hidden = true; $('login').hidden = false; $('list').replaceChildren(); $('platforms').replaceChildren(); $('mode').replaceChildren(); $('golive').close(); last = ''; editing = null;
+    $('app').hidden = true; $('login').hidden = false; data = null; progress(); $('tabs').replaceChildren(); $('list').replaceChildren(); $('platforms').replaceChildren(); $('mode').replaceChildren(); $('golive').close(); last = ''; editing = null;
   }
   $('signin').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -169,20 +234,26 @@
     } catch { $('login-msg').textContent = 'No connection. Try again.'; }
     button.disabled = false;
   });
-  async function load() {
-    if ((editing && last) || !$('login').hidden) return;
+  // someone is typing, watching a video or in a settings panel: do not redraw under them
+  const busy = () => editing || document.activeElement?.matches('input, select, textarea') || [...document.querySelectorAll('video')].some((v) => !v.paused) || $('platforms').querySelector('details[open]');
+  let loaded = 0;
+  async function load(quiet) { // quiet = background check: the progress bar always updates, the rest only when not busy
+    if (!$('login').hidden) return;
+    loaded = Date.now();
     const r = await fetch('/api/marketing');
     if (r.status === 401) return signedOut();
     $('app').hidden = false;
     if (!r.ok) { $('msg').textContent = 'Could not load the queue.'; return; }
     const d = await r.json(), sig = JSON.stringify(d) + editing;
-    if (sig === last) return; // do not restart videos that are playing
+    data = d; progress();
+    if (sig === last || (last && (quiet ? busy() : editing && last))) return; // do not restart videos that are playing
     last = sig; dryRun(d); $('platforms').replaceChildren(instagram(d.platforms.instagram), tiktok(d.platforms.tiktok));
     document.querySelectorAll('.owner').forEach((a) => { a.style.visibility = d.role === 'owner' ? '' : 'hidden'; });
-    const live = Object.fromEntries(Object.keys(NAMES).map((n) => [n, d.platforms[n].live]));
-    $('list').replaceChildren(...(d.posts.length ? d.posts.flatMap((p, i) => [p.status !== d.posts[i - 1]?.status && el('h2', { textContent: `${GROUPS[p.status] || p.status} (${d.posts.filter((x) => x.status === p.status).length})` }), card({ ...p, live })].filter(Boolean)) : [el('p', { textContent: 'No posts yet.' })]));
+    renderList();
   }
   const back = new URLSearchParams(location.search).get('tiktok');
   if (back) { $('msg').textContent = back === 'connected' ? 'TikTok connected. It stays in dry run until you switch it live.' : 'TikTok: ' + back; history.replaceState(null, '', location.pathname); }
-  load(); setInterval(() => { if (!document.hidden && !document.activeElement?.matches('input, select, textarea') && ![...document.querySelectorAll('video')].some((v) => !v.paused) && !$('platforms').querySelector('details[open]')) load(); }, 20000);
+  load();
+  // every 20 s, or every 5 s while something is being published
+  setInterval(() => { if (!document.hidden && Date.now() - loaded > (data?.posts.some((p) => p.status === 'publishing') ? 4000 : 19000)) load(true); }, 5000);
 })();
