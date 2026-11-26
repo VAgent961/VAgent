@@ -81,7 +81,24 @@
     set(fold, 'hidden', !recent.length);
     if (fold._h !== rows) { fold._h = rows; fold.lastChild.innerHTML = rows; fold.firstChild.textContent = `Answered (${recent.length})`; }
   }
+  // Live build: the latest project's steps. A PM reply or an approval request ends a run; silence for 4 min is called out.
+  function live(el) {
+    const p = data && data.progress;
+    el.hidden = !p;
+    if (!p) return;
+    const last = p.steps[p.steps.length - 1], age = Math.round((Date.now() - new Date(last.at).getTime()) / 60000);
+    const over = /^(PM Tech|Request Client Approval)$/.test(last.step), stopped = /STOPPED/.test(last.text);
+    const state = stopped ? ['bad', 'Stopped'] : over ? ['', 'Waiting for you'] : age >= 4 ? ['bad', 'No update for ' + age + ' min'] : ['on', 'Working'];
+    const line = (s) => s.text.split('\n').find((x) => x.trim()) || '';
+    const html = `<header><b>Live build</b><span class="pm-state ${state[0]}">${state[1]}</span></header><p class="help">${esc(p.project)}</p><ol>${p.steps.map((s) => `<li><time>${new Date(s.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</time><span><b>${esc(s.step)}</b> ${linked(line(s).slice(0, 220))}</span></li>`).join('')}</ol>`
+      + (over ? `<details><summary>Latest message</summary><div class="ap-msg">${linked(last.text)}</div></details>` : '');
+    if (el._h === html) return;
+    const open = el.querySelector('details')?.open;
+    el._h = html; el.innerHTML = html;
+    if (open && el.querySelector('details')) el.querySelector('details').open = true;
+  }
   function paint() {
+    document.querySelectorAll('[data-pm-live]').forEach((el) => { if (!el.closest('[aria-hidden="true"]')) steady(el, () => live(el)); });
     document.querySelectorAll('[data-approvals]').forEach((el) => {
       if (el.closest('[aria-hidden="true"]')) return;   // closed drawer
       steady(el, () => sync(el)); pill(el);
@@ -122,7 +139,7 @@
       known.set(a.id, best); byId.set(a.id, best);
     }
     const list = [...byId.values()];
-    data = { pending: list.filter((a) => a.status === 'pending').sort((a, b) => b.id - a.id), recent: list.filter((a) => a.status !== 'pending').sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, 6) };
+    data = { progress: j.progress !== undefined ? j.progress : data?.progress, pending: list.filter((a) => a.status === 'pending').sort((a, b) => b.id - a.id), recent: list.filter((a) => a.status !== 'pending').sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, 6) };
     failed = '';
     const first = !seen, arrived = seen ? data.pending.filter((a) => !seen.has(a.id)) : [];
     seen = seen || new Set();

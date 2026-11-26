@@ -530,3 +530,10 @@ input[type=checkbox],input[type=radio]{accent-color:#B5532F}
 .ig-sum{display:grid;gap:8px;margin:8px 0 0}.ig-sum dt{font-size:12px;color:var(--muted)}.ig-sum dd{margin:0}
 .ig-intel summary,.ig-post summary{cursor:pointer;min-height:36px;display:flex;align-items:center;font-size:13px;color:var(--muted)}
 .ig-hits{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13.5px}
+
+/* PM Tech live build (steps from project_progress) */
+.pm-live{border:1px solid rgba(20,20,19,.14);border-radius:12px;background:#fff;color:#141413;padding:12px 14px;margin:10px 0;flex:none}
+.pm-live[hidden]{display:none}.pm-live header{display:flex;justify-content:space-between;align-items:center;gap:10px}.pm-live ol{list-style:none;margin:8px 0 0;padding:0;max-height:220px;overflow:auto}
+.pm-live li{display:grid;grid-template-columns:44px 1fr;gap:8px;padding:5px 0;border-top:1px solid rgba(20,20,19,.08);font-size:13px;line-height:1.4;overflow-wrap:anywhere}.pm-live time{color:#6b6a65}
+.pm-state{font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px;background:#F3F1EA}.pm-state.on{background:#e3f1e6;color:#1d6b34}.pm-state.bad{background:#f8e3da;color:#9A4527}
+.pm-live summary{cursor:pointer;min-height:32px;font-size:13px;padding-top:6px}.pm-live details .ap-msg{white-space:pre-wrap;font-size:13px;overflow-wrap:anywhere}

@@ -758,7 +758,7 @@
       inner.innerHTML = `<div class="vh"><div class="vh-l"><span class="avatar">${avatarSvg}</span><div class="vh-t"><h2 class="d-title">${esc(a.name)} <button class="rename" type="button" id="rename" aria-label="Rename" title="Rename">✎</button></h2><div class="vh-pill ${a.status}">● ${esc(STATUS[a.status])} · ${a.runs24} runs today</div></div></div><div class="vh-r">${vlead}</div></div>`
         + `<div id="voice-mount"></div>`
         + `<details class="more vh-set"><summary>Agent settings, steps &amp; runs</summary>${d.canRun ? `<button class="btn primary" type="button" id="run-now">▶ Run now</button>` : ''}${deptRow}${stepsRuns}</details>`;
-    } else inner.innerHTML = head + (d.runnable && SNIPER(key) ? sqHtml() : '') + (PMTECH(a) ? NF_BAR : '')
+    } else inner.innerHTML = head + (d.runnable && SNIPER(key) ? sqHtml() : '') + (PMTECH(a) ? NF_BAR + (D.role !== 'client' ? '<section class="pm-live" data-pm-live hidden></section>' : '') : '')
       + (d.canRun ? `<button class="btn primary" type="button" id="run-now">▶ Run now</button>` : '')
       + leadRow
       + snOpen(d.runnable && SNIPER(key))
@@ -802,7 +802,7 @@
     const leadPickOpts = '<option value="">— no lead —</option>' + team.map((a) => `<option value="${esc(a.key)}" ${a.key === d.lead_key ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
     open(`<div class="d-head"><span class="avatar">${leadAvatarSvg}</span><div><h2 class="d-title">${leadTitle}</h2><div class="d-sub">${team.length} employees · ${can} can take tasks${d.mission ? '<br>' + esc(d.mission) : ''}</div></div></div>
       ${leadHook && SNIPER(leadAgent.key) ? sqHtml() : ''}${!isClient && /website/i.test(d.name) ? NF_BAR : ''}
-      ${!isClient && /website/i.test(d.name) ? '<p class="label">Approvals</p><div class="ap-list" data-approvals></div>' : ''}
+      ${!isClient && /website/i.test(d.name) ? '<section class="pm-live" data-pm-live hidden></section><p class="label">Approvals</p><div class="ap-list" data-approvals></div>' : ''}
       ${isClient ? '' : `<div class="field"><label for="lead-pick">Lead</label><select class="input" id="lead-pick">${leadPickOpts}</select></div>`}
       ${snOpen(leadHook && SNIPER(leadAgent.key))}<p class="label">Talk to the lead</p>${chatUI(leadTo, 'Ask the ' + d.name + ' lead…')}<div class="chips"><button class="pick" type="button" ${leadHook ? 'data-say="start"' : 'data-reset'}>▶ Start over</button>${leadHook && SNIPER(leadAgent.key) ? CHECK_SITE : ''}</div>${snClose(leadHook && SNIPER(leadAgent.key))}
       <form id="f-task" class="field"><label for="task">Give the lead a task</label><textarea class="input" id="task" name="t" required placeholder="Example: check vagent.online and report anything broken" ${focusTask ? 'autofocus' : ''}></textarea>
@@ -820,7 +820,7 @@
       ${isClient ? '' : `<p class="label">Edit</p><form id="f-edit" class="field"><input class="input" name="n" value="${esc(d.name)}" aria-label="Department name" required><div class="sw">${DEPT_COLORS.map((c) => `<button type="button" aria-label="Color ${c}" aria-pressed="${c === d.color}" data-c="${c}" style="background:${c}"></button>`).join('')}</div>
       <div class="row"><button class="btn" type="submit">Save</button><button class="btn danger" type="button" id="del-dept">Delete department</button></div></form>`}`, 'dept:' + d.id);
     let color = d.color;
-    if (inner.querySelector('[data-approvals]')) VApprovals.paint();
+    if (inner.querySelector('[data-approvals],[data-pm-live]')) VApprovals.paint();
     if (inner.querySelector('[data-netlify]')) VNetlify.paint();
     bindChat(leadTo, leadHook ? leadAgent.name : d.name + ' lead'); if (leadHook) snBind(leadAgent.key); if (leadHook && SNIPER(leadAgent.key)) refreshQuota(true);
     if ($('#lead-pick')) $('#lead-pick').onchange = async (e) => {
@@ -871,7 +871,7 @@
     history();
   }
   function openApprovals() {
-    open('<div class="d-head"><div><h2 class="d-title">Approvals</h2><div class="d-sub">PM Tech · same requests as Telegram</div></div></div><div class="ap-list" data-approvals></div>', 'approvals', true);
+    open('<div class="d-head"><div><h2 class="d-title">Approvals</h2><div class="d-sub">PM Tech · same requests as Telegram</div></div></div><section class="pm-live" data-pm-live hidden></section><div class="ap-list" data-approvals></div>', 'approvals', true);
     VApprovals.paint();
   }
   $('#btn-approvals').onclick = openApprovals;

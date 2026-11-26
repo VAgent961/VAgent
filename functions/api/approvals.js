@@ -15,11 +15,12 @@ async function load(env, inst) {
   inst = inst || await builder(env);
   const rows = (t, n) => call(env, inst, `/data-tables/${t}/rows?limit=${n}&sortBy=createdAt:desc`).then((r) => r.data || []);
   const [reqs, log] = await Promise.all([rows(REQUESTS, 250), rows(PROGRESS, 250).catch(() => [])]);
+  const live = progress(log);
   // newest request per project + stage; waiting ones count for 14 days (same rule as the PM inbox)
   const newest = new Map();
   for (const r of reqs.sort((a, b) => b.id - a.id)) if (r.token && NAMES[r.stage] && !/(^|-)test(-|$)/.test(r.project_id) && !newest.has(r.project_id + '|' + r.stage)) newest.set(r.project_id + '|' + r.stage, r);
   const cutoff = Date.now() - 14 * 86400000;
-  return [...newest.values()].map((r) => {
+  const list = [...newest.values()].map((r) => {
     const link = HOST + '/webhook/review?p=' + encodeURIComponent(r.project_id) + '&t=' + r.token;
     // the exact text Telegram got (the request workflow logs it); rebuilt only when that log row is gone
     const sent = log.find((l) => String(l.message || '').includes(r.token) && /APPROVAL NEEDED/.test(l.message));
@@ -27,10 +28,18 @@ async function load(env, inst) {
     const status = r.status === 'changes' ? 'changes_requested' : r.status === 'waiting' ? (new Date(r.createdAt).getTime() > cutoff ? 'pending' : 'expired') : r.status;
     return { id: r.id, project: r.project_id, stage: r.stage, stageName: NAMES[r.stage], status, message, link, note: r.feedback || '', decidedBy: r.decided_by || '', createdAt: r.createdAt, updatedAt: r.updatedAt, token: r.token };
   }).filter((r) => r.status !== 'expired');
+  return Object.assign(list, { live });
+}
+// the steps of the project that moved last (only if within 2 h): every team member logs start/finish to project_progress
+function progress(log) {
+  const recent = log.filter((l) => l.project_id && Date.now() - new Date(l.createdAt).getTime() < 7200000).sort((a, b) => b.id - a.id);
+  if (!recent.length) return null;
+  const project = recent[0].project_id;
+  return { project, steps: recent.filter((l) => l.project_id === project).slice(0, 10).reverse().map((l) => ({ id: l.id, step: String(l.step || '').replace(/ \(.*\)$/, ''), text: String(l.message || '').slice(0, 1500), at: l.createdAt })) };
 }
 const view = (list) => {
   const clean = list.map(({ token, ...r }) => r);
-  return { pending: clean.filter((r) => r.status === 'pending'), recent: clean.filter((r) => r.status !== 'pending').sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, 6) };
+  return { progress: list.live || null, pending: clean.filter((r) => r.status === 'pending'), recent: clean.filter((r) => r.status !== 'pending').sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, 6) };
 };
 
 // Server-Sent Events: n8n cannot push, so this connection reads the table and sends the list only when it changes.

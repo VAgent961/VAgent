@@ -78,6 +78,8 @@ Return ONLY JSON: {"reply":"...","project":""}`;
         if ((await createRun(env, b.run_id, data.owner, district, niche).catch(() => [])).length) run = b.run_id;
       }
       const r = await runWebhook(wf.webhook, { message: msg, from: data.owner, source: 'vagent-office', ...(run ? { run_id: run } : {}) }, env.WEBHOOK_SECRET);
+      // a website build outlives this request: say where it can be followed instead of "check n8n"
+      if (r.late && /pm-tech/.test(wf.webhook.url)) return json({ reply: 'Still building. The live steps are shown above this chat, and the final answer appears there.', status: 'partial', buttons: [], actions: [], prompt: '', via: 'webhook', ok: true });
       if (run && r.late) return json({ reply: 'Still hunting. The result will appear here.', running: true, run_id: run, actions: [], prompt: '', via: 'webhook', ok: true });
       // an unreachable or crashed agent gets a Retry chip (not after a timeout: it may still be running)
       const buttons = r.status === 'source_down' && !(r.buttons || []).length ? [{ label: '↻ Retry', value: msg.slice(0, 160) }] : r.buttons || [];
