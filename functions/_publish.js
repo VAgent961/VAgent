@@ -1,18 +1,38 @@
 // Publisher: one approved post -> Instagram and/or TikTok. Each platform keeps its own state in marketing_posts.pub:
 // {instagram|tiktok: {state: starting|processing|publishing|published|failed|dry_run, ref, id, error, at}}
-// A platform that is not switched live is only simulated. An unclear result is failed, never retried by itself.
-import { sql, encrypt, decrypt } from './_lib.js';
+// One Dry Run switch (on unless an owner turned it off): while on, nothing is published and posts are only simulated. An unclear result is failed, never retried by itself.
+import { sql } from './_lib.js';
 import { setting, setSetting, log, digest, dropMedia, mediaSig, SITE } from './_marketing.js';
 import * as tiktok from './_tiktok.js';
+import * as ig from './_instagram.js';
 
 export const PLATFORMS = ['instagram', 'tiktok'];
 export const NAMES = { instagram: 'Instagram', tiktok: 'TikTok' };
-const GRAPH = 'https://graph.instagram.com/v23.0';
-const LIVE_KEY = { instagram: 'live', tiktok: 'live_tiktok' }, TOKEN_KEY = { instagram: 'ig_token', tiktok: 'tt_token' };
+const TOKEN_KEY = { instagram: 'ig_token', tiktok: 'tt_token' };
 
 export const connected = async (env) => Object.fromEntries(await Promise.all(PLATFORMS.map(async (p) => [p, !!(await setting(env, TOKEN_KEY[p]))])));
-export const liveFlags = async (env) => Object.fromEntries(await Promise.all(PLATFORMS.map(async (p) => [p, (await setting(env, LIVE_KEY[p])) === 'true' && !!(await setting(env, TOKEN_KEY[p]))])));
-export const setLive = (env, platform, on) => setSetting(env, LIVE_KEY[platform], on ? 'true' : 'false');
+export const dryRun = async (env) => (await setting(env, 'dry_run')) !== 'off';
+// Ready = could really publish. TikTok also needs a privacy level.
+export async function readiness(env) {
+  const c = await connected(env);
+  return { instagram: c.instagram, tiktok: c.tiktok && !!(await tiktok.options(env)).privacy };
+}
+export async function liveFlags(env) {
+  const off = !(await dryRun(env)), r = await readiness(env);
+  return Object.fromEntries(PLATFORMS.map((p) => [p, off && r[p]]));
+}
+// Turning Dry Run off needs the owner's explicit confirmation and at least one platform that can publish.
+export async function setDryRun(env, on, confirm, who) {
+  if (!on) {
+    if (confirm !== 'PUBLISH') return 'Confirm that approved posts will really be published.';
+    if (!Object.values(await readiness(env)).some(Boolean)) return 'Connect Instagram (or TikTok) first. Dry Run stays on.';
+  }
+  await setSetting(env, 'dry_run', on ? 'on' : 'off'); await log(env, '-', on ? 'dry_run_on' : 'dry_run_off', who); return '';
+}
+export async function connectInstagram(env, token, secret, who) {
+  await setDryRun(env, true, '', who); // a new account never goes live by itself
+  await ig.connect(env, token, secret, who);
+}
 // New posts go to every connected platform; before anything is connected, both are simulated.
 export const defaultTargets = (conn) => { const t = PLATFORMS.filter((p) => conn[p]); return t.length ? t : [...PLATFORMS]; };
 
@@ -33,53 +53,30 @@ export function captionFor(post, platform) {
 
 const videoUrl = async (env, id) => { const exp = Math.floor(Date.now() / 1000) + 3600; return `${SITE}/hook/marketing-media?id=${id}&exp=${exp}&sig=${await mediaSig(env, id, exp)}`; };
 const put = (env, id, platform, state) => sql(env, 'UPDATE marketing_posts SET pub = jsonb_set(pub, ARRAY[$2::text], $3::jsonb), updated_at = now() WHERE id = $1', [id, platform, JSON.stringify({ ...state, at: new Date().toISOString() })]);
-const failOn = async (env, id, platform, why) => { await put(env, id, platform, { state: 'failed', error: String(why).slice(0, 250) }); await log(env, id, `${platform}_publish_failed`, why); };
+const failOn = async (env, id, platform, why) => { if (platform === 'instagram') await ig.noteError(env, why); await put(env, id, platform, { state: 'failed', error: String(why).slice(0, 250) }); await log(env, id, `${platform}_publish_failed`, why); };
 const doneOn = async (env, id, platform, mediaId) => { await put(env, id, platform, { state: 'published', id: String(mediaId) }); if (platform === 'instagram') await sql(env, 'UPDATE marketing_posts SET ig_media_id = $2 WHERE id = $1', [id, String(mediaId)]); await log(env, id, `${platform}_published`, mediaId); };
 
-// ── Instagram ──
-async function graph(token, path, params, method = 'GET') {
-  const q = new URLSearchParams({ ...params, access_token: token });
-  const r = await fetch(`${GRAPH}/${path}${method === 'GET' ? '?' + q : ''}`, method === 'GET' ? {} : { method, body: q });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok || j.error) throw new Error(j.error?.message || 'Instagram error ' + r.status);
-  return j;
-}
-export async function connectInstagram(env, token, who) {
-  const me = await graph(token, 'me', { fields: 'user_id,username' });
-  await setSetting(env, 'ig_token', await encrypt(env, token));
-  await setSetting(env, 'ig_user', JSON.stringify({ id: String(me.user_id || me.id), name: me.username }));
-  await setSetting(env, 'ig_refreshed', new Date().toISOString());
-  await log(env, '-', 'instagram_connected', who);
-}
-async function igToken(env) {
-  let access = await decrypt(env, await setting(env, 'ig_token'));
-  if (Date.now() - Date.parse(await setting(env, 'ig_refreshed')) > 7 * 864e5) {
-    try {
-      const j = await (await fetch('https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=' + encodeURIComponent(access))).json();
-      if (j.access_token) { access = j.access_token; await setSetting(env, 'ig_token', await encrypt(env, access)); await setSetting(env, 'ig_refreshed', new Date().toISOString()); }
-    } catch { await log(env, '-', 'token_refresh_failed'); }
-  }
-  return access;
-}
-const igUser = async (env) => JSON.parse(await setting(env, 'ig_user'));
-
+// ── platform adapters ──
 const adapters = {
   instagram: {
     // creates the Reels container; nothing is public until publish below
     async start(env, row) {
-      const c = await graph(await igToken(env), (await igUser(env)).id + '/media', { media_type: 'REELS', video_url: await videoUrl(env, row.id), caption: captionFor(row.post, 'instagram') }, 'POST');
+      const url = await videoUrl(env, row.id);
+      if (!url.startsWith('https://') || !row.video_sha) throw new Error('There is no public HTTPS video for this post');
+      const c = await ig.graph(await ig.token(env), (await ig.user(env)).id + '/media', { media_type: 'REELS', video_url: url, caption: captionFor(row.post, 'instagram') }, 'POST');
       await put(env, row.id, 'instagram', { state: 'processing', ref: c.id }); await log(env, row.id, 'container_created', c.id);
     },
     async poll(env, row, s, old) {
-      const access = await igToken(env);
-      const { status_code: code } = await graph(access, s.ref, { fields: 'status_code' });
-      if (code === 'ERROR' || code === 'EXPIRED') return failOn(env, row.id, 'instagram', 'Instagram container ' + code);
+      const access = await ig.token(env);
+      const { status_code: code, status } = await ig.graph(access, s.ref, { fields: 'status_code,status' });
+      if (code === 'ERROR' || code === 'EXPIRED') return failOn(env, row.id, 'instagram', `Instagram could not process the video (${code}). Check that the public video link works. ${status || ''}`);
       if (code === 'PUBLISHED') return doneOn(env, row.id, 'instagram', s.ref);
       if (code !== 'FINISHED') return old ? failOn(env, row.id, 'instagram', 'Instagram processing timed out') : null;
+      if (!(await liveFlags(env)).instagram) return failOn(env, row.id, 'instagram', 'Dry Run was switched on (or Instagram disconnected) before publishing. Nothing was posted');
       // claim before publishing, so it happens exactly once
       const claim = await sql(env, "UPDATE marketing_posts SET publish_started_at = now(), pub = jsonb_set(pub, '{instagram,state}', '\"publishing\"') WHERE id = $1 AND status = 'publishing' AND pub->'instagram'->>'state' = 'processing' RETURNING id", [row.id]);
       if (!claim.length) return null;
-      try { const m = await graph(access, (await igUser(env)).id + '/media_publish', { creation_id: s.ref }, 'POST'); await doneOn(env, row.id, 'instagram', m.id); }
+      try { const m = await ig.graph(access, (await ig.user(env)).id + '/media_publish', { creation_id: s.ref }, 'POST'); await doneOn(env, row.id, 'instagram', m.id); }
       catch (e) { await failOn(env, row.id, 'instagram', 'Unclear result, check Instagram before retrying: ' + e.message); }
     },
   },
@@ -125,6 +122,8 @@ async function settle(env, id) {
 
 // Called every few minutes by n8n.
 export async function tick(env) {
+  await setSetting(env, 'last_tick', new Date().toISOString());
+  await ig.maintain(env);
   const out = [], live = await liveFlags(env), isLive = (row) => targetsOf(row).some((p) => live[p]);
   // 1) in flight: poll each platform
   for (const row of await sql(env, "SELECT * FROM marketing_posts WHERE status = 'publishing'")) {

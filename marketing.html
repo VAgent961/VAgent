@@ -22,11 +22,19 @@
 <div id="app" hidden>
 <header><a href="/office" class="owner"><img src="/assets/brand/mark-dark.svg" alt="VAgent" width="32" height="32"></a><h1>Marketing queue</h1><a href="/office" class="owner">Back to office</a><form method="post" action="/api/logout?next=marketing"><button type="submit">Sign out</button></form></header>
 <main>
-  <p class="note">Posts go out Tue, Thu and Sat at 19:00 (Beirut), only after you approve them. Editing clears the approval. Declining or publishing deletes the video. A platform in dry run is only simulated.</p>
+  <p class="note">Posts go out Tue, Thu and Sat at 19:00 (Beirut), only after you approve them. Editing clears the approval. Declining or publishing deletes the video. While Dry Run is on, nothing is posted.</p>
   <p id="msg" role="status"></p>
+  <section id="mode" class="card" aria-live="polite"></section>
   <section id="platforms"></section>
   <section id="list"></section>
 </main>
+<dialog id="golive">
+  <h2>Turn Dry Run off?</h2>
+  <p class="warn">Approved posts will be <strong>really published</strong>. A published post cannot be taken back from here.</p>
+  <ul id="golive-list"></ul>
+  <label class="check"><input type="checkbox" id="golive-ok"> I understand, publish for real</label>
+  <div><button type="button" id="golive-cancel">Keep Dry Run on</button><button type="button" id="golive-yes" class="danger" disabled>Turn Dry Run off</button></div>
+</dialog>
 </div>
 <script src="/assets/marketing.js"></script>
 </body>

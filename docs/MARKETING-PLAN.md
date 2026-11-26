@@ -19,16 +19,16 @@
 - Why not our server: its n8n has command execution disabled and has no SSH credential. To move later, run `job.py` there with another sign-in method.
 - Storage: video chunks in `marketing_media`, private behind the owner session; Instagram gets a signed link valid 1 hour.
 - Publisher: n8n `V-Agent | Marketing Publisher` (Z4m9GTCAxMeHCkGm, every 5 min) -> `/hook/marketing` tick: create REELS container -> poll until FINISHED -> publish once -> delete video. Unclear result = failed, never auto-retried. A slot missed by 6 h goes back to review.
-- Dry run is the default: logs "would publish", keeps the video, calls nothing at Instagram. Going live = connect a token on /marketing, then press Go live. Posts whose slot passed more than 6 h earlier need approval again.
+- Dry run is the default: logs "would publish", keeps the video, publishes nothing. Going live = connect a token on /marketing, then turn Dry Run off. Posts whose slot passed more than 6 h earlier need approval again.
 
 ## Platforms (Instagram + TikTok)
 - States: draft = repo file; `rendering -> review -> scheduled` (approved) `-> publishing -> published | failed`; `declined` = rejected.
 - Per post `targets` (default: connected platforms, both while none is connected); changing them clears approval. Posts approved before TikTok existed go to Instagram only. Per platform state and error in `pub`.
-- Each platform has its own live switch, off by default. A platform in dry run is only logged. A post whose live targets all succeed is `published` and its video deleted, even if another target was only simulated.
+- One Dry Run switch on /marketing (setting `dry_run`, on unless `off`). Turning it off needs a confirmation; a platform publishes only when it is connected (TikTok: privacy chosen too), otherwise it is simulated. Connecting an account turns Dry Run on again; turning it on stops a waiting Instagram container before publish. A post whose live targets all succeed is `published` and its video deleted, even if another target was only simulated.
 - A failed platform keeps the video; "Try publishing again" needs a new approval and skips platforms that already published.
 
 ## Going live needs
-- Instagram: professional account, Meta app with `instagram_business_content_publish`, long-lived token (HQ refreshes it weekly).
+- Instagram: professional account, Meta app with `instagram_business_content_publish`, long-lived token (or a short-lived one plus the app secret, exchanged on connect). HQ checks account type and publish permission, and refreshes the token weekly on the publisher tick, also in Dry Run.
 - TikTok: developer app with Login Kit + Content Posting API (Direct Post), scopes `user.info.basic,video.publish`, redirect `https://vagent.online/api/tiktok-callback`; terms + privacy page URLs for review. Verify URL prefix `https://vagent.online/hook/` (paste the signature file on /marketing) or choose file upload. Until TikTok audits the app, posts are private only. The audit expects the creator to pick privacy / interaction settings per post; today they are account-wide.
 
 ## Limits

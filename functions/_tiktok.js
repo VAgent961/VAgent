@@ -39,6 +39,7 @@ export async function finishConnect(env, code, state, who) {
   await setSetting(env, 'tt_state', 'null'); // single use
   const j = await tokenCall(env, { code, grant_type: 'authorization_code', redirect_uri: redirectUri() });
   if (!String(j.scope).includes('video.publish')) throw new Error('The video.publish permission was not granted');
+  await setSetting(env, 'dry_run', 'on'); // a new account never goes live by itself
   await store(env, j);
   let name = 'account';
   try { const c = await creatorInfo(env); name = c.creator_username || c.creator_nickname || name; } catch (e) { await log(env, '-', 'tiktok_creator_info_failed', e.message); }

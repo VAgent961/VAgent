@@ -8,11 +8,12 @@
   const STATE = { starting: 'starting', processing: 'processing', publishing: 'publishing', published: 'published', failed: 'failed', dry_run: 'dry run, not posted' };
   const check = (label, checked, onchange, disabled) => el('label', { className: 'check' }, el('input', { type: 'checkbox', checked, disabled: !!disabled, onchange }), label);
   async function send(payload) {
-    $('msg').textContent = '';
+    $('msg').textContent = ''; $('msg').className = '';
     const r = await fetch('/api/marketing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     if (r.status === 401) return signedOut();
     if (!r.ok) { $('msg').textContent = (await r.json().catch(() => ({}))).error || 'Something went wrong.'; $('msg').scrollIntoView({ block: 'nearest' }); return false; }
-    editing = null; last = ''; await load(); return true;
+    const d = await r.json().catch(() => ({}));
+    editing = null; last = ''; await load(); if (d.notice) { $('msg').textContent = d.notice; $('msg').className = 'ok'; } return true;
   }
   const btn = (text, fn, cls = '') => el('button', { type: 'button', textContent: text, className: cls, onclick: fn });
 
@@ -49,7 +50,7 @@
     const side = el('div', {}, el('h2', { textContent: p.post.scenes[0].say }), el('div', { className: 'meta', textContent: `${state} · version ${p.version}` }), p.error && el('div', { style: 'color:var(--bad)', textContent: `Error: ${p.error}` }));
     if (editing === p.id) side.append(editor(p));
     else side.append(el('p', { className: 'cap', textContent: p.captions.instagram }),
-      p.captions.tiktok !== p.captions.instagram && el('details', {}, el('summary', { textContent: 'TikTok caption' }), el('p', { className: 'cap', textContent: p.captions.tiktok })),
+      p.captions.tiktok === p.captions.instagram ? '' : el('details', {}, el('summary', { textContent: 'TikTok caption' }), el('p', { className: 'cap', textContent: p.captions.tiktok })),
       p.post.keyword && el('div', { className: 'meta', textContent: `Comment keyword: ${p.post.keyword} · ${p.post.info?.title || ''}` }), targets(p), el('div', {},
       p.status === 'review' && btn('Approve', () => send({ action: 'approve', id: p.id, version: p.version }), 'primary'),
       p.status === 'failed' && p.has_video && btn('Try publishing again', () => send({ action: 'republish', id: p.id, version: p.version }), 'primary'),
@@ -58,20 +59,63 @@
       open && btn('Decline', () => confirm('Decline this post and delete its video?') && send({ action: 'decline', id: p.id }))));
     return el('article', { className: 'card post' }, p.has_video ? el('video', { src: `/api/marketing?video=${p.id}&v=${p.version}`, controls: true, playsInline: true, preload: 'metadata' }) : el('div', { className: 'meta', textContent: p.status === 'rendering' ? (p.error ? 'No video yet: waiting for the next try' : 'The video is being made') : stuck ? 'Render failed: no video' : 'No video stored' }), side);
   }
-  function mode(name, p) {
+  function status(name, p, live) {
     const box = el('section', { className: 'card' }, el('h2', { textContent: NAMES[name] }),
-      el('div', { textContent: p.live ? `LIVE: approved posts are published to @${p.name}.` : `Dry run: nothing is sent to ${NAMES[name]}.` }));
-    if (p.live) box.append(btn('Switch to dry run', () => send({ action: 'live', platform: name, on: false })));
-    else if (p.connected) box.append(btn(`Go live as @${p.name}`, () => confirm(`Approved posts will really be published to ${NAMES[name]}. Continue?`) && send({ action: 'live', platform: name, on: true }), 'primary'));
+      el('div', { className: 'status ' + (p.connected ? 'on' : 'off'), textContent: p.connected ? `Connected: @${p.name}` : 'Not connected' }),
+      el('div', { className: 'meta', textContent: live ? 'Live: approved posts are published here.' : `Nothing is sent to ${NAMES[name]} now.` }));
     return box;
+  }
+  const day = (s) => new Date(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  async function testLink() {
+    const post = (action) => fetch('/api/marketing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) });
+    $('msg').className = ''; $('msg').textContent = 'Testing the video link…';
+    try {
+      const d = await (await post('video_link')).json(); if (!d.url) throw new Error(d.error || 'No link');
+      const r = await fetch(d.url, { credentials: 'omit', headers: { Range: 'bytes=0-1023' } }), type = r.headers.get('Content-Type');
+      if (r.status !== 206 || type !== 'video/mp4') throw new Error(`The link answered ${r.status} ${type}`);
+      $('msg').className = 'ok'; $('msg').textContent = 'The public video link works over HTTPS without signing in.';
+    } catch (e) { $('msg').textContent = 'Video link problem: ' + e.message; }
   }
   function instagram(p) {
-    const box = mode('instagram', p), token = el('input', { type: 'password', placeholder: 'Instagram long-lived access token', autocomplete: 'off' });
-    box.append(el('details', {}, el('summary', { textContent: p.connected ? `Connected: @${p.name} (replace token)` : 'Connect Instagram' }), token, btn('Connect', () => send({ action: 'connect', token: token.value }))));
+    const box = status('instagram', p, p.live);
+    if (p.connected) {
+      const left = Math.floor((Date.parse(p.expires) - Date.now()) / 864e5);
+      box.append(el('div', { className: 'meta', textContent: [p.type && `Account: ${p.type.replace('MEDIA_', '').toLowerCase()}`, p.expires ? `Token valid until ${day(p.expires)} (${left} days), renewed automatically` : 'Token renews automatically', p.refreshed && `last saved ${day(p.refreshed)}`].filter(Boolean).join(' · ') }));
+      if (p.expires && left < 10) box.append(el('div', { className: 'alert', textContent: left < 0 ? 'The token has expired: connect again.' : 'The token expires soon and has not renewed. Check the connection.' }));
+    }
+    if (p.error) box.append(el('div', { className: 'alert', textContent: `${p.error.message} (${when(p.error.at)})` }));
+    const token = el('input', { type: 'password', placeholder: 'Instagram access token', autocomplete: 'off' }), secret = el('input', { type: 'password', placeholder: 'App secret (only for a short-lived token)', autocomplete: 'off' });
+    box.append(el('div', {}, p.connected && btn('Check connection', () => send({ action: 'check' })), btn('Test video link', testLink)),
+      el('details', {}, el('summary', { textContent: p.connected ? 'Replace token' : 'Connect Instagram' }),
+        el('p', { className: 'meta', textContent: 'Needs a Business or Creator account and a token with instagram_business_basic and instagram_business_content_publish (Meta app dashboard, Instagram API with Instagram Login). Connecting turns Dry Run on.' }),
+        token, secret, btn('Connect', () => send({ action: 'connect', token: token.value, secret: secret.value }), 'primary')));
     return box;
   }
+  function dryRun(d) {
+    const on = d.dryRun, box = $('mode'); box.className = 'card ' + (on ? 'dry' : 'live');
+    const stale = !d.lastTick || Date.now() - Date.parse(d.lastTick) > 36e5;
+    const toggle = el('button', { type: 'button', className: 'switch', role: 'switch', onclick: () => (on ? askLive(d) : send({ action: 'dry_run', on: true })) }, el('span', {}));
+    toggle.setAttribute('aria-checked', String(on)); toggle.setAttribute('aria-label', 'Dry Run');
+    box.replaceChildren(el('div', {}, el('h2', { textContent: on ? 'Dry Run is ON' : 'Dry Run is OFF: LIVE' }),
+      el('div', { textContent: on ? 'Safe mode: approved posts are only simulated. Nothing is published.' : `Approved posts are really published to: ${Object.keys(NAMES).filter((n) => d.platforms[n].live).map((n) => NAMES[n]).join(' and ') || 'no platform is ready'}.` }),
+      el('div', { className: 'meta', textContent: d.lastTick ? `Publisher last checked ${when(d.lastTick)}${stale ? ' (over an hour ago: check the n8n publisher)' : ''}` : 'The publisher has not checked in yet.' })),
+      el('label', { className: 'toggle' }, toggle, el('strong', { textContent: on ? 'ON' : 'OFF' })));
+  }
+  function askLive(d) {
+    const approved = d.posts.filter((p) => p.status === 'scheduled'), recent = approved.filter((p) => Date.parse(p.slot) <= Date.now() && Date.parse(p.slot) > Date.now() - 6 * 36e5).length;
+    const ready = { instagram: d.platforms.instagram.connected, tiktok: d.platforms.tiktok.connected && !!d.platforms.tiktok.options.privacy };
+    const lines = Object.keys(NAMES).map((n) => (ready[n] ? `${NAMES[n]}: WILL publish as @${d.platforms[n].name}` : `${NAMES[n]}: not ready, stays simulated`));
+    lines.push(`${approved.length} approved post(s) waiting for their time.`);
+    if (recent) lines.push(`${recent} of them are due now and publish within minutes.`);
+    $('golive-list').replaceChildren(...lines.map((textContent) => el('li', { textContent })));
+    $('golive-ok').checked = false; $('golive-yes').disabled = true; $('golive').showModal();
+  }
+  $('golive-ok').addEventListener('change', (e) => { $('golive-yes').disabled = !e.target.checked; });
+  $('golive-cancel').addEventListener('click', () => $('golive').close());
+  $('golive-yes').addEventListener('click', () => { $('golive').close(); send({ action: 'dry_run', on: false, confirm: 'PUBLISH' }); });
   function tiktok(p) {
-    const box = mode('tiktok', p), o = p.options;
+    const box = status('tiktok', p, p.live), o = p.options;
+    if (p.connected && !o.privacy) box.append(el('div', { className: 'alert', textContent: 'Choose a privacy level below. Until then TikTok is only simulated.' }));
     const key = el('input', { placeholder: 'Client key', autocomplete: 'off' }), secret = el('input', { type: 'password', placeholder: 'Client secret', autocomplete: 'off' });
     const file = el('input', { placeholder: 'File name, e.g. tiktokAbc123.txt' }), line = el('input', { placeholder: 'tiktok-developers-site-verification=…' });
     const privacy = el('select', {}, el('option', { value: '', textContent: p.privacyChoices.length ? 'Choose who can see posts' : 'Connect first to load choices' }), ...p.privacyChoices.map((v) => el('option', { value: v, textContent: v.replaceAll('_', ' ').toLowerCase() })));
@@ -80,7 +124,7 @@
     source.value = o.source;
     const flags = { comment: check('Allow comments', o.comment), duet: check('Allow duet', o.duet), stitch: check('Allow stitch', o.stitch) };
     const on = (k) => flags[k].querySelector('input').checked;
-    box.append(el('details', {}, el('summary', { textContent: p.connected ? `Connected: @${p.name} · settings` : 'Connect TikTok' }),
+    box.append(el('details', {}, el('summary', { textContent: p.connected ? 'Settings' : 'Connect TikTok' }),
       el('p', { className: 'meta', textContent: `1. In developers.tiktok.com add Login Kit and Content Posting API (Direct Post), scopes user.info.basic and video.publish, redirect URI ${p.redirect}. Until TikTok audits the app, posts can only be private.` }),
       key, secret, btn(p.app ? 'Replace app keys' : 'Save app keys', () => send({ action: 'tiktok_app', key: key.value, secret: secret.value })),
       el('p', { className: 'meta', textContent: '2. Log in with the TikTok account.' }),
@@ -93,7 +137,7 @@
     return box;
   }
   function signedOut() {
-    $('app').hidden = true; $('login').hidden = false; $('list').replaceChildren(); $('platforms').replaceChildren(); last = ''; editing = null;
+    $('app').hidden = true; $('login').hidden = false; $('list').replaceChildren(); $('platforms').replaceChildren(); $('mode').replaceChildren(); $('golive').close(); last = ''; editing = null;
   }
   $('signin').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -113,7 +157,7 @@
     if (!r.ok) { $('msg').textContent = 'Could not load the queue.'; return; }
     const d = await r.json(), sig = JSON.stringify(d) + editing;
     if (sig === last) return; // do not restart videos that are playing
-    last = sig; $('platforms').replaceChildren(instagram(d.platforms.instagram), tiktok(d.platforms.tiktok));
+    last = sig; dryRun(d); $('platforms').replaceChildren(instagram(d.platforms.instagram), tiktok(d.platforms.tiktok));
     document.querySelectorAll('.owner').forEach((a) => { a.style.visibility = d.role === 'owner' ? '' : 'hidden'; });
     $('list').replaceChildren(...(d.posts.length ? d.posts.map(card) : [el('p', { textContent: 'No posts yet.' })]));
   }

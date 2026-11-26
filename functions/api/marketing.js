@@ -2,6 +2,7 @@ import { sql, json, bad, body } from '../_lib.js';
 import * as mk from '../_marketing.js';
 import * as pub from '../_publish.js';
 import * as tiktok from '../_tiktok.js';
+import * as ig from '../_instagram.js';
 
 // Owners and the marketing account (middleware sets data.owner / data.role). GET list, ?video=<id> or ?tiktok=authorize; POST an action.
 const allowed = (data) => data.role === 'owner' || data.role === 'marketing';
@@ -23,8 +24,9 @@ export async function onRequestGet({ request, env, data }) {
     p.effective = p.targets || (['review', 'rendering', 'failed'].includes(p.status) ? defaults : ['instagram']);
     p.captions = Object.fromEntries(pub.PLATFORMS.map((n) => [n, pub.captionFor(p.post, n)]));
   }
-  return json({ posts, role: data.role, me: data.owner, platforms: {
-    instagram: { connected: conn.instagram, live: live.instagram, name: (await parse(env, 'ig_user'))?.name || null },
+  const account = await ig.user(env);
+  return json({ posts, role: data.role, me: data.owner, dryRun: await pub.dryRun(env), lastTick: await mk.setting(env, 'last_tick'), platforms: {
+    instagram: { connected: conn.instagram, live: live.instagram, name: account?.name || null, type: account?.type || null, expires: await mk.setting(env, 'ig_expires'), refreshed: await mk.setting(env, 'ig_refreshed'), error: await parse(env, 'ig_error') },
     tiktok: { connected: conn.tiktok, live: live.tiktok, name: (await parse(env, 'tt_user'))?.name || null, app: !!(await tiktok.app(env)), options: await tiktok.options(env),
       privacyChoices: (await parse(env, 'tt_creator'))?.privacy_level_options || [], redirect: tiktok.redirectUri(), verify: (await parse(env, 'tt_verify'))?.file || null } } });
 }
@@ -35,7 +37,7 @@ export async function onRequestPost({ request, env, data }) {
   await mk.schema(env);
   const b = await body(request), who = String(data.owner || 'owner').slice(0, 120), id = String(b.id || '');
   const platform = pub.PLATFORMS.includes(b.platform) ? b.platform : 'instagram';
-  let err = '';
+  let err = '', notice;
   try {
     if (b.action === 'approve') err = await mk.approve(env, id, b.version, who, pub.defaultTargets(await pub.connected(env)));
     else if (b.action === 'decline') err = await mk.decline(env, id, who);
@@ -43,13 +45,18 @@ export async function onRequestPost({ request, env, data }) {
     else if (b.action === 'retry') err = await mk.retry(env, id, b.version, who);
     else if (b.action === 'targets') err = await mk.setTargets(env, id, b.version, b.targets, who);
     else if (b.action === 'republish') err = await mk.republish(env, id, b.version, who);
-    else if (b.action === 'connect') await pub.connectInstagram(env, String(b.token || '').trim(), who);
-    else if (b.action === 'live') {
-      const on = b.on === true;
-      if (on && !(await pub.connected(env))[platform]) err = `Connect ${pub.NAMES[platform]} first.`;
-      else if (on && platform === 'tiktok' && !(await tiktok.options(env)).privacy) err = 'Choose a TikTok privacy level first.';
-      else { await pub.setLive(env, platform, on); await mk.log(env, '-', `${platform}_${on ? 'live_on' : 'live_off'}`, who); }
-    } else if (b.action === 'tiktok_app') err = await tiktok.saveApp(env, String(b.key || '').trim(), String(b.secret || '').trim(), who);
+    else if (b.action === 'connect') {
+      try { await pub.connectInstagram(env, String(b.token || '').trim(), String(b.secret || '').trim(), who); }
+      catch (e) { await ig.noteError(env, e.message); throw e; }
+    } else if (b.action === 'check') {
+      const r = await ig.check(env); if (r.ok) notice = r.message; else err = r.message;
+    } else if (b.action === 'video_link') { // a signed link for the browser to try, exactly like the one Instagram receives
+      const [row] = await sql(env, 'SELECT id FROM marketing_posts WHERE video_sha IS NOT NULL LIMIT 1');
+      if (!row) err = 'No stored video to test.';
+      else { const exp = Math.floor(Date.now() / 1000) + 300; return json({ ok: true, url: `/hook/marketing-media?id=${row.id}&exp=${exp}&sig=${await mk.mediaSig(env, row.id, exp)}` }); }
+    }
+else if (b.action === 'dry_run') err = await pub.setDryRun(env, b.on !== false, b.confirm, who);
+    else if (b.action === 'tiktok_app') err = await tiktok.saveApp(env, String(b.key || '').trim(), String(b.secret || '').trim(), who);
     else if (b.action === 'tiktok_creator') await tiktok.creatorInfo(env);
     else if (b.action === 'tiktok_options') {
       const o = b.options || {}, choices = (await parse(env, 'tt_creator'))?.privacy_level_options || [];
@@ -62,5 +69,5 @@ export async function onRequestPost({ request, env, data }) {
       else await mk.setSetting(env, 'tt_verify', JSON.stringify({ file, content }));
     } else err = 'Unknown action';
   } catch (e) { err = e.message; }
-  return err ? bad(err) : json({ ok: true });
+  return err ? bad(err) : json({ ok: true, notice });
 }
