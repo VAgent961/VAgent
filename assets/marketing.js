@@ -13,7 +13,7 @@
     if (r.status === 401) return signedOut();
     if (!r.ok) { $('msg').textContent = (await r.json().catch(() => ({}))).error || 'Something went wrong.'; $('msg').scrollIntoView({ block: 'nearest' }); return false; }
     const d = await r.json().catch(() => ({}));
-    editing = null; last = ''; await load(); if (d.notice) { $('msg').textContent = d.notice; $('msg').className = 'ok'; } return true;
+    editing = null; last = ''; await load(); if (d.notice) { $('msg').textContent = d.notice; $('msg').className = 'ok'; $('msg').scrollIntoView({ block: 'nearest' }); } return true;
   }
   const btn = (text, fn, cls = '') => el('button', { type: 'button', textContent: text, className: cls, onclick: fn });
 
@@ -46,16 +46,20 @@
   // datetime-local value in Beirut time
   const local = (s) => new Date(s).toLocaleString('sv-SE', { timeZone: 'Asia/Beirut' }).slice(0, 16).replace(' ', 'T');
   const GROUPS = { review: 'Waiting for your approval', failed: 'Failed', publishing: 'Publishing now', scheduled: 'Approved, waiting for their time', rendering: 'Rendering', published: 'Published', declined: 'Declined' };
-  function schedule(p) {
-    const real = p.effective.filter((n) => p.live[n] && p.pub?.[n]?.state !== 'published').map((n) => NAMES[n]);
-    const at = el('input', { type: 'datetime-local', value: local(p.slot) });
-    const now = () => {
+  // platforms this post would really reach now (empty = Publish now only simulates)
+  const reach = (p) => p.effective.filter((n) => p.live[n] && p.pub?.[n]?.state !== 'published').map((n) => NAMES[n]);
+  function publishNow(p) {
+    const real = reach(p);
+    return btn(real.length ? 'Publish now' : 'Publish now (dry run)', async (e) => {
       if (real.length && !confirm(`Publish this post NOW, for real, on ${real.join(' and ')}? This cannot be undone.`)) return;
-      send({ action: 'publish_now', id: p.id, version: p.version, confirm: real.length ? 'PUBLISH' : '' }).then((ok) => { if (!ok) { last = ''; load(); } });
-    };
+      const b = e.currentTarget; b.disabled = true; b.textContent = real.length ? 'Publishing…' : 'Simulating…';
+      if (!(await send({ action: 'publish_now', id: p.id, version: p.version, confirm: real.length ? 'PUBLISH' : '' }))) { last = ''; load(); }
+    }, 'primary');
+  }
+  function schedule(p) {
+    const real = reach(p), at = el('input', { type: 'datetime-local', value: local(p.slot) });
     return el('div', { className: 'schedule' }, el('div', { className: 'meta', textContent: real.length ? `At this time it is really published on ${real.join(' and ')}.` : 'At this time it is only simulated: nothing is posted.' }),
-      el('label', {}, 'Publish time (Beirut)', at), btn('Save time', () => send({ action: 'reschedule', id: p.id, version: p.version, at: at.value })),
-      btn(real.length ? 'Publish now' : 'Publish now (dry run)', now, 'primary'));
+      el('label', {}, 'Publish time (Beirut)', at), btn('Save time', () => send({ action: 'reschedule', id: p.id, version: p.version, at: at.value })));
   }
   function card(p) {
     const open = ['rendering', 'review', 'scheduled', 'failed'].includes(p.status);
@@ -67,6 +71,7 @@
       p.captions.tiktok === p.captions.instagram ? '' : el('details', {}, el('summary', { textContent: 'TikTok caption' }), el('p', { className: 'cap', textContent: p.captions.tiktok })),
       p.post.keyword ? el('div', { className: 'meta', textContent: `Comment keyword: ${p.post.keyword} · ${p.post.info?.title || ''}` }) : '', targets(p), p.status === 'scheduled' ? schedule(p) : '', el('div', {},
       p.status === 'review' && btn('Approve', () => send({ action: 'approve', id: p.id, version: p.version }), 'primary'),
+      p.status === 'scheduled' && publishNow(p),
       p.status === 'failed' && p.has_video && btn('Try publishing again', () => send({ action: 'republish', id: p.id, version: p.version }), 'primary'),
       stuck && btn('Render again', () => send({ action: 'retry', id: p.id, version: p.version }), 'primary'),
       open && btn(p.status === 'failed' ? 'Edit and retry' : 'Edit', () => { editing = p.id; last = ''; load(); }),
