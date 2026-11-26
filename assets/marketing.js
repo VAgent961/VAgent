@@ -79,15 +79,16 @@
   function instagram(p) {
     const box = status('instagram', p, p.live);
     if (p.connected) {
-      const left = Math.floor((Date.parse(p.expires) - Date.now()) / 864e5);
-      box.append(el('div', { className: 'meta', textContent: [p.type && `Account: ${p.type.replace('MEDIA_', '').toLowerCase()}`, p.expires ? `Token valid until ${day(p.expires)} (${left} days), renewed automatically` : 'Token renews automatically', p.refreshed && `last saved ${day(p.refreshed)}`].filter(Boolean).join(' · ') }));
-      if (p.expires && left < 10) box.append(el('div', { className: 'alert', textContent: left < 0 ? 'The token has expired: connect again.' : 'The token expires soon and has not renewed. Check the connection.' }));
+      const at = Date.parse(p.expires), left = Math.floor((at - Date.now()) / 864e5), fb = p.type === 'PROFESSIONAL'; // Facebook (EAA) tokens are not renewed
+      const life = at ? `Token valid until ${day(p.expires)} (${left} days)${fb ? ', not renewed automatically' : ', renewed automatically'}` : p.expires === 'never' ? 'Token does not expire' : 'Token expiry unknown: use Check connection';
+      box.append(el('div', { className: 'meta', textContent: [p.type && `Account: ${p.type.replace('MEDIA_', '').toLowerCase()}`, life, p.refreshed && `last saved ${day(p.refreshed)}`].filter(Boolean).join(' · ') }));
+      if (at && left < 10) box.append(el('div', { className: 'alert', textContent: at < Date.now() ? 'The token has expired: connect again.' : fb ? 'The token expires soon: paste a new one (add the app secret for a 60-day token).' : 'The token expires soon and has not renewed. Check the connection.' }));
     }
     if (p.error) box.append(el('div', { className: 'alert', textContent: `${p.error.message} (${when(p.error.at)})` }));
     const token = el('input', { type: 'password', placeholder: 'Instagram access token', autocomplete: 'off' }), secret = el('input', { type: 'password', placeholder: 'App secret (only for a short-lived token)', autocomplete: 'off' });
     box.append(el('div', {}, p.connected && btn('Check connection', () => send({ action: 'check' })), btn('Test video link', testLink)),
       el('details', {}, el('summary', { textContent: p.connected ? 'Replace token' : 'Connect Instagram' }),
-        el('p', { className: 'meta', textContent: 'Needs a Business or Creator account and a token with instagram_business_basic and instagram_business_content_publish (Meta app dashboard, Instagram API with Instagram Login). Connecting turns Dry Run on.' }),
+        el('p', { className: 'meta', textContent: 'Needs a Business or Creator account. Paste an EAA… token (Meta Unified Login: instagram_basic, instagram_content_publish, pages_show_list, pages_read_engagement) or an IG… token (Instagram Login: instagram_business_basic, instagram_business_content_publish). Connecting turns Dry Run on.' }),
         token, secret, btn('Connect', () => send({ action: 'connect', token: token.value, secret: secret.value }), 'primary')));
     return box;
   }

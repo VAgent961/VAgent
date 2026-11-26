@@ -33,5 +33,6 @@
 
 ## Limits
 - GitHub may delay scheduled runs, and disables schedules after 60 days without repo activity. The repo is public (code and drafts visible; videos are not). GitHub's Actions terms tie usage to the repo's software project, so marketing renders are a grey area.
+- Instagram tokens: `EAA…` (Meta Unified Login) goes to graph.facebook.com, resolves the Page-linked account (prefers @v_agent961) and is not auto-renewed; `IG…` (Instagram Login) goes to graph.instagram.com and is renewed weekly. Test: `node scripts/test-instagram.mjs`.
 - The live Instagram calls are tested with a mock only.
 - English voice only. The public call page keeps its own character.
