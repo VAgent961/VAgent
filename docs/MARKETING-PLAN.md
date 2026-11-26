@@ -1,4 +1,20 @@
-# VAgent marketing pipeline: audit + plan (26 Nov 2026). PLAN ONLY, nothing built or published.
+# VAgent marketing pipeline: plan (26 Nov 2026). Server renderer written; sample not rendered yet, nothing published.
+
+## 0. Owner decisions (these win over anything below)
+1. Writing skills: https://github.com/Jakeschincariol/instagram-agent-skill (MIT, pinned `d03c56b`, install `scripts/install-ig-skill.sh`). Voice file `marketing/voice.md` -> `~/.claude/instagram/voice.md`. Used for Reel hooks, scripts, beats, captions, comment reply **drafts**. It cannot post.
+2. Rendering and voice run **on the server only**, never on the Mac.
+3. Video and temp files are deleted as soon as a post is **published** or **declined**. While in review/scheduled only `video.mp4` + `job.json` are kept.
+4. Tue, Thu, Sat 19:00 `Asia/Beirut`. Owner approval first; any edit clears it. Dry run on by default.
+5. Topics: the company, agents already built, ideas we can build at zero paid cost. No WhatsApp. Posts never mention free, cost or pricing (`worker.py` blocks it). Backlog: `marketing/ideas.md`.
+6. Zero paid media tools.
+
+## Server worker (`tools/marketing-render/`)
+- On the server (Docker): `git clone --depth 1 https://github.com/VAgent961/VAgent && ./VAgent/tools/marketing-render/sample.sh`
+- Watch: `ssh -N -L 8787:127.0.0.1:8787 USER@SERVER`, open http://localhost:8787 (streams, no download).
+- `docker compose run --rm worker list | approve ID --by NAME | decline ID --by NAME | edit ID posts/FILE.json | publish-due | published ID --media-id X`
+- Edited post files need `docker compose build` first (they are copied into the image).
+- State is files in the `marketing-data` volume; this is enough until the HQ review UI (section 5) exists.
+- Not wired yet: n8n publisher, Instagram, cron for `publish-due`, HQ UI. Live publishing is refused by the code.
 
 ## 1. Paid media audit
 Searched for ElevenLabs, Higgsfield, HeyGen, Runway, Creatomate, Shotstack, Replicate, Suno and similar.
@@ -18,7 +34,7 @@ Nothing to strip on our side. Fayez's side: when the export arrives, replace eac
 
 | Step | Tool | Notes |
 |---|---|---|
-| Script | AI Helper (Gemini free, Groq backup) | free tiers have limits; fixed JSON output |
+| Script | `ig-*` skills (Claude Code); AI Helper may draft later | owner reviews every draft; fixed JSON post format |
 | Voice | Kokoro-82M, voice `af_heart`, fixed speed | Apache-2.0, local, English only (no Arabic); needs its own Python 3.11 env via `uv` |
 | Frames | HTML/SVG scene captured in headless Chrome | no licence limit; reuses our CSS, brand and product UI |
 | Not chosen | Remotion | free only up to 3 people in total; we are at 3 |
@@ -27,7 +43,7 @@ Nothing to strip on our side. Fayez's side: when the export arrives, replace eac
 | Music/SFX | `marketing/audio/` + `LICENSES.csv` (file, source URL, licence, date) | Pixabay summary: free, no attribution, no standalone redistribution (read full terms first). Mixkit unverified: excluded. No file without a CSV row |
 | 3D | not in v1 | |
 
-Render worker: Mac (M4, 16 GB, 19 GB free) pulling jobs from HQ; must be awake. Renders days ahead. VPS is an option once its specs are checked.
+Render worker: server, Docker (`kokoro-onnx`, Chromium, ffmpeg). No music in v1. VPS or ZFS server: whichever has Docker, about 4 GB free disk and 4 GB RAM (estimate, check).
 Arabic voice: later. Piper `ar_JO kareem` is a different (male, Jordanian) voice with an unverified dataset licence. V1 = English voice, optional Arabic caption text.
 Existing VoiceStudio and Groq voices stay with the Voice Receptionist; not used here until licences/limits are checked.
 
@@ -68,7 +84,7 @@ Tables: `marketing_posts` (id, slot_at timestamptz, status, version, approved_ve
 | draft | rendering | writer, after schema + claim checks |
 | rendering | review | worker uploads MP4 + hash (or failed) |
 | review | approved / rejected | owner (reject needs a note) |
-| rejected | draft | owner asks for a rewrite |
+| rejected | (media deleted) | automatic; a rewrite renders again |
 | approved | scheduled | automatic, future slot |
 | scheduled | publishing | publisher, atomic claim |
 | publishing | published / failed | publisher |
@@ -82,20 +98,20 @@ Tables: `marketing_posts` (id, slot_at timestamptz, status, version, approved_ve
 - Dry run: checks everything, logs "would publish", stays `scheduled` with `dry_run_at`; no Instagram write call. Going live = owner switch + credential added.
 
 Code: `functions/api/marketing.js` (owner session), `functions/hook/marketing.js` (own `MARKETING_SECRET`, not the shared webhook secret), `assets/marketing.js` review queue in the office (video, metadata, edit, approve, reject, phone friendly), `tools/marketing-render/`, 2 new n8n workflows on our server (writer, publisher) with the crash alert.
-Storage: Cloudflare R2 (check free limits/billing setup first); private preview for owners, short-lived public URL for Instagram.
+Storage: server disk only, deleted on publish/decline. Instagram needs a public `video_url`: the publisher exposes a short-lived one just before posting (phase 4).
 
 ## 6. Instagram (phase 4)
 Professional account; `instagram_business_content_publish` (Instagram Login). Own account needs Standard Access only, no app review. Long-lived token 60 days, refresh + expiry alert. Create REELS container with `video_url`, poll `status_code` until FINISHED, `media_publish`. API limit 100 posts/24 h.
 
 ## 7. Phases (each ends with a check)
-1. One sample MP4 rendered locally; owners approve character, voice, look.
+1. One sample MP4 rendered on the server; owners approve character, voice, look.
 2. Tables, API, review UI; check: every transition + edit-resets-approval tests.
 3. Writer + render worker + slot filler; check: 3 videos in review.
 4. Publisher in dry run for 1 week; check DST and no duplicates.
 5. Connect Instagram; owner turns dry run off.
 
 ## Open decisions
-Fayez export; name "Vee" + `af_heart`; Mac or VPS rendering; post slots; which agents are signed off.
+Fayez export; name "Vee" + `af_heart`; which server + SSH access; Instagram handle; which agents are signed off.
 
 ## Sources
 github.com/remotion-dev/remotion/blob/main/LICENSE.md · huggingface.co/hexgrad/Kokoro-82M · developers.facebook.com/docs/instagram-platform/content-publishing · pixabay.com/service/license-summary · dicebear.com/styles/avataaars

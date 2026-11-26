@@ -1,0 +1,17 @@
+# Server only (never the Mac). Videos live in the marketing-data volume until published or declined.
+x-base: &base
+  build: { context: ../.., dockerfile: tools/marketing-render/Dockerfile }
+  image: vagent-marketing
+  volumes: ["marketing-data:/data"]
+services:
+  worker:
+    <<: *base
+    environment: { MARKETING_DRY_RUN: "${MARKETING_DRY_RUN:-true}" }
+    tmpfs: ["/tmp:size=512m"]
+  review:
+    <<: *base
+    entrypoint: ["python", "review.py"]
+    ports: ["127.0.0.1:8787:8787"]
+    restart: unless-stopped
+volumes:
+  marketing-data:
