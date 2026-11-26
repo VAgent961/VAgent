@@ -13,12 +13,31 @@ export function problems(text, at, labels) {
   return out;
 }
 
+// Every site Netlify lists on each account, joined with the pool's deploy records (data table netlify_sites).
+// A record newer than the last account check is shown too, so a fresh deploy is visible at once.
+export function deployed(snapshot, sites) {
+  const out = [], at = (r) => r.updatedAt || r.createdAt;
+  for (const a of snapshot.accounts || []) {
+    const records = (sites || []).filter((r) => r.account === a.label && r.site_id && r.status !== 'deleted').sort((x, y) => Date.parse(at(y)) - Date.parse(at(x)));
+    const row = (id, name, url, published, r, live) => out.push({ account: a.label, site_id: id, name, url, published, live,
+      project: r?.project_id || '', recordedAt: r ? at(r) : null, status: r?.status || '' });
+    for (const s of a.list || []) row(s.id, s.name, s.url, s.published, records.find((r) => r.site_id === s.id), true);
+    const seen = new Set((a.list || []).map((s) => s.id));
+    for (const r of records) {
+      if (seen.has(r.site_id) || (a.list && !a.more && !(Date.parse(at(r)) > Date.parse(snapshot.checkedAt)))) continue;
+      seen.add(r.site_id); row(r.site_id, r.site_name, r.url, null, r, false);
+    }
+  }
+  const time = (s) => Date.parse(s.recordedAt || s.published) || 0;
+  return out.sort((x, y) => time(y) - time(x));
+}
+
 export function view(snapshot, sites, log, now = Date.now()) {
   const list = snapshot.accounts || [], labels = list.map((a) => a.label);
   const errors = [...(sites || []).flatMap((r) => problems(r.detail, r.updatedAt || r.createdAt, labels)),
     ...(log || []).filter((r) => r.step === 'Netlify').flatMap((r) => problems(r.message, r.createdAt, labels))].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
   const accounts = list.map((a, i) => {
-    const own = (sites || []).filter((r) => r.account === a.label);
+    const own = (sites || []).filter((r) => r.account === a.label && r.status !== 'deleted');
     // newest successful deploy through the pool: from the owner table, or a log line naming the account without an error
     const ok = [...own.filter((r) => r.status === 'ready').map((r) => r.updatedAt || r.createdAt),
       ...(log || []).filter((r) => r.step === 'Netlify' && String(r.message).startsWith('Netlify account: ' + a.label) && !/ Error: /.test(r.message)).map((r) => r.createdAt)]
@@ -46,5 +65,6 @@ export function view(snapshot, sites, log, now = Date.now()) {
       periodEnd: a.periodEnd || null, sites: a.sites ?? null, published: a.published ?? null, buildMinutes: a.buildMinutes ?? null, bandwidthBytes: a.bandwidthBytes ?? null,
       poolSites: sites ? own.length : null, lastDeploy: ok, lastError: last && { at: last.at, step: last.step, reason: last.reason, open: open.includes(last) } };
   });
-  return { checkedAt: snapshot.checkedAt, stale: !(now - Date.parse(snapshot.checkedAt) < STALE), sitesKnown: !!sites, logKnown: !!log, accounts };
+  return { checkedAt: snapshot.checkedAt, stale: !(now - Date.parse(snapshot.checkedAt) < STALE), sitesKnown: !!sites, logKnown: !!log, accounts,
+    deployed: deployed(snapshot, sites), listKnown: list.map((a) => a.label).filter((l, i) => list[i].list && !list[i].more) };
 }

@@ -19,4 +19,10 @@ assert.equal(view(snap, null, null, now + 3600000).stale, true);
 const skipped = 'Netlify account: b2 - FAILOVER used. Problems: main build: Skipped due to account credit usage exceeded';
 v = view(snap, [{ account: 'b2', status: 'ready', updatedAt: ago(1), detail: skipped }], [{ step: 'Netlify', message: skipped, createdAt: ago(1) }], now);
 assert.deepEqual(v.accounts.slice(0, 2).map((a) => a.status), ['limit', 'available']);
+// deployed sites: live list joined with records; deleted records hidden; a record newer than the check is added
+const listed = { checkedAt: ago(3), accounts: [acc('main', { list: [{ id: 's1', name: 'one', url: 'https://one.netlify.app' }] })] };
+const rec = (site_id, m, status = 'ready') => ({ account: 'main', site_id, site_name: site_id, url: '', project_id: 'p-' + site_id, status, updatedAt: ago(m) });
+v = view(listed, [rec('s1', 60), rec('s2', 1), rec('s3', 60), rec('s4', 1, 'deleted')], [], now);
+assert.deepEqual(v.deployed.map((s) => [s.site_id, s.project, s.live]), [['s2', 'p-s2', false], ['s1', 'p-s1', true]]);
+assert.equal(v.accounts[0].poolSites, 3);
 console.log('netlify card logic ok');
