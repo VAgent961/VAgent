@@ -1,6 +1,6 @@
 """Runs in GitHub Actions. `check`: send repo drafts to HQ and count the queue. `render`: render and upload each.
 Authenticates with the workflow's own OIDC token (no stored secret). Videos exist only in a temp folder."""
-import hashlib, json, os, sys, tempfile, urllib.error, urllib.parse, urllib.request
+import hashlib, json, os, sys, tempfile, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 
 HQ = "https://vagent.online/hook/marketing"
@@ -19,6 +19,15 @@ def token():
     return http(url, headers={"Authorization": "Bearer " + os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]})["value"]
 
 def hq(body=None, raw=None, query=None):
+    for attempt in range(4):  # uploads are safe to repeat; ride out short server errors
+        try:
+            return send(body, raw, query)
+        except (RuntimeError, urllib.error.URLError, TimeoutError) as e:
+            if attempt == 3 or str(e).startswith("HQ 4"):
+                raise
+            time.sleep(5 * (attempt + 1))
+
+def send(body, raw, query):
     url = HQ + ("?" + urllib.parse.urlencode(query) if query else "")
     kind = "application/octet-stream" if raw is not None else "application/json"
     return http(url, raw if raw is not None else json.dumps(body).encode(),
