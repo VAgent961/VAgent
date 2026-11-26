@@ -1,0 +1,45 @@
+{
+ "id": "company-approval-01",
+ "scenes": [
+  {
+   "say": "Would you let a robot post in your name?",
+   "title": "In your name?",
+   "mood": "think"
+  },
+  {
+   "say": "We build agents that prepare the work.",
+   "title": "Agents do the work",
+   "mood": "talk"
+  },
+  {
+   "say": "Then they wait for you.",
+   "title": "Then they wait",
+   "mood": "talk",
+   "chat": [
+    "agent",
+    "Draft ready. Approve it?"
+   ]
+  },
+  {
+   "say": "You say yes, change it, or say no.",
+   "title": "Your call",
+   "mood": "talk",
+   "chat": [
+    "you",
+    "Change the first line."
+   ]
+  },
+  {
+   "say": "That is how VAgent works. Follow for more.",
+   "title": "VAgent",
+   "mood": "talk",
+   "end": true
+  }
+ ],
+ "caption": "Would you let a robot post in your name?\n\nAt VAgent, agents prepare the work and a person approves it before it goes out.\n\nFollow to see the agents we are building.",
+ "hashtags": [
+  "#AIAgents",
+  "#LebaneseBusiness",
+  "#VAgent"
+ ]
+}

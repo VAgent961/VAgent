@@ -8,6 +8,11 @@ const sql = async (query, params = []) => {
   return (await r.json()).rows;
 };
 const steps = [
+  "CREATE TABLE IF NOT EXISTS marketing_posts (id text PRIMARY KEY, post jsonb NOT NULL, version int NOT NULL DEFAULT 1, status text NOT NULL DEFAULT 'rendering', slot timestamptz, approved_hash text, approved_by text, video_sha text, video_size int, attempts int NOT NULL DEFAULT 0, ig_container_id text, ig_media_id text, publish_started_at timestamptz, dry_run_at timestamptz, error text, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now())",
+  "CREATE UNIQUE INDEX IF NOT EXISTS marketing_slot ON marketing_posts (slot) WHERE status IN ('scheduled', 'publishing', 'published')",
+  "CREATE TABLE IF NOT EXISTS marketing_media (post_id text NOT NULL REFERENCES marketing_posts(id) ON DELETE CASCADE, version int NOT NULL, n int NOT NULL, data text NOT NULL, PRIMARY KEY (post_id, version, n))",
+  "CREATE TABLE IF NOT EXISTS marketing_events (id bigserial PRIMARY KEY, post_id text NOT NULL, event text NOT NULL, detail text, at timestamptz NOT NULL DEFAULT now())",
+  "CREATE TABLE IF NOT EXISTS marketing_settings (k text PRIMARY KEY, v text NOT NULL)",
   "CREATE TABLE IF NOT EXISTS sniper_runs (id text PRIMARY KEY, owner_email text, district text, niche text, stage text NOT NULL DEFAULT 'maps', counts jsonb NOT NULL DEFAULT '{}', status text NOT NULL DEFAULT 'running', reply text, buttons jsonb, started_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), finished_at timestamptz)",
   "CREATE TABLE IF NOT EXISTS vagent_n8n (id serial PRIMARY KEY, label text NOT NULL, base_url text NOT NULL UNIQUE, api_key_enc text NOT NULL, owner_email text, created_at timestamptz DEFAULT now())",
   "ALTER TABLE vagent_n8n ADD COLUMN IF NOT EXISTS cred_id text",

@@ -1,0 +1,45 @@
+{
+ "id": "idea-site-check-01",
+ "scenes": [
+  {
+   "say": "Is your order button broken right now?",
+   "title": "Broken button?",
+   "mood": "think"
+  },
+  {
+   "say": "Here is an agent we can build for you.",
+   "title": "An idea",
+   "mood": "talk"
+  },
+  {
+   "say": "It clicks through your website like a customer.",
+   "title": "It clicks like a customer",
+   "mood": "talk",
+   "chat": [
+    "agent",
+    "Checking the order page."
+   ]
+  },
+  {
+   "say": "When something fails, it tells you what and where.",
+   "title": "It tells you",
+   "mood": "talk",
+   "chat": [
+    "agent",
+    "The order button does not respond."
+   ]
+  },
+  {
+   "say": "Want this for your site? Message us CHECK.",
+   "title": "Message us CHECK",
+   "mood": "talk",
+   "end": true
+  }
+ ],
+ "caption": "Would you know if your order button stopped working?\n\nAn idea we can build: an agent that clicks through your site like a customer and tells you what failed.\n\nMessage us CHECK if you want it.",
+ "hashtags": [
+  "#WebsiteTips",
+  "#SmallBusiness",
+  "#VAgent"
+ ]
+}

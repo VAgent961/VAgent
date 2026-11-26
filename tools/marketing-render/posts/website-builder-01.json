@@ -1,0 +1,49 @@
+{
+ "id": "website-builder-01",
+ "scenes": [
+  {
+   "say": "Your business needs a website. Start with one chat.",
+   "title": "One chat to a website",
+   "mood": "think"
+  },
+  {
+   "say": "Tell our website builder about your business.",
+   "title": "Tell it about your shop",
+   "mood": "talk",
+   "chat": [
+    "you",
+    "A bakery in Beirut. Warm colours."
+   ]
+  },
+  {
+   "say": "It builds the pages in your colours.",
+   "title": "Built in your style",
+   "mood": "talk",
+   "chat": [
+    "agent",
+    "Your first version is being built."
+   ]
+  },
+  {
+   "say": "You check it. Nothing goes out until you approve.",
+   "title": "You approve first",
+   "mood": "talk",
+   "chat": [
+    "you",
+    "Approved."
+   ]
+  },
+  {
+   "say": "Want one for your business? Message us DEMO.",
+   "title": "Message us DEMO",
+   "mood": "talk",
+   "end": true
+  }
+ ],
+ "caption": "From one chat to a working website.\n\nDescribe your business, review the result, and approve it before it goes out.\n\nMessage us DEMO to see it.",
+ "hashtags": [
+  "#WebDesign",
+  "#LebaneseBusiness",
+  "#VAgent"
+ ]
+}

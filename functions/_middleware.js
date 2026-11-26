@@ -49,7 +49,7 @@ async function clientHost({ env, request, next }, host, path) {
 // The company HQ: guards /office and /api/* (sets data.owner); signed-in owners skip the sign-in page.
 async function mainSite({ request, env, next, data }, host, path) {
   if (path.startsWith('/api/client/')) return isDev(host) ? next() : notFound();   // the client portal API exists only on adminvoice.vagent.online
-  const isOffice = path === '/office' || path.startsWith('/office/') || path === '/office.html';
+  const isOffice = path === '/office' || path.startsWith('/office/') || path === '/office.html' || path === '/marketing' || path === '/marketing.html';
   const isLogin = path === '/' || path === '/index.html';
   // /api/public-* are open on purpose (the public call page); each one has its own Origin check + rate limit.
   const isApi = path.startsWith('/api/') && path !== '/api/login' && path !== '/api/logout' && !path.startsWith('/api/public-');

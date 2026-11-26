@@ -1,0 +1,41 @@
+# Renders queued marketing videos (Kokoro-82M voice, Chromium, ffmpeg) and uploads them to HQ for approval.
+# No secrets and no artifacts: the runner and its files disappear after each run.
+name: marketing-render
+on:
+  schedule: [{ cron: "7,22,37,52 * * * *" }]
+  push:
+    branches: [main]
+    paths: ["tools/marketing-render/**", ".github/workflows/marketing-render.yml"]
+  workflow_dispatch:
+permissions: { contents: read, id-token: write }
+concurrency: { group: marketing-render, cancel-in-progress: false }
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults: { run: { working-directory: tools/marketing-render } }
+    steps:
+      - uses: actions/checkout@v4
+      - id: queue
+        run: python3 job.py check
+      - if: steps.queue.outputs.queued != '0'
+        uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - if: steps.queue.outputs.queued != '0'
+        uses: actions/cache@v4
+        with: { path: ~/models, key: kokoro-v1.0 }
+      - if: steps.queue.outputs.queued != '0'
+        name: Install free tools
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fontconfig >/dev/null
+          pip install -q kokoro-onnx==0.6.1 playwright==1.65.2
+          playwright install --with-deps chromium >/dev/null
+          mkdir -p ~/models ~/.fonts
+          M=https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0
+          for f in kokoro-v1.0.onnx voices-v1.0.bin; do [ -f ~/models/$f ] || curl -fsSL -o ~/models/$f $M/$f; done
+          F=https://raw.githubusercontent.com/google/fonts/main/ofl
+          curl -fsSL -o ~/.fonts/Newsreader.ttf "$F/newsreader/Newsreader%5Bopsz%2Cwght%5D.ttf"
+          curl -fsSL -o ~/.fonts/Inter.ttf "$F/inter/Inter%5Bopsz%2Cwght%5D.ttf"
+          fc-cache -f
+      - if: steps.queue.outputs.queued != '0'
+        run: MODELS=$HOME/models python3 job.py render

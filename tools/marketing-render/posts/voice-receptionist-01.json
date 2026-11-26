@@ -1,0 +1,54 @@
+{
+ "id": "voice-receptionist-01",
+ "scenes": [
+  {
+   "say": "Your shop is closed. Who answers?",
+   "title": "Closed? Still answering.",
+   "mood": "think"
+  },
+  {
+   "say": "I'm Vee. This is our voice receptionist.",
+   "title": "Meet Vee",
+   "mood": "talk"
+  },
+  {
+   "say": "A customer asks, in English or Arabic.",
+   "title": "English or Arabic",
+   "mood": "talk",
+   "chat": [
+    "you",
+    "Do you have a chocolate cake?"
+   ]
+  },
+  {
+   "say": "It answers from your catalog and shows the product.",
+   "title": "Your catalog, your answers",
+   "mood": "talk",
+   "chat": [
+    "agent",
+    "Yes. Here it is, from today's menu."
+   ]
+  },
+  {
+   "say": "Then it takes the order.",
+   "title": "Order taken",
+   "mood": "talk",
+   "chat": [
+    "agent",
+    "Order noted. See you soon."
+   ]
+  },
+  {
+   "say": "Closed or busy, your shop answers. Message us DEMO.",
+   "title": "Message us DEMO",
+   "mood": "talk",
+   "end": true
+  }
+ ],
+ "caption": "Your shop is closed, and a customer has a question.\n\nOur voice receptionist answers from your own catalog, in English or Arabic, shows the product and takes the order.\n\nMessage us DEMO to see it.",
+ "hashtags": [
+  "#VoiceAI",
+  "#LebaneseBusiness",
+  "#VAgent"
+ ]
+}

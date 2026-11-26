@@ -5,32 +5,36 @@ body{width:1080px;height:1920px;overflow:hidden;background:#141413;color:#FAF9F5
 div,img{position:absolute}
 #mark{left:72px;top:110px;width:96px}
 #ai{right:72px;top:138px;font-size:28px;opacity:.65}
-h1{position:absolute;left:72px;right:72px;top:270px;font:600 100px/1.08 Newsreader,serif;text-align:center}
-#face{left:240px;top:560px;width:600px;height:600px}
+h1{position:absolute;left:72px;right:72px;top:270px;font:600 96px/1.08 Newsreader,serif;text-align:center}
+#vee{left:240px;top:535px;width:600px;height:600px}
+#face,#hs,#hs svg{left:0;top:0;width:600px;height:600px;position:absolute}
+.acc{fill:#B5532F}
 .msg{left:90px;top:1180px;max-width:760px;padding:30px 40px;border-radius:36px;font-size:44px;line-height:1.35;background:#26251F}
 .msg.you{left:auto;right:150px;background:#B5532F}
 #demo{left:90px;top:1135px;font-size:26px;opacity:.6}
-#cap{left:90px;right:150px;top:1390px;text-align:center;font:600 50px/1.35 Inter,sans-serif}
+#cap{left:90px;right:150px;top:1390px;text-align:center;font:600 48px/1.35 Inter,sans-serif}
 #lockup{left:290px;top:1190px;width:500px}
 </style>
-<img id="mark"><div id="ai">AI character</div><h1 id="title"></h1><img id="face"><div id="demo">Demo</div><div id="msg" class="msg"></div><div id="cap"></div><img id="lockup">
+<img id="mark"><div id="ai">AI character</div><h1 id="title"></h1><div id="vee"><img id="face"><div id="hs"></div></div><div id="demo">Demo</div><div id="msg" class="msg"></div><div id="cap"></div><img id="lockup">
 <script>
 let D; const $ = id => document.getElementById(id);
 async function setup(d){
-  D = d; $('mark').src = d.mark; $('lockup').src = d.lockup;
+  D = d; $('mark').src = d.mark; $('lockup').src = d.lockup; $('hs').innerHTML = d.headset;
   await Promise.all(Object.values(d.face).map(src => { const i = new Image(); i.src = src; return i.decode(); }));
   await document.fonts.ready;
 }
 async function seek(i){
   const t = i / 30, s = [...D.scenes].reverse().find(x => t >= x.start) || D.scenes[0], k = t - s.start;
   const ease = Math.min(1, k / .25), v = D.level[i], speaking = k < s.voice && v > .06;
-  const f = speaking ? (v > .5 ? 'talk3' : v > .25 ? 'talk2' : 'talk1') : s.mood === 'think' ? 'think' : (t % 3.2 > 3.05 ? 'blink' : 'idle');
+  const rest = s.mood === 'think' ? 'think' : s.chat && s.chat[0] === 'you' ? 'listen' : (t % 3.2 > 3.05 ? 'blink' : 'idle');
+  const f = speaking ? (v > .5 ? 'talk3' : v > .25 ? 'talk2' : 'talk1') : rest;
   if ($('face').dataset.f !== f) { $('face').dataset.f = f; $('face').src = D.face[f]; await $('face').decode(); }
+  $('vee').style.transform = `translateY(${speaking ? -v * 8 : 0}px)`;
   $('title').textContent = s.title;
   $('title').style.opacity = ease; $('title').style.transform = `translateY(${(1 - ease) * 30}px)`;
   $('msg').style.display = $('demo').style.display = s.chat ? 'block' : 'none';
   if (s.chat) { $('msg').className = 'msg ' + s.chat[0]; $('msg').textContent = s.chat[1]; $('msg').style.opacity = ease; }
-  $('lockup').style.display = s.end ? 'block' : 'none';
+  $('lockup').style.display = s.end && !s.chat ? 'block' : 'none';
   $('cap').textContent = s.say;
 }
 </script>

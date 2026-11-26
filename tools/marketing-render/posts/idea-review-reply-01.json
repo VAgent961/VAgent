@@ -1,0 +1,45 @@
+{
+ "id": "idea-review-reply-01",
+ "scenes": [
+  {
+   "say": "A new review came in. Who replies?",
+   "title": "Who replies?",
+   "mood": "think"
+  },
+  {
+   "say": "Here is an agent we can build.",
+   "title": "An idea",
+   "mood": "talk"
+  },
+  {
+   "say": "It reads the review and drafts a reply.",
+   "title": "A reply, drafted",
+   "mood": "talk",
+   "chat": [
+    "agent",
+    "Thank you for visiting. We are glad you enjoyed it."
+   ]
+  },
+  {
+   "say": "You edit it, then you send it.",
+   "title": "You send it",
+   "mood": "talk",
+   "chat": [
+    "you",
+    "Looks good."
+   ]
+  },
+  {
+   "say": "Want it for your shop? Message us REPLY.",
+   "title": "Message us REPLY",
+   "mood": "talk",
+   "end": true
+  }
+ ],
+ "caption": "A review came in. The reply is already drafted.\n\nAn idea we can build: an agent drafts the answer, and you approve it before it is posted.\n\nMessage us REPLY if you want it.",
+ "hashtags": [
+  "#CustomerService",
+  "#SmallBusiness",
+  "#VAgent"
+ ]
+}

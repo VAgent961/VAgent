@@ -1,0 +1,45 @@
+{
+ "id": "sniper-leads-01",
+ "scenes": [
+  {
+   "say": "Where is your next client? Pick a district.",
+   "title": "Your next client",
+   "mood": "think"
+  },
+  {
+   "say": "Our lead agent searches by area and by type of business.",
+   "title": "District and niche",
+   "mood": "talk",
+   "chat": [
+    "you",
+    "Cafes in Hamra"
+   ]
+  },
+  {
+   "say": "It brings back a short list to look at.",
+   "title": "A short list",
+   "mood": "talk",
+   "chat": [
+    "agent",
+    "Your list is ready. Demo data."
+   ]
+  },
+  {
+   "say": "You decide who to contact.",
+   "title": "You decide",
+   "mood": "talk"
+  },
+  {
+   "say": "Want to see it on your area? Message us DEMO.",
+   "title": "Message us DEMO",
+   "mood": "talk",
+   "end": true
+  }
+ ],
+ "caption": "Finding your next client, district by district.\n\nChoose an area and a type of business, get a short list, and decide who to contact.\n\nMessage us DEMO to see it.",
+ "hashtags": [
+  "#LeadGeneration",
+  "#BeirutBusiness",
+  "#VAgent"
+ ]
+}
