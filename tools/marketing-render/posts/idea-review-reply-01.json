@@ -2,41 +2,79 @@
  "id": "idea-review-reply-01",
  "scenes": [
   {
-   "say": "A new review came in. Who replies?",
-   "title": "Who replies?",
-   "mood": "think"
-  },
-  {
-   "say": "Here is an agent we can build.",
-   "title": "An idea",
-   "mood": "talk"
-  },
-  {
-   "say": "It reads the review and drafts a reply.",
-   "title": "A reply, drafted",
-   "mood": "talk",
-   "chat": [
-    "agent",
-    "Thank you for visiting. We are glad you enjoyed it."
+   "say": "One review, no reply. Your next customer already noticed.",
+   "title": "No reply?",
+   "shot": "hook",
+   "mood": "think",
+   "items": [
+    "New review",
+    "Still waiting"
    ]
   },
   {
-   "say": "You edit it, then you send it.",
-   "title": "You send it",
+   "say": "People read the reviews, and they also read how you answer.",
+   "title": "They read your answers",
+   "shot": "phone",
    "mood": "talk",
    "chat": [
     "you",
-    "Looks good."
+    "Lovely place, but we waited a while."
    ]
   },
   {
-   "say": "Want it for your shop? Message us REPLY.",
-   "title": "Message us REPLY",
+   "say": "Here is an agent we can build for your shop.",
+   "title": "An agent we can build",
+   "shot": "flow",
    "mood": "talk",
+   "items": [
+    "Read the review",
+    "Understand the mood",
+    "Draft a reply",
+    "Ask you"
+   ]
+  },
+  {
+   "say": "It reads each new review and drafts a polite reply in your tone.",
+   "title": "A reply, drafted",
+   "shot": "phone",
+   "mood": "talk",
+   "chat": [
+    "agent",
+    "Thank you for visiting. We will be quicker next time."
+   ]
+  },
+  {
+   "say": "Happy review or hard one, you see the draft before anyone else does.",
+   "title": "You see it first",
+   "shot": "list",
+   "mood": "talk",
+   "items": [
+    "Happy review: thank them",
+    "Late order: apologise",
+    "Question: answer it"
+   ]
+  },
+  {
+   "say": "Edit a line, approve it, and then it is ready to send.",
+   "title": "You approve",
+   "shot": "approve",
+   "mood": "talk",
+   "items": [
+    "Thank you for visiting. See you soon."
+   ]
+  },
+  {
+   "say": "Want help with your reviews? Message us the word reply.",
+   "title": "Message us REPLY",
+   "shot": "cta",
+   "mood": "talk",
+   "items": [
+    "Message us REPLY"
+   ],
    "end": true
   }
  ],
- "caption": "A review came in. The reply is already drafted.\n\nAn idea we can build: an agent drafts the answer, and you approve it before it is posted.\n\nMessage us REPLY if you want it.",
+ "caption": "One review, no reply. Your next customer already noticed.\n\nAn idea we can build: an agent drafts the answer, and you approve it before it is posted.\n\nMessage us REPLY if you want it.",
  "hashtags": [
   "#CustomerService",
   "#SmallBusiness",

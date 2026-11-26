@@ -1,40 +1,156 @@
 <!doctype html><meta charset="utf-8">
 <style>
-*{margin:0;box-sizing:border-box}
+*{margin:0;padding:0;box-sizing:border-box}
 body{width:1080px;height:1920px;overflow:hidden;background:#141413;color:#FAF9F5;font-family:Inter,sans-serif;position:relative}
-div,img{position:absolute}
-#mark{left:72px;top:110px;width:96px}
-#ai{right:72px;top:138px;font-size:28px;opacity:.65}
-h1{position:absolute;left:72px;right:72px;top:270px;font:600 96px/1.08 Newsreader,serif;text-align:center}
-#vee{left:240px;top:535px;width:600px;height:600px}
-#face,#hs,#hs svg{left:0;top:0;width:600px;height:600px;position:absolute}
-.acc{fill:#B5532F}
-.msg{left:90px;top:1180px;max-width:760px;padding:30px 40px;border-radius:36px;font-size:44px;line-height:1.35;background:#26251F}
-.msg.you{left:auto;right:150px;background:#B5532F}
-#demo{left:90px;top:1135px;font-size:26px;opacity:.6}
-#cap{left:90px;right:150px;top:1390px;text-align:center;font:600 48px/1.35 Inter,sans-serif}
-#lockup{left:290px;top:1190px;width:500px}
+.a{position:absolute}.full{position:absolute;inset:0}
+.blob{position:absolute;width:1100px;height:1100px;border-radius:50%}
+#grid{position:absolute;inset:-120px;background-image:radial-gradient(rgba(250,249,245,.09) 2px,transparent 3px);background-size:60px 60px}
+#cam{transform-origin:540px 900px}
+#girl{position:absolute;z-index:1;left:0;top:0;width:400px;height:470px;transform-origin:0 0;filter:drop-shadow(0 22px 30px rgba(0,0,0,.4))}
+#title{position:absolute;left:70px;right:70px;top:235px;height:260px;display:flex;align-items:center;justify-content:center;text-align:center;font:600 92px/1.06 Newsreader,serif;text-shadow:0 6px 30px rgba(0,0,0,.5)}
+#mark{left:64px;top:96px;width:100px}
+#ai{right:64px;top:128px;font-size:27px;opacity:.65}
+#bar{left:0;top:0;height:10px;width:1080px;background:#B5532F;transform-origin:0 0}
+#cap{position:absolute;left:60px;right:120px;top:1390px;display:flex;flex-wrap:wrap;justify-content:center;align-content:flex-start;gap:12px 10px}
+#cap span{font:800 62px/1.15 Inter,sans-serif;padding:4px 14px;border-radius:18px;text-shadow:0 4px 18px rgba(0,0,0,.75)}
+#wipe{left:-500px;top:-100px;width:2080px;height:2120px;background:linear-gradient(100deg,transparent 0,#B5532F 18%,#D9774F 50%,#B5532F 82%,transparent 100%)}
+.card{position:absolute;background:#FAF9F5;color:#141413;border-radius:44px;box-shadow:0 40px 80px rgba(0,0,0,.5)}
+.ghost{position:absolute;border-radius:44px;background:#F3F1EA;opacity:.14}
+.demo{position:absolute;right:34px;top:30px;font:600 24px Inter;color:#8A8478;border:2px solid #DDD8CC;border-radius:30px;padding:4px 18px}
+.head{position:absolute;left:40px;top:28px;font:600 40px Newsreader,serif}
+.row{position:absolute;left:40px;right:40px;height:104px;border-radius:28px;background:#F3F1EA;display:flex;align-items:center;gap:26px;padding:0 28px;font:600 38px Inter}
+.dot{flex:none;width:56px;height:56px;border-radius:50%;background:#DDD8CC;color:#fff;display:flex;align-items:center;justify-content:center;font:800 30px Inter}
+.on .dot{background:#B5532F}
+.msg{position:absolute;max-width:600px;padding:26px 34px;border-radius:34px;font:500 38px/1.35 Inter;background:#EDEAE1}
+.msg.you{right:34px;background:#B5532F;color:#fff;border-bottom-right-radius:8px}.msg.agent{left:34px;border-bottom-left-radius:8px}
+.line{position:absolute;height:26px;border-radius:13px;background:#E4E0D5;transform-origin:0 50%}
+.pill{position:absolute;border-radius:60px;background:#B5532F;color:#fff;font:800 48px Inter;text-align:center;padding:26px 0}
+#lockup{position:absolute;z-index:2;left:340px;top:1150px;width:400px}
 </style>
-<img id="mark"><div id="ai">AI character</div><h1 id="title"></h1><div id="vee"><img id="face"><div id="hs"></div></div><div id="demo">Demo</div><div id="msg" class="msg"></div><div id="cap"></div><img id="lockup">
+<div class="full" id="bg"><div class="blob" id="b1" style="background:radial-gradient(circle,rgba(181,83,47,.55),transparent 65%)"></div><div class="blob" id="b2" style="background:radial-gradient(circle,rgba(224,129,86,.25),transparent 65%)"></div><div id="grid"></div></div>
+<div class="full" id="cam"><div class="full" id="ui"></div><div id="girl"></div><img id="lockup"></div>
+<div id="title"></div><div id="cap"></div><div class="a" id="wipe"></div>
+<img class="a" id="mark"><div class="a" id="ai">AI character</div><div class="a" id="bar"></div>
+<script src="character.js"></script>
 <script>
-let D; const $ = id => document.getElementById(id);
-async function setup(d){
-  D = d; $('mark').src = d.mark; $('lockup').src = d.lockup; $('hs').innerHTML = d.headset;
-  await Promise.all(Object.values(d.face).map(src => { const i = new Image(); i.src = src; return i.decode(); }));
-  await document.fonts.ready;
+let D, draw, built = -1;
+const $ = (id) => document.getElementById(id);
+const clamp = (v) => Math.max(0, Math.min(1, v));
+const out = (k) => 1 - Math.pow(1 - clamp(k), 3);
+const back = (k) => { k = clamp(k) - 1; return 1 + k * k * (2.7 * k + 1.7); };
+const el = (parent, cls, css = '', text = '') => { const n = document.createElement('div'); n.className = cls; n.style.cssText = css; n.textContent = text; parent.append(n); return n; };
+// character per shot: position, size, pose, face
+const GIRL = { hook: [200, 545, 1.7, 'explain', 'wow'], phone: [20, 1102, .67, 'point', 'happy'], flow: [20, 1102, .67, 'point', 'happy'], browser: [20, 1102, .67, 'explain', 'happy'], list: [20, 1102, .67, 'think', 'think'], approve: [20, 1102, .67, 'point', 'happy'], alert: [20, 1102, .67, 'think', 'worried'], cta: [260, 475, 1.4, 'wave', 'joy'] };
+
+async function setup(d) {
+  D = d; $('mark').src = d.mark; $('lockup').src = d.lockup; draw = makeGirl($('girl'));
+  await Promise.all([$('mark').decode(), $('lockup').decode(), document.fonts.ready]);
+  await Promise.all(['600 90px Newsreader', '800 60px Inter', '500 38px Inter'].map((f) => document.fonts.load(f)));
 }
-async function seek(i){
-  const t = i / 30, s = [...D.scenes].reverse().find(x => t >= x.start) || D.scenes[0], k = t - s.start;
-  const ease = Math.min(1, k / .25), v = D.level[i], speaking = k < s.voice && v > .06;
-  const rest = s.mood === 'think' ? 'think' : s.chat && s.chat[0] === 'you' ? 'listen' : (t % 3.2 > 3.05 ? 'blink' : 'idle');
-  const f = speaking ? (v > .5 ? 'talk3' : v > .25 ? 'talk2' : 'talk1') : rest;
-  if ($('face').dataset.f !== f) { $('face').dataset.f = f; $('face').src = D.face[f]; await $('face').decode(); }
-  $('vee').style.transform = `translateY(${speaking ? -v * 8 : 0}px)`;
-  $('title').textContent = s.title;
-  $('title').style.opacity = ease; $('title').style.transform = `translateY(${(1 - ease) * 30}px)`;
-  $('msg').style.display = $('demo').style.display = s.chat ? 'block' : 'none';
-  if (s.chat) { $('msg').className = 'msg ' + s.chat[0]; $('msg').textContent = s.chat[1]; $('msg').style.opacity = ease; }
-  $('lockup').style.display = s.end && !s.chat ? 'block' : 'none';
-  $('cap').textContent = s.say;
+// Builds the mockup for one scene and returns its animator(k = seconds since the cut, dur).
+function build(n) {
+  const s = D.scenes[n], ui = $('ui'); ui.replaceChildren();
+  const items = s.items || [], shot = s.shot || 'phone';
+  if (shot === 'hook') {
+    const chips = items.map((x, i) => el(ui, 'pill', `z-index:2;left:${i % 2 ? 640 : 40}px;top:${i % 2 ? 1190 : 545}px;width:390px;font-size:38px;background:#FAF9F5;color:#141413;box-shadow:0 20px 40px rgba(0,0,0,.4)`, x));
+    return (k) => chips.forEach((c, i) => { const a = back((k - .5 - i * .45) / .4); c.style.opacity = clamp(a); c.style.transform = `translateY(${Math.sin(k * 2 + i * 2) * 10}px) scale(${a}) rotate(${i % 2 ? 5 : -5}deg)`; });
+  }
+  if (shot === 'cta') {
+    const p = el(ui, 'pill', 'left:230px;top:1300px;width:620px', items[0] || 'Message us');
+    return (k) => { p.style.opacity = clamp((k - .4) / .2); p.style.transform = `scale(${back((k - .4) / .45) * (1 + Math.max(0, Math.sin(k * 5)) * .035)})`; };
+  }
+  const g2 = el(ui, 'ghost', 'left:190px;top:478px;width:700px;height:600px'), g1 = el(ui, 'ghost', 'left:150px;top:500px;width:780px;height:600px;opacity:.28');
+  const phone = shot === 'phone';
+  const card = el(ui, 'card', phone ? 'left:190px;top:505px;width:760px;height:600px' : 'left:100px;top:505px;width:880px;height:600px');
+  el(card, 'head', '', { phone: 'Chat', flow: 'Workflow', browser: 'Website', list: 'Shortlist', approve: 'Draft', alert: 'Check' }[shot]);
+  el(card, 'demo', '', 'Demo');
+  let anim = () => {};
+  if (phone) {
+    const history = D.scenes.slice(0, n + 1).filter((x) => x.chat).slice(-3);
+    let y = 130;
+    const msgs = history.map((x) => { const m = el(card, 'msg ' + x.chat[0], `top:${y}px`, x.chat[1]); y += m.offsetHeight + 26; return m; });
+    const typing = el(card, 'msg agent', `top:${y}px`, '');
+    const dots = [0, 1, 2].map(() => { const d = document.createElement('i'); d.style.cssText = 'display:inline-block;width:18px;height:18px;margin:0 6px;border-radius:50%;background:#8A8478'; typing.append(d); return d; });
+    anim = (k) => {
+      msgs.forEach((m, i) => { const a = i === msgs.length - 1 && s.chat ? back((k - .35) / .4) : 1; m.style.opacity = clamp(a); m.style.transform = `translateY(${(1 - a) * 40}px) scale(${.85 + .15 * a})`; });
+      typing.style.display = s.chat && s.chat[0] === 'you' && k > 1 && y < 490 ? 'block' : 'none';
+      dots.forEach((d, i) => d.style.transform = `translateY(${Math.sin(k * 9 - i) * 7}px)`);
+    };
+  } else if (shot === 'flow' || shot === 'list') {
+    if (shot === 'flow') el(card, 'a', 'left:93px;top:180px;width:6px;height:' + (items.length - 1) * 116 + 'px;background:#E4E0D5');
+    const fill = shot === 'flow' ? el(card, 'a', 'left:93px;top:180px;width:6px;background:#B5532F;height:0') : null;
+    const rows = items.map((x, i) => { const r = el(card, 'row', `top:${126 + i * 116}px`); const dot = el(r, 'dot', '', String(i + 1)); el(r, '', '', x); return { r, dot }; });
+    anim = (k, dur) => {
+      const step = Math.max(.35, (dur - 1) / Math.max(1, items.length));
+      rows.forEach(({ r, dot }, i) => { const a = out((k - .25 - i * .14) / .35), done = k > .7 + i * step; r.style.opacity = a; r.style.transform = `translateX(${(1 - a) * 120}px) scale(${done ? 1 + .04 * Math.sin(clamp((k - .7 - i * step) / .3) * Math.PI) : 1})`; r.classList.toggle('on', done); dot.textContent = done ? '✓' : i + 1; });
+      if (fill) fill.style.height = clamp((k - .7) / (step * Math.max(1, items.length - 1))) * (items.length - 1) * 116 + 'px';
+    };
+  } else if (shot === 'browser') {
+    el(card, 'a', 'left:40px;right:40px;top:100px;height:3px;background:#E4E0D5');
+    const hero = el(card, 'a', 'left:40px;right:40px;top:130px;height:190px;border-radius:30px;background:linear-gradient(120deg,#B5532F,#E08156);color:#fff;font:600 54px Newsreader,serif;display:flex;align-items:center;justify-content:center', items[0] || '');
+    const tiles = items.slice(1, 4).map((x, i) => el(card, 'a', `left:${40 + i * 272}px;top:345px;width:256px;height:215px;border-radius:28px;background:#F3F1EA;font:600 32px Inter;display:flex;align-items:flex-end;justify-content:center;padding-bottom:26px`, x));
+    const shapes = tiles.map((t) => el(t, 'a', 'left:73px;top:34px;width:110px;height:100px;border-radius:30px;background:#E3C3B4'));
+    anim = (k) => { [hero, ...tiles].forEach((n2, i) => { const a = back((k - .3 - i * .4) / .45); n2.style.opacity = clamp(a); n2.style.transform = `translateY(${(1 - a) * 60}px) scale(${.8 + .2 * a})`; }); shapes.forEach((sh, i) => sh.style.transform = `translateY(${Math.sin(k * 2.4 + i) * 6}px)`); };
+  } else if (shot === 'approve') {
+    const text = el(card, 'a', 'left:50px;right:50px;top:125px;font:500 44px/1.4 Inter', '');
+    const bars = [760, 610].map((w, i) => el(card, 'line', `left:50px;top:${320 + i * 50}px;width:${w}px`));
+    const yes = el(card, 'pill', 'left:50px;top:445px;width:380px;font-size:40px', 'Approve');
+    el(card, 'pill', 'left:460px;top:445px;width:370px;font-size:40px;background:#E4E0D5;color:#141413', 'Edit');
+    const cur = el(card, 'a', 'width:54px;height:54px;border-radius:50%;background:rgba(20,20,19,.35);border:6px solid #fff');
+    anim = (k, dur) => {
+      const full = items[0] || '', press = dur * .68; text.textContent = full.slice(0, Math.floor(clamp((k - .3) / (dur * .4)) * full.length));
+      bars.forEach((b, i) => b.style.transform = `scaleX(${out((k - .5 - i * .2) / .6)})`);
+      const m = out((k - press + .7) / .7); cur.style.left = 760 - 540 * m + 'px'; cur.style.top = 580 - 100 * m + 'px';
+      const hit = k > press; yes.textContent = hit ? 'Approved ✓' : 'Approve'; yes.style.background = hit ? '#2F7D4F' : '#B5532F'; yes.style.transform = `scale(${1 - .09 * Math.sin(clamp((k - press) / .3) * Math.PI)})`;
+    };
+  } else if (shot === 'alert') {
+    const btn = el(card, 'pill', 'left:230px;top:150px;width:420px;background:#E4E0D5;color:#141413', 'Order now');
+    const cur = el(card, 'a', 'width:54px;height:54px;border-radius:50%;background:rgba(20,20,19,.35);border:6px solid #fff');
+    const warn = el(card, 'a', 'left:50px;right:50px;top:330px;border-radius:32px;background:#FBE4DC;border:4px solid #B5532F;padding:34px 40px;font:600 40px/1.35 Inter', items[0] || '');
+    anim = (k) => {
+      const m = out((k - .2) / .8); cur.style.left = 780 - 330 * m + 'px'; cur.style.top = 520 - 320 * m + 'px';
+      btn.style.transform = `scale(${1 - .08 * Math.sin(clamp((k - 1) / .25) * Math.PI) - .08 * Math.sin(clamp((k - 1.4) / .25) * Math.PI)})`;
+      const a = back((k - 1.7) / .4); warn.style.opacity = clamp(a); warn.style.transform = `translateX(${k > 1.7 && k < 2.4 ? Math.sin(k * 50) * 9 : 0}px) scale(${.8 + .2 * a})`;
+    };
+  }
+  return (k, dur) => {
+    const a = back(k / .5);
+    card.style.transform = `perspective(1600px) translateY(${(1 - a) * 200}px) rotateY(${-6 + out(k / dur) * 8}deg) rotateX(${(1 - a) * 12}deg)`; card.style.opacity = clamp(k / .2);
+    g1.style.transform = `translate(${Math.sin(k * .8) * 14}px,${(1 - out(k / .7)) * 140}px) rotate(${-4 + k * .5}deg)`;
+    g2.style.transform = `translate(${-Math.sin(k * .7) * 18}px,${(1 - out(k / .9)) * 100}px) rotate(${5 - k * .6}deg)`;
+    anim(k, dur);
+  };
+}
+let animate;
+function seek(i) {
+  const t = i / D.fps;
+  let n = D.scenes.length - 1; while (n > 0 && t < D.scenes[n].start) n--;
+  const s = D.scenes[n], k = t - s.start, shot = s.shot || 'phone', level = D.level[i] || 0;
+  if (n !== built) { built = n; animate = build(n); }
+  animate(k, s.dur);
+  // camera: punch in on the cut, then a slow push and pan that alternates per scene
+  const p = clamp(k / s.dur), dir = n % 2 ? -1 : 1, punch = 1 - out(k / .45);
+  const zoom = shot === 'hook' ? 1 + p * .13 + punch * .16 : shot === 'cta' ? 1.07 - p * .05 + punch * .1 : 1 + (n % 3 === 2 ? .09 - p * .07 : p * .08) + punch * .09;
+  $('cam').style.transform = `translate(${dir * (p - .5) * 34}px,${shot === 'hook' ? -p * 22 : (p - .5) * -14}px) scale(${zoom})`;
+  $('b1').style.transform = `translate(${-300 + Math.sin(t * .35) * 220}px,${100 + Math.cos(t * .28) * 260}px)`;
+  $('b2').style.transform = `translate(${380 + Math.cos(t * .4) * 240}px,${900 + Math.sin(t * .31) * 230}px)`;
+  $('grid').style.transform = `translate(${(t * 9) % 60}px,${(t * 14) % 60}px)`;
+  const g = GIRL[shot], prev = GIRL[(D.scenes[n - 1] || s).shot || 'phone'], m = out(k / .45);
+  $('girl').style.transform = `translate(${prev[0] + (g[0] - prev[0]) * m}px,${prev[1] + (g[1] - prev[1]) * m}px) scale(${prev[2] + (g[2] - prev[2]) * m})`;
+  const talking = k < s.voice, face = shot === 'approve' && k > s.dur * .68 ? 'joy' : shot === 'hook' && k > 1.4 ? 'worried' : g[4];
+  draw({ t, pose: g[3], from: prev[3], k: clamp(k / .45), face, level: talking ? level : 0 });
+  const lk = $('lockup'); lk.style.display = shot === 'cta' ? 'block' : 'none'; lk.style.opacity = out((k - .2) / .4);
+  $('cap').style.top = shot === 'cta' ? '1455px' : '1425px';
+  const title = $('title'), a = back(k / .45);
+  title.textContent = s.title; title.style.opacity = clamp(k / .15); title.style.transform = `translateY(${(1 - a) * 50}px) scale(${.9 + .1 * a})`;
+  // kinetic captions: short groups, the spoken word is highlighted
+  const w = s.words, now = Math.max(0, w.findLastIndex((x) => t >= x.t)), group = s.groups.find((r) => now >= r[0] && now <= r[1]), cap = $('cap');
+  const key = n + ':' + group[0];
+  if (cap.dataset.k !== key) { cap.dataset.k = key; cap.replaceChildren(...w.slice(group[0], group[1] + 1).map((x) => { const e = document.createElement('span'); e.textContent = x.w; return e; })); }
+  [...cap.children].forEach((e, j) => { const idx = group[0] + j, since = t - w[idx].t, cur = idx === now && since >= 0; e.style.opacity = since >= -.05 ? 1 : .38; e.style.background = cur ? '#B5532F' : 'transparent'; e.style.transform = `translateY(${cur ? -4 : 0}px) scale(${cur ? 1 + .12 * Math.sin(clamp(since / .22) * Math.PI) + .03 : 1})`; });
+  // wipe across every cut
+  let wp = -1; for (const c of D.scenes.slice(1)) if (Math.abs(t - c.start) < .24) wp = (t - c.start + .24) / .48;
+  $('wipe').style.display = wp < 0 ? 'none' : 'block'; $('wipe').style.transform = `translateX(${-1900 + wp * 3800}px) skewX(-12deg)`;
+  $('bar').style.transform = `scaleX(${t / D.total})`;
 }
 </script>

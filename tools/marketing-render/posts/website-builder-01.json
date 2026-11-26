@@ -2,13 +2,29 @@
  "id": "website-builder-01",
  "scenes": [
   {
-   "say": "Your business needs a website. Start with one chat.",
-   "title": "One chat to a website",
-   "mood": "think"
+   "say": "No website? You lose customers before hello.",
+   "title": "No website?",
+   "shot": "hook",
+   "mood": "think",
+   "items": [
+    "Not found",
+    "No menu online"
+   ]
   },
   {
-   "say": "Tell our website builder about your business.",
-   "title": "Tell it about your shop",
+   "say": "People look you up, find nothing useful, and move on to the next place.",
+   "title": "They move on",
+   "shot": "phone",
+   "mood": "talk",
+   "chat": [
+    "you",
+    "Where can I see your menu?"
+   ]
+  },
+  {
+   "say": "With our website builder, you start with one chat. Tell it about your business.",
+   "title": "Start with one chat",
+   "shot": "phone",
    "mood": "talk",
    "chat": [
     "you",
@@ -16,31 +32,50 @@
    ]
   },
   {
-   "say": "It builds the pages in your colours.",
-   "title": "Built in your style",
+   "say": "It plans the pages, writes the text, and builds in your colours.",
+   "title": "It builds for you",
+   "shot": "flow",
    "mood": "talk",
-   "chat": [
-    "agent",
-    "Your first version is being built."
+   "items": [
+    "Brief understood",
+    "Pages planned",
+    "Text written",
+    "Site built"
    ]
   },
   {
-   "say": "You check it. Nothing goes out until you approve.",
+   "say": "A first version appears, with your story, your products and a way to reach you.",
+   "title": "Your first version",
+   "shot": "browser",
+   "mood": "talk",
+   "items": [
+    "Your bakery",
+    "Story",
+    "Products",
+    "Contact"
+   ]
+  },
+  {
+   "say": "You check it, ask for changes, and nothing goes out until you approve.",
    "title": "You approve first",
+   "shot": "approve",
    "mood": "talk",
-   "chat": [
-    "you",
-    "Approved."
+   "items": [
+    "Your new website is ready to review."
    ]
   },
   {
-   "say": "Want one for your business? Message us DEMO.",
+   "say": "Want one for your business? Message us the word demo.",
    "title": "Message us DEMO",
+   "shot": "cta",
    "mood": "talk",
+   "items": [
+    "Message us DEMO"
+   ],
    "end": true
   }
  ],
- "caption": "From one chat to a working website.\n\nDescribe your business, review the result, and approve it before it goes out.\n\nMessage us DEMO to see it.",
+ "caption": "No website? You lose customers before hello.\n\nDescribe your business, review the result, and approve it before it goes out.\n\nMessage us DEMO to see it.",
  "hashtags": [
   "#WebDesign",
   "#LebaneseBusiness",

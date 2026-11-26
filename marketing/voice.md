@@ -1,7 +1,7 @@
 # voice.md (VAgent) — read by the ig-* skills from ~/.claude/instagram/voice.md
 
 ## Who I am
-- **Name:** VAgent (spoken by our character, Vee: name to be confirmed)
+- **Name:** VAgent (spoken by our animated presenter; no character name yet)
 - **Handle:** {{handle}}
 - **What I do, in one sentence:** We build AI agents that answer customers, build websites and find leads.
 - **Who I am talking to:** owners of shops, cafes and small businesses in Lebanon

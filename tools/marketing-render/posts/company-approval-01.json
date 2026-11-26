@@ -2,41 +2,81 @@
  "id": "company-approval-01",
  "scenes": [
   {
-   "say": "Would you let a robot post in your name?",
-   "title": "In your name?",
-   "mood": "think"
-  },
-  {
-   "say": "We build agents that prepare the work.",
-   "title": "Agents do the work",
-   "mood": "talk"
-  },
-  {
-   "say": "Then they wait for you.",
-   "title": "Then they wait",
-   "mood": "talk",
-   "chat": [
-    "agent",
-    "Draft ready. Approve it?"
+   "say": "Stop. Never let a robot post in your name unchecked.",
+   "title": "Never unchecked",
+   "shot": "hook",
+   "mood": "think",
+   "items": [
+    "Auto post?",
+    "In your name?"
    ]
   },
   {
-   "say": "You say yes, change it, or say no.",
-   "title": "Your call",
+   "say": "One wrong line can confuse your customers, and your name is on it.",
+   "title": "Your name is on it",
+   "shot": "phone",
    "mood": "talk",
    "chat": [
     "you",
-    "Change the first line."
+    "Wait, is that offer real?"
    ]
   },
   {
-   "say": "That is how VAgent works. Follow for more.",
-   "title": "VAgent",
+   "say": "At VAgent, we build agents that prepare the work for you.",
+   "title": "Agents prepare the work",
+   "shot": "flow",
    "mood": "talk",
+   "items": [
+    "Collect the facts",
+    "Write the draft",
+    "Check the rules",
+    "Wait for you"
+   ]
+  },
+  {
+   "say": "They write the draft, check the rules, and then they stop.",
+   "title": "Then they stop",
+   "shot": "list",
+   "mood": "talk",
+   "items": [
+    "Draft written",
+    "Rules checked",
+    "Waiting for you"
+   ]
+  },
+  {
+   "say": "You read it. You can approve it, change a line, or say no.",
+   "title": "Your call",
+   "shot": "approve",
+   "mood": "talk",
+   "items": [
+    "Draft: Fresh bread from seven in the morning."
+   ]
+  },
+  {
+   "say": "If anything changes after your approval, it comes back to you again.",
+   "title": "Changed? Ask again",
+   "shot": "flow",
+   "mood": "talk",
+   "items": [
+    "Approved",
+    "Line edited",
+    "Approval cleared",
+    "Review again"
+   ]
+  },
+  {
+   "say": "That is how we work. Follow to see what we build next.",
+   "title": "Follow VAgent",
+   "shot": "cta",
+   "mood": "talk",
+   "items": [
+    "Follow for more"
+   ],
    "end": true
   }
  ],
- "caption": "Would you let a robot post in your name?\n\nAt VAgent, agents prepare the work and a person approves it before it goes out.\n\nFollow to see the agents we are building.",
+ "caption": "Stop. Never let a robot post in your name unchecked.\n\nAt VAgent, agents prepare the work and a person approves it before it goes out.\n\nFollow to see the agents we are building.",
  "hashtags": [
   "#AIAgents",
   "#LebaneseBusiness",

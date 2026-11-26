@@ -15,8 +15,9 @@
   function editor(p) {
     const rows = p.post.scenes.map((s, i) => {
       const say = el('textarea', { value: s.say, rows: 2 }), title = el('input', { value: s.title }), chat = s.chat && el('input', { value: s.chat[1] });
-      return { get: () => ({ ...s, say: say.value, title: title.value, ...(chat ? { chat: [s.chat[0], chat.value] } : {}) }),
-        node: el('fieldset', {}, el('legend', { textContent: 'Scene ' + (i + 1) }), el('label', {}, 'Spoken', say), el('label', {}, 'Title', title), chat && el('label', {}, 'Demo message', chat)) };
+      const items = s.items && el('textarea', { value: s.items.join('\n'), rows: s.items.length });
+      return { get: () => ({ ...s, say: say.value, title: title.value, ...(chat ? { chat: [s.chat[0], chat.value] } : {}), ...(items ? { items: items.value.split('\n').map((x) => x.trim()).filter(Boolean) } : {}) }),
+        node: el('fieldset', {}, el('legend', { textContent: 'Scene ' + (i + 1) }), el('label', {}, 'Spoken', say), el('label', {}, 'Title', title), chat && el('label', {}, 'Demo message', chat), items && el('label', {}, 'On-screen lines (one per line)', items)) };
     });
     const cap = el('textarea', { value: p.post.caption, rows: 4 }), tags = el('input', { value: p.post.hashtags.join(' ') });
     return el('div', {}, el('label', {}, 'Caption', cap), el('label', {}, 'Hashtags', tags), ...rows.map((r) => r.node),

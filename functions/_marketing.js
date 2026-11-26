@@ -3,6 +3,7 @@
 import { sql, encrypt, decrypt } from './_lib.js';
 
 export const CHUNK = 400000;
+export const SHOTS = ['hook', 'phone', 'flow', 'browser', 'list', 'approve', 'alert', 'cta'];
 const SITE = 'https://vagent.online', GRAPH = 'https://graph.instagram.com/v23.0';
 export const BANNED = /whats\s?app|wa\.me|\bfree(ly)?\b|\bcosts?\b|\bpric(e|es|ed|ing)\b|[$€£]|\bpaid\b|\bcheap|\bdiscount|\bsubscri|\bfees?\b|\bafford|واتس|مجان|سعر|أسعار|كلفة|تكلفة/i;
 const str = (v, n) => typeof v === 'string' && v.trim().length > 0 && v.length <= n;
@@ -14,12 +15,14 @@ export function lint(p) {
   for (const s of p.scenes) {
     if (!str(s.say, 200) || !str(s.title, 60)) return 'Each scene needs a spoken line and a title (keep them short)';
     if (s.chat && !(Array.isArray(s.chat) && ['you', 'agent'].includes(s.chat[0]) && str(s.chat[1], 140))) return 'Bad demo message';
+    if (s.shot !== undefined && !SHOTS.includes(s.shot)) return 'Unknown scene type';
+    if (s.items !== undefined && !(Array.isArray(s.items) && s.items.length <= 4 && s.items.every((x) => str(x, 60)))) return 'A scene takes up to 4 short on-screen lines';
   }
   if (!str(p.caption, 1800) || !Array.isArray(p.hashtags) || p.hashtags.length > 30 || !p.hashtags.every((h) => /^#[\p{L}\p{N}_]{1,50}$/u.test(h))) return 'Check the caption and hashtags';
   const hit = JSON.stringify({ s: p.scenes, c: p.caption, h: p.hashtags }).match(BANNED);
   return hit ? `Content rule: "${hit[0]}" is not allowed in a post` : '';
 }
-const clean = (p) => ({ id: p.id, scenes: p.scenes.map((s) => ({ say: s.say, title: s.title, mood: s.mood === 'think' ? 'think' : 'talk', ...(s.chat ? { chat: [s.chat[0], s.chat[1]] } : {}), ...(s.end ? { end: true } : {}) })), caption: p.caption, hashtags: p.hashtags });
+const clean = (p) => ({ id: p.id, scenes: p.scenes.map((s) => ({ say: s.say, title: s.title, mood: s.mood === 'think' ? 'think' : 'talk', ...(s.chat ? { chat: [s.chat[0], s.chat[1]] } : {}), ...(s.end ? { end: true } : {}), ...(s.shot ? { shot: s.shot } : {}), ...(s.items?.length ? { items: [...s.items] } : {}) })), caption: p.caption, hashtags: p.hashtags });
 
 export async function digest(row) {
   const raw = new TextEncoder().encode(JSON.stringify([row.id, row.version, row.post, row.video_sha]));

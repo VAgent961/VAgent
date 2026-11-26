@@ -2,13 +2,30 @@
  "id": "sniper-leads-01",
  "scenes": [
   {
-   "say": "Where is your next client? Pick a district.",
-   "title": "Your next client",
-   "mood": "think"
+   "say": "Stop guessing. Your next client is one district away.",
+   "title": "Stop guessing",
+   "shot": "hook",
+   "mood": "think",
+   "items": [
+    "Which street?",
+    "Which business?"
+   ]
   },
   {
-   "say": "Our lead agent searches by area and by type of business.",
-   "title": "District and niche",
+   "say": "Walking around and searching by hand takes your whole day.",
+   "title": "Searching takes all day",
+   "shot": "list",
+   "mood": "talk",
+   "items": [
+    "Search the map",
+    "Open every page",
+    "Copy the details"
+   ]
+  },
+  {
+   "say": "Our lead agent starts with two choices, the area and the type of business.",
+   "title": "Two choices",
+   "shot": "phone",
    "mood": "talk",
    "chat": [
     "you",
@@ -16,27 +33,49 @@
    ]
   },
   {
-   "say": "It brings back a short list to look at.",
-   "title": "A short list",
+   "say": "It searches, reads the public details, and checks what each place is missing online.",
+   "title": "It does the digging",
+   "shot": "flow",
    "mood": "talk",
-   "chat": [
-    "agent",
-    "Your list is ready. Demo data."
+   "items": [
+    "Search the area",
+    "Read public details",
+    "Check the website",
+    "Rank the list"
    ]
   },
   {
-   "say": "You decide who to contact.",
-   "title": "You decide",
-   "mood": "talk"
+   "say": "Then it brings you a short list, with the reason each one is worth a look.",
+   "title": "A short list",
+   "shot": "list",
+   "mood": "talk",
+   "items": [
+    "Cafe A: no website",
+    "Cafe B: old menu",
+    "Cafe C: slow page"
+   ]
   },
   {
-   "say": "Want to see it on your area? Message us DEMO.",
-   "title": "Message us DEMO",
+   "say": "You stay in charge. You decide who to contact, and what to say.",
+   "title": "You decide",
+   "shot": "approve",
    "mood": "talk",
+   "items": [
+    "Draft: a short hello to Cafe A."
+   ]
+  },
+  {
+   "say": "Want to see your own area? Message us the word demo.",
+   "title": "Message us DEMO",
+   "shot": "cta",
+   "mood": "talk",
+   "items": [
+    "Message us DEMO"
+   ],
    "end": true
   }
  ],
- "caption": "Finding your next client, district by district.\n\nChoose an area and a type of business, get a short list, and decide who to contact.\n\nMessage us DEMO to see it.",
+ "caption": "Stop guessing. Your next client is one district away.\n\nChoose an area and a type of business, get a short list, and decide who to contact.\n\nMessage us DEMO to see it.",
  "hashtags": [
   "#LeadGeneration",
   "#BeirutBusiness",

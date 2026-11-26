@@ -2,18 +2,29 @@
  "id": "voice-receptionist-01",
  "scenes": [
   {
-   "say": "Your shop is closed. Who answers?",
-   "title": "Closed? Still answering.",
-   "mood": "think"
+   "say": "Closed at 9? You are still losing orders.",
+   "title": "Closed at 9?",
+   "shot": "hook",
+   "mood": "think",
+   "items": [
+    "Missed question",
+    "Missed order"
+   ]
   },
   {
-   "say": "I'm Vee. This is our voice receptionist.",
-   "title": "Meet Vee",
-   "mood": "talk"
+   "say": "Customers keep asking after your door is locked, and nobody is there to answer.",
+   "title": "Nobody answers",
+   "shot": "phone",
+   "mood": "talk",
+   "chat": [
+    "you",
+    "Hi, are you still taking orders?"
+   ]
   },
   {
-   "say": "A customer asks, in English or Arabic.",
+   "say": "This is our voice receptionist. A customer holds one button and asks, in English or Arabic.",
    "title": "English or Arabic",
+   "shot": "phone",
    "mood": "talk",
    "chat": [
     "you",
@@ -21,8 +32,9 @@
    ]
   },
   {
-   "say": "It answers from your catalog and shows the product.",
+   "say": "It checks your own catalog, answers out loud, and shows the product.",
    "title": "Your catalog, your answers",
+   "shot": "phone",
    "mood": "talk",
    "chat": [
     "agent",
@@ -30,22 +42,40 @@
    ]
   },
   {
-   "say": "Then it takes the order.",
-   "title": "Order taken",
+   "say": "Then it collects the details and takes the order.",
+   "title": "It takes the order",
+   "shot": "flow",
    "mood": "talk",
-   "chat": [
-    "agent",
-    "Order noted. See you soon."
+   "items": [
+    "Question heard",
+    "Catalog checked",
+    "Product shown",
+    "Order saved"
    ]
   },
   {
-   "say": "Closed or busy, your shop answers. Message us DEMO.",
-   "title": "Message us DEMO",
+   "say": "You open your list in the morning, and the order is waiting.",
+   "title": "Waiting for you",
+   "shot": "list",
    "mood": "talk",
+   "items": [
+    "Chocolate cake",
+    "Customer details",
+    "Ready to confirm"
+   ]
+  },
+  {
+   "say": "Want your shop to answer tonight? Message us the word demo.",
+   "title": "Message us DEMO",
+   "shot": "cta",
+   "mood": "talk",
+   "items": [
+    "Message us DEMO"
+   ],
    "end": true
   }
  ],
- "caption": "Your shop is closed, and a customer has a question.\n\nOur voice receptionist answers from your own catalog, in English or Arabic, shows the product and takes the order.\n\nMessage us DEMO to see it.",
+ "caption": "Closed at 9? You are still losing orders.\n\nOur voice receptionist answers from your own catalog, in English or Arabic, shows the product and takes the order.\n\nMessage us DEMO to see it.",
  "hashtags": [
   "#VoiceAI",
   "#LebaneseBusiness",
