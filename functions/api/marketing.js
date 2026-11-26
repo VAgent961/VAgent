@@ -39,11 +39,13 @@ export async function onRequestPost({ request, env, data }) {
   const platform = pub.PLATFORMS.includes(b.platform) ? b.platform : 'instagram';
   let err = '', notice;
   try {
-    if (b.action === 'approve') err = await mk.approve(env, id, b.version, who, pub.defaultTargets(await pub.connected(env)));
+    if (b.action === 'approve') { err = await mk.approve(env, id, b.version, who, pub.defaultTargets(await pub.connected(env))); if (!err) notice = 'Approved. The post moved to "Approved, waiting for their time" below.'; }
     else if (b.action === 'decline') err = await mk.decline(env, id, who);
     else if (b.action === 'edit') err = await mk.edit(env, id, b.version, b.post, who);
     else if (b.action === 'retry') err = await mk.retry(env, id, b.version, who);
     else if (b.action === 'targets') err = await mk.setTargets(env, id, b.version, b.targets, who);
+    else if (b.action === 'reschedule') { err = await mk.reschedule(env, id, b.version, String(b.at || ''), who); if (!err) notice = 'Time changed.'; }
+    else if (b.action === 'publish_now') { const r = await pub.publishNow(env, id, b.version, b.confirm, who); if (r.error) err = r.error; else notice = r.notice; }
     else if (b.action === 'republish') err = await mk.republish(env, id, b.version, who);
     else if (b.action === 'connect') {
       try { await pub.connectInstagram(env, String(b.token || '').trim(), String(b.secret || '').trim(), who); }

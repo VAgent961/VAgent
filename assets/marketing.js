@@ -43,6 +43,20 @@
     }
     return box;
   }
+  // datetime-local value in Beirut time
+  const local = (s) => new Date(s).toLocaleString('sv-SE', { timeZone: 'Asia/Beirut' }).slice(0, 16).replace(' ', 'T');
+  const GROUPS = { review: 'Waiting for your approval', failed: 'Failed', publishing: 'Publishing now', scheduled: 'Approved, waiting for their time', rendering: 'Rendering', published: 'Published', declined: 'Declined' };
+  function schedule(p) {
+    const real = p.effective.filter((n) => p.live[n] && p.pub?.[n]?.state !== 'published').map((n) => NAMES[n]);
+    const at = el('input', { type: 'datetime-local', value: local(p.slot) });
+    const now = () => {
+      if (real.length && !confirm(`Publish this post NOW, for real, on ${real.join(' and ')}? This cannot be undone.`)) return;
+      send({ action: 'publish_now', id: p.id, version: p.version, confirm: real.length ? 'PUBLISH' : '' }).then((ok) => { if (!ok) { last = ''; load(); } });
+    };
+    return el('div', { className: 'schedule' }, el('div', { className: 'meta', textContent: real.length ? `At this time it is really published on ${real.join(' and ')}.` : 'At this time it is only simulated: nothing is posted.' }),
+      el('label', {}, 'Publish time (Beirut)', at), btn('Save time', () => send({ action: 'reschedule', id: p.id, version: p.version, at: at.value })),
+      btn(real.length ? 'Publish now' : 'Publish now (dry run)', now, 'primary'));
+  }
   function card(p) {
     const open = ['rendering', 'review', 'scheduled', 'failed'].includes(p.status);
     const state = p.status === 'scheduled' ? `Approved · ${when(p.slot)}${p.dry_run_at ? ' · dry run done, nothing posted' : ''}` : p.status === 'review' ? 'Waiting for your approval' : p.status === 'rendering' ? (p.error ? `Last render failed (try ${p.attempts} of 3). Trying again automatically` : 'Rendering (usually within 15 to 30 minutes)') : p.status === 'failed' ? 'Failed' : p.status;
@@ -51,7 +65,7 @@
     if (editing === p.id) side.append(editor(p));
     else side.append(el('p', { className: 'cap', textContent: p.captions.instagram }),
       p.captions.tiktok === p.captions.instagram ? '' : el('details', {}, el('summary', { textContent: 'TikTok caption' }), el('p', { className: 'cap', textContent: p.captions.tiktok })),
-      p.post.keyword && el('div', { className: 'meta', textContent: `Comment keyword: ${p.post.keyword} · ${p.post.info?.title || ''}` }), targets(p), el('div', {},
+      p.post.keyword ? el('div', { className: 'meta', textContent: `Comment keyword: ${p.post.keyword} · ${p.post.info?.title || ''}` }) : '', targets(p), p.status === 'scheduled' ? schedule(p) : '', el('div', {},
       p.status === 'review' && btn('Approve', () => send({ action: 'approve', id: p.id, version: p.version }), 'primary'),
       p.status === 'failed' && p.has_video && btn('Try publishing again', () => send({ action: 'republish', id: p.id, version: p.version }), 'primary'),
       stuck && btn('Render again', () => send({ action: 'retry', id: p.id, version: p.version }), 'primary'),
@@ -160,7 +174,8 @@
     if (sig === last) return; // do not restart videos that are playing
     last = sig; dryRun(d); $('platforms').replaceChildren(instagram(d.platforms.instagram), tiktok(d.platforms.tiktok));
     document.querySelectorAll('.owner').forEach((a) => { a.style.visibility = d.role === 'owner' ? '' : 'hidden'; });
-    $('list').replaceChildren(...(d.posts.length ? d.posts.map(card) : [el('p', { textContent: 'No posts yet.' })]));
+    const live = Object.fromEntries(Object.keys(NAMES).map((n) => [n, d.platforms[n].live]));
+    $('list').replaceChildren(...(d.posts.length ? d.posts.flatMap((p, i) => [p.status !== d.posts[i - 1]?.status && el('h2', { textContent: `${GROUPS[p.status] || p.status} (${d.posts.filter((x) => x.status === p.status).length})` }), card({ ...p, live })].filter(Boolean)) : [el('p', { textContent: 'No posts yet.' })]));
   }
   const back = new URLSearchParams(location.search).get('tiktok');
   if (back) { $('msg').textContent = back === 'connected' ? 'TikTok connected. It stays in dry run until you switch it live.' : 'TikTok: ' + back; history.replaceState(null, '', location.pathname); }

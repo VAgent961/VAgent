@@ -70,6 +70,21 @@ export async function decline(env, id, who) {
   if (!r.length) return 'This post cannot be declined now.';
   await dropMedia(env, id); await log(env, id, 'declined', who); return '';
 }
+// Moving an approved post in time keeps the approval (the content is unchanged). `at` is Beirut local time, YYYY-MM-DDTHH:mm.
+export async function reschedule(env, id, version, at, who) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3]):[0-5]\d$/.test(at || '')) return 'Choose a date and time.';
+  let r;
+  try {
+    r = await sql(env, `UPDATE marketing_posts SET slot = $3::timestamp AT TIME ZONE 'Asia/Beirut', dry_run_at = NULL, ${KEEP}, updated_at = now()
+      WHERE id = $1 AND version = $2 AND status = 'scheduled' AND $3::timestamp AT TIME ZONE 'Asia/Beirut' > now() RETURNING id`, [id, version, at]);
+  } catch (e) {
+    if (e.message.includes('marketing_slot')) return 'Another post already has that time.';
+    if (/out of range/.test(e.message)) return 'That date does not exist.';
+    throw e;
+  }
+  if (!r.length) return 'Choose a time in the future. If it is, this post changed: reload first.';
+  await log(env, id, 'rescheduled', `${at} ${who}`); return '';
+}
 // Choosing platforms is an edit: it clears the approval.
 export async function setTargets(env, id, version, targets, who) {
   const list = ['instagram', 'tiktok'].filter((t) => Array.isArray(targets) && targets.includes(t));

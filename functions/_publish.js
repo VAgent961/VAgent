@@ -120,6 +120,40 @@ async function settle(env, id) {
   return 'published';
 }
 
+// A claimed post (status 'publishing'): start every live platform, simulate the rest.
+async function launch(env, row, live) {
+  const ok = row.approved_hash === await digest(row);
+  for (const p of targetsOf(row)) {
+    if (row.pub[p]?.state === 'published') continue;
+    if (!ok) await failOn(env, row.id, p, 'Approval does not match the post');
+    else if (!live[p]) await simulate(env, row, p);
+    else {
+      await put(env, row.id, p, { state: 'starting' });
+      try { await adapters[p].start(env, row); } catch (e) { await failOn(env, row.id, p, e.message); }
+    }
+  }
+  return (await settle(env, row.id)) || 'publishing';
+}
+// Owner's "Publish now" on an approved post. With nothing live it only simulates and leaves status and time alone.
+export async function publishNow(env, id, version, confirm, who) {
+  const gone = { error: 'This post changed. Reload first.' };
+  const [row] = await sql(env, "SELECT * FROM marketing_posts WHERE id = $1 AND version = $2 AND status = 'scheduled'", [id, version]);
+  if (!row) return gone;
+  const live = await liveFlags(env);
+  if (!targetsOf(row).some((p) => live[p] && row.pub[p]?.state !== 'published')) {
+    if (row.approved_hash !== await digest(row)) return { error: 'Approval does not match the post. Edit it and approve again.' };
+    for (const p of targetsOf(row)) if (row.pub[p]?.state !== 'published') await simulate(env, row, p);
+    return { notice: 'Dry run: nothing was posted. The post stays approved for its time.' };
+  }
+  if (confirm !== 'PUBLISH') return { error: 'Dry Run is off: confirm that this post will really be published.' };
+  const [claimed] = await sql(env, "UPDATE marketing_posts SET status = 'publishing', slot = now(), updated_at = now() WHERE id = $1 AND version = $2 AND status = 'scheduled' RETURNING *", [id, version]);
+  if (!claimed) return gone;
+  await log(env, id, 'publish_now', who);
+  const result = await launch(env, claimed, live);
+  if (result === 'failed') return { error: 'Publishing failed: see the error on the post.' };
+  return { notice: result === 'published' ? 'Published.' : 'Publishing started. It goes live once the video is processed, usually within 5 to 10 minutes.' };
+}
+
 // Called every few minutes by n8n.
 export async function tick(env) {
   await setSetting(env, 'last_tick', new Date().toISOString());
@@ -151,17 +185,7 @@ export async function tick(env) {
     }
     const [row] = await sql(env, "UPDATE marketing_posts SET status = 'publishing', updated_at = now() WHERE id = $1 AND status = 'scheduled' RETURNING *", [due.id]);
     if (!row) continue;
-    const ok = row.approved_hash === await digest(row);
-    for (const p of targetsOf(row)) {
-      if (row.pub[p]?.state === 'published') continue;
-      if (!ok) await failOn(env, row.id, p, 'Approval does not match the post');
-      else if (!live[p]) await simulate(env, row, p);
-      else {
-        await put(env, row.id, p, { state: 'starting' });
-        try { await adapters[p].start(env, row); } catch (e) { await failOn(env, row.id, p, e.message); }
-      }
-    }
-    out.push({ id: row.id, result: (await settle(env, row.id)) || 'publishing' });
+    out.push({ id: row.id, result: await launch(env, row, live) });
   }
   return { live, posts: out };
 }

@@ -25,6 +25,7 @@
 - States: draft = repo file; `rendering -> review -> scheduled` (approved) `-> publishing -> published | failed`; `declined` = rejected.
 - Per post `targets` (default: connected platforms, both while none is connected); changing them clears approval. Posts approved before TikTok existed go to Instagram only. Per platform state and error in `pub`.
 - One Dry Run switch on /marketing (setting `dry_run`, on unless `off`). Turning it off needs a confirmation; a platform publishes only when it is connected (TikTok: privacy chosen too), otherwise it is simulated. Connecting an account turns Dry Run on again; turning it on stops a waiting Instagram container before publish. A post whose live targets all succeed is `published` and its video deleted, even if another target was only simulated.
+- Approved posts: "Save time" moves the slot (approval kept); "Publish now" starts at once when a platform is live (confirmed; the next tick finishes it), otherwise it only simulates and keeps the time.
 - A failed platform keeps the video; "Try publishing again" needs a new approval and skips platforms that already published.
 
 ## Going live needs

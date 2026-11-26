@@ -33,3 +33,5 @@ button.switch[aria-checked=true]{background:#2F9E6A}button.switch[aria-checked=t
 dialog{width:min(440px,calc(100% - 32px));background:var(--card);color:var(--ink);border:2px solid var(--bad);border-radius:14px;padding:20px}dialog::backdrop{background:rgba(0,0,0,.7)}
 .warn{color:var(--bad)}button.danger{background:#C4362C;border-color:#C4362C;color:#fff}
 @media (prefers-reduced-motion:reduce){button.switch span{transition:none}}
+
+.schedule{margin-top:10px}.schedule label{display:block}.schedule input{display:block;max-width:260px;min-height:40px;color-scheme:dark}

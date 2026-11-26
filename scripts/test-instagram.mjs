@@ -16,6 +16,7 @@ globalThis.fetch = async (url, o = {}) => {
     else if (/SET status = 'publishing'/.test(q)) { row.status = 'publishing'; rows = [row]; }
     else if (/SET status = 'published'/.test(q)) { row.status = 'published'; row.video_sha = null; }
     else if (/SET dry_run_at/.test(q)) rows = [row];
+    else if (/WHERE id = \$1 AND version = \$2 AND status = 'scheduled'$/.test(q)) rows = row.status === 'scheduled' ? [row] : [];
     else if (/status = 'publishing'/.test(q)) rows = row?.status === 'publishing' ? [row] : [];
     else if (/slot <= now/.test(q)) rows = row?.status === 'scheduled' ? [row] : [];
     return reply({ rows });
@@ -46,6 +47,15 @@ for (const [tok, host, id] of [['EAAtest', 'graph.facebook.com', ID], ['IGtest',
   assert.equal(row.status, 'published'); assert.equal(row.video_sha, null);
   assert.ok(calls.every((c) => c.host === host)); assert.ok(calls.some((c) => c.path === `${id}/media` && c.type === 'REELS')); assert.ok(calls.some((c) => c.path === `${id}/media_publish`));
 }
+// Publish now: Dry Run only simulates; live needs the confirmation and publishes exactly once
+await pub.setDryRun(env, true, '', 'o'); await fresh(); const before = calls.length, slot = row.slot;
+assert.match((await pub.publishNow(env, 'p', 1, 'PUBLISH', 'o')).notice, /Dry run/);
+assert.equal(calls.length, before); assert.equal(row.status, 'scheduled'); assert.equal(row.slot, slot); assert.equal(row.video_sha, 'x'); assert.equal(row.pub.instagram.state, 'dry_run');
+await pub.setDryRun(env, false, 'PUBLISH', 'o');
+assert.match((await pub.publishNow(env, 'p', 1, '', 'o')).error, /confirm/); assert.equal(calls.length, before);
+assert.match((await pub.publishNow(env, 'p', 1, 'PUBLISH', 'o')).notice, /started/); await pub.tick(env);
+assert.equal(row.status, 'published'); assert.equal(row.video_sha, null); assert.ok((await pub.publishNow(env, 'p', 1, 'PUBLISH', 'o')).error);
+assert.equal(calls.slice(before).filter((c) => c.path.endsWith('/media_publish')).length, 1);
 pages = []; await ig.connect(env, ' EAAdirect\n', '', 'o'); assert.equal((await ig.user(env)).id, ID); assert.equal(settings.ig_expires, 'never');
 await assert.rejects(ig.connect(env, 'abc', '', 'o'), /EAA/);
 await assert.rejects(ig.graph('IGx', 'me', {}, 'GET', 'https://graph.facebook.com/v23.0'), /graph\.facebook\.com could not read/);
