@@ -18,7 +18,7 @@ export async function onRequestPost({ request, env }) {
     return err ? bad(err, 409) : json({ ok: true });
   }
   const b = await body(request);
-  if (b.action === 'seed') { await mk.seed(env, Array.isArray(b.posts) ? b.posts.slice(0, 40) : []); return json({ ok: true }); }
+  if (b.action === 'seed') { await mk.seed(env, Array.isArray(b.posts) ? b.posts.slice(0, 40) : []); await mk.relook(env, b.look); return json({ ok: true }); }
   if (b.action === 'queue') return json({ posts: await mk.queue(env), chunk: mk.CHUNK });
   if (b.action === 'complete') { const err = await mk.complete(env, b.id, b.version, String(b.sha), b.size); return err ? bad(err, 409) : json({ ok: true }); }
   if (b.action === 'fail') { await mk.renderFailed(env, b.id, b.version, b.why); return json({ ok: true }); }

@@ -6,14 +6,26 @@ body{width:1080px;height:1920px;overflow:hidden;background:#141413;color:#FAF9F5
 .blob{position:absolute;width:1100px;height:1100px;border-radius:50%}
 #grid{position:absolute;inset:-120px;background-image:radial-gradient(rgba(250,249,245,.09) 2px,transparent 3px);background-size:60px 60px}
 #cam{transform-origin:540px 900px}
-#girl{position:absolute;z-index:1;left:0;top:0;width:400px;height:470px;transform-origin:0 0;filter:drop-shadow(0 22px 30px rgba(0,0,0,.4))}
-#title{position:absolute;left:70px;right:70px;top:235px;height:260px;display:flex;align-items:center;justify-content:center;text-align:center;font:600 92px/1.06 Newsreader,serif;text-shadow:0 6px 30px rgba(0,0,0,.5)}
-#mark{left:64px;top:96px;width:100px}
-#ai{right:64px;top:128px;font-size:27px;opacity:.65}
-#bar{left:0;top:0;height:10px;width:1080px;background:#B5532F;transform-origin:0 0}
-#cap{position:absolute;left:60px;right:120px;top:1390px;display:flex;flex-wrap:wrap;justify-content:center;align-content:flex-start;gap:12px 10px}
-#cap span{font:800 62px/1.15 Inter,sans-serif;padding:4px 14px;border-radius:18px;text-shadow:0 4px 18px rgba(0,0,0,.75)}
-#wipe{left:-500px;top:-100px;width:2080px;height:2120px;background:linear-gradient(100deg,transparent 0,#B5532F 18%,#D9774F 50%,#B5532F 82%,transparent 100%)}
+#girl{position:absolute;z-index:1;left:0;top:0;width:400px;height:470px;transform-origin:0 0;filter:drop-shadow(0 18px 30px rgba(0,0,0,.35))}
+#eyebrow{left:0;right:0;top:218px;display:flex;justify-content:center}
+#eyebrow span{font:700 27px Inter;letter-spacing:5px;text-transform:uppercase;color:#F2B7A2;border:2px solid rgba(217,119,87,.55);background:rgba(181,83,47,.2);border-radius:40px;padding:10px 28px}
+#title{position:absolute;left:70px;right:70px;top:282px;height:180px;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;column-gap:.24em;text-align:center;font:600 90px/1.02 Newsreader,serif;text-shadow:0 6px 30px rgba(0,0,0,.55)}
+#title b{font-weight:600;display:inline-block;overflow:hidden;padding:0 4px .1em;margin-bottom:-.08em}
+#title i{font-style:normal;display:inline-block}
+#mark{left:64px;top:84px;width:250px}
+#ai{right:64px;top:103px;font:600 25px Inter;color:#CFC9BC;border:2px solid rgba(250,249,245,.18);border-radius:30px;padding:8px 20px}
+#bar{left:64px;right:64px;top:48px;height:8px;display:flex;gap:10px}
+#bar div{height:8px;border-radius:4px;background:rgba(250,249,245,.2);overflow:hidden}
+#bar i{display:block;height:100%;background:#D97757;transform-origin:0 50%}
+#cap{position:absolute;z-index:3;left:80px;right:80px;top:1448px;height:190px;display:flex;flex-wrap:wrap;justify-content:center;align-content:center;gap:10px 8px}
+#cap span{font:800 60px/1.15 Inter,sans-serif;padding:4px 14px;border-radius:18px;color:#FFFDF8;text-shadow:0 3px 6px rgba(0,0,0,.8),0 6px 26px rgba(0,0,0,.8)}
+#shade{background:radial-gradient(ellipse 80% 62% at 50% 46%,transparent 55%,rgba(0,0,0,.55)),linear-gradient(transparent 68%,rgba(10,9,8,.6) 80%,rgba(10,9,8,.35))}
+.tile{position:absolute;border-radius:34px;border:2px solid rgba(250,249,245,.1);background:linear-gradient(140deg,rgba(250,249,245,.09),rgba(250,249,245,.02))}
+.dock{position:absolute;left:390px;width:620px;top:1190px;height:168px;border-radius:40px;background:rgba(38,34,31,.92);border:2px solid rgba(250,249,245,.12);box-shadow:0 30px 60px rgba(0,0,0,.45)}
+.dock b{position:absolute;left:36px;top:26px;font:700 33px Inter}
+.dock small{position:absolute;right:36px;top:31px;font:600 25px Inter;color:#A9A294}
+.dock i{position:absolute;bottom:25px;width:13px;height:62px;border-radius:7px;background:#D97757}
+.wipe{position:absolute;z-index:4;left:-420px;top:-100px;width:1920px;height:2120px;display:none}
 .card{position:absolute;background:#FAF9F5;color:#141413;border-radius:44px;box-shadow:0 40px 80px rgba(0,0,0,.5)}
 .ghost{position:absolute;border-radius:44px;background:#F3F1EA;opacity:.14}
 .demo{position:absolute;right:34px;top:30px;font:600 24px Inter;color:#8A8478;border:2px solid #DDD8CC;border-radius:30px;padding:4px 18px}
@@ -26,10 +38,14 @@ body{width:1080px;height:1920px;overflow:hidden;background:#141413;color:#FAF9F5
 .line{position:absolute;height:26px;border-radius:13px;background:#E4E0D5;transform-origin:0 50%}
 .pill{position:absolute;border-radius:60px;background:#B5532F;color:#fff;font:800 48px Inter;text-align:center;padding:26px 0}
 #lockup{position:absolute;z-index:2;left:340px;top:1150px;width:400px}
+#cam .pill{box-shadow:0 24px 44px rgba(0,0,0,.35)}
 </style>
 <div class="full" id="bg"><div class="blob" id="b1" style="background:radial-gradient(circle,rgba(181,83,47,.55),transparent 65%)"></div><div class="blob" id="b2" style="background:radial-gradient(circle,rgba(224,129,86,.25),transparent 65%)"></div><div id="grid"></div></div>
-<div class="full" id="cam"><div class="full" id="ui"></div><div id="girl"></div><img id="lockup"></div>
-<div id="title"></div><div id="cap"></div><div class="a" id="wipe"></div>
+<div class="full" id="depth"></div>
+<div class="full" id="shade"></div>
+<div class="full" id="cam"><div class="full" id="ui"></div><div class="full" id="dockwrap"></div><div id="girl"></div><img id="lockup"></div>
+<div class="a" id="eyebrow"><span></span></div><div id="title"></div><div id="cap"></div>
+<div class="wipe" id="w0" style="background:#B5532F"></div><div class="wipe" id="w1" style="background:#F3F1EA"></div><div class="wipe" id="w2" style="background:#1B1917"></div>
 <img class="a" id="mark"><div class="a" id="ai">AI character</div><div class="a" id="bar"></div>
 <script src="character.js"></script>
 <script>
@@ -40,19 +56,24 @@ const out = (k) => 1 - Math.pow(1 - clamp(k), 3);
 const back = (k) => { k = clamp(k) - 1; return 1 + k * k * (2.7 * k + 1.7); };
 const el = (parent, cls, css = '', text = '') => { const n = document.createElement('div'); n.className = cls; n.style.cssText = css; n.textContent = text; parent.append(n); return n; };
 // character per shot: position, size, pose, face
-const GIRL = { hook: [200, 545, 1.7, 'explain', 'wow'], phone: [20, 1102, .67, 'point', 'happy'], flow: [20, 1102, .67, 'point', 'happy'], browser: [20, 1102, .67, 'explain', 'happy'], list: [20, 1102, .67, 'think', 'think'], approve: [20, 1102, .67, 'point', 'happy'], alert: [20, 1102, .67, 'think', 'worried'], cta: [260, 475, 1.4, 'wave', 'joy'] };
+const GIRL = { hook: [200, 545, 1.7, 'explain', 'wow'], phone: [16, 1047, .86, 'point', 'happy'], flow: [16, 1047, .86, 'point', 'happy'], browser: [16, 1047, .86, 'explain', 'happy'], list: [16, 1047, .86, 'think', 'think'], approve: [16, 1047, .86, 'point', 'happy'], alert: [16, 1047, .86, 'think', 'worried'], cta: [260, 475, 1.4, 'wave', 'joy'] };
 
+const LABEL = { hook: 'Listen up', phone: 'The moment', flow: 'Step by step', browser: 'On screen', list: 'At a glance', approve: 'Your call', alert: 'The problem', cta: 'Next step' };
+let tiles = [], dock = null;
 async function setup(d) {
-  D = d; $('mark').src = d.mark; $('lockup').src = d.lockup; draw = makeGirl($('girl'));
+  D = d; $('mark').src = d.lockup; $('lockup').src = d.lockup; draw = makeGirl($('girl'));
   await Promise.all([$('mark').decode(), $('lockup').decode(), document.fonts.ready]);
   await Promise.all(['600 90px Newsreader', '800 60px Inter', '500 38px Inter'].map((f) => document.fonts.load(f)));
+  // background depth: soft tiles drifting at different speeds
+  tiles = [[-70, 620, 250, 190, .5], [900, 430, 270, 210, .8], [930, 1180, 220, 220, 1.2], [-90, 1560, 300, 200, .9], [760, 1700, 340, 180, .6], [40, 110, 160, 120, 1.1]].map(([x, y, w, h, z]) => ({ n: el($('depth'), 'tile', `left:${x}px;top:${y}px;width:${w}px;height:${h}px`), z }));
+  D.scenes.forEach((x) => { const seg = el($('bar'), '', `flex:${x.dur}`); seg.append(document.createElement('i')); });
 }
 // Builds the mockup for one scene and returns its animator(k = seconds since the cut, dur).
 function build(n) {
   const s = D.scenes[n], ui = $('ui'); ui.replaceChildren();
   const items = s.items || [], shot = s.shot || 'phone';
   if (shot === 'hook') {
-    const chips = items.map((x, i) => el(ui, 'pill', `z-index:2;left:${i % 2 ? 640 : 40}px;top:${i % 2 ? 1190 : 545}px;width:390px;font-size:38px;background:#FAF9F5;color:#141413;box-shadow:0 20px 40px rgba(0,0,0,.4)`, x));
+    const chips = items.map((x, i) => el(ui, 'pill', `z-index:2;left:${i % 2 ? 620 : 70}px;top:${i % 2 ? 1305 : 560}px;width:390px;font-size:38px;background:#FAF9F5;color:#141413;box-shadow:0 20px 40px rgba(0,0,0,.4)`, x));
     return (k) => chips.forEach((c, i) => { const a = back((k - .5 - i * .45) / .4); c.style.opacity = clamp(a); c.style.transform = `translateY(${Math.sin(k * 2 + i * 2) * 10}px) scale(${a}) rotate(${i % 2 ? 5 : -5}deg)`; });
   }
   if (shot === 'cta') {
@@ -121,36 +142,66 @@ function build(n) {
     anim(k, dur);
   };
 }
+function buildDock(n, shot) {
+  const w = $('dockwrap'); w.replaceChildren(); dock = null;
+  if (shot === 'hook' || shot === 'cta') return;
+  const box = el(w, 'dock');
+  const name = document.createElement('b'); name.textContent = 'Vee · VAgent'; const num = document.createElement('small'); num.textContent = `${n + 1} / ${D.scenes.length}`; box.append(name, num);
+  dock = { box, bars: Array.from({ length: 22 }, (_, i) => { const b = document.createElement('i'); b.style.left = 38 + i * 25 + 'px'; box.append(b); return b; }) };
+}
+// mouth shape from the letter being spoken inside the current word
+function viseme(s, t) {
+  let j = -1; for (let i = 0; i < s.words.length; i++) if (t >= s.words[i].t) j = i;
+  if (j < 0) return 'x';
+  const w = s.words[j], L = w.w.toLowerCase().replace(/[^a-z0-9]/g, ''); if (!L) return 'x';
+  const c = L[Math.min(L.length - 1, Math.floor(clamp((t - w.t) / Math.max(.08, w.end - w.t)) * L.length))];
+  return 'a' === c ? 'a' : 'eiy'.includes(c) ? 'e' : c === 'o' ? 'o' : 'uwq'.includes(c) ? 'u' : 'mbp'.includes(c) ? 'm' : 'fv'.includes(c) ? 'f' : 'x';
+}
 let animate;
 function seek(i) {
   const t = i / D.fps;
   let n = D.scenes.length - 1; while (n > 0 && t < D.scenes[n].start) n--;
-  const s = D.scenes[n], k = t - s.start, shot = s.shot || 'phone', level = D.level[i] || 0;
-  if (n !== built) { built = n; animate = build(n); }
+  const s = D.scenes[n], k = t - s.start, shot = s.shot || 'phone', level = D.level[i] || 0, lastScene = n === D.scenes.length - 1;
+  if (n !== built) {
+    built = n; animate = build(n); buildDock(n, shot);
+    $('eyebrow').firstChild.textContent = LABEL[shot];
+    const title = $('title'); title.replaceChildren(...s.title.split(' ').map((x) => { const b = document.createElement('b'), c = document.createElement('i'); c.textContent = x; b.append(c); return b; }));
+    let size = 90; title.style.fontSize = size + 'px'; while (size > 56 && (title.scrollHeight > 186 || title.scrollWidth > 940)) title.style.fontSize = (size -= 4) + 'px';
+  }
   animate(k, s.dur);
-  // camera: punch in on the cut, then a slow push and pan that alternates per scene
-  const p = clamp(k / s.dur), dir = n % 2 ? -1 : 1, punch = 1 - out(k / .45);
-  const zoom = shot === 'hook' ? 1 + p * .13 + punch * .16 : shot === 'cta' ? 1.07 - p * .05 + punch * .1 : 1 + (n % 3 === 2 ? .09 - p * .07 : p * .08) + punch * .09;
-  $('cam').style.transform = `translate(${dir * (p - .5) * 34}px,${shot === 'hook' ? -p * 22 : (p - .5) * -14}px) scale(${zoom})`;
+  const first = n === 0, leave = lastScene ? 0 : Math.pow(clamp((k - s.dur + .2) / .2), 2);
+  // camera: punch in on the cut, slow push and pan that alternates, quick pull-away before the next cut
+  const p = clamp(k / s.dur), dir = n % 2 ? -1 : 1, punch = first ? 0 : 1 - out(k / .5);
+  const zoom = (shot === 'hook' ? 1 + p * .09 : shot === 'cta' ? 1.05 - p * .04 : 1 + (n % 3 === 2 ? .05 - p * .04 : p * .045)) + punch * .07 + leave * .05;
+  $('cam').style.transform = `translate(${dir * (p - .5) * 22 - dir * leave * 70}px,${(p - .5) * -12}px) scale(${zoom})`;
+  $('ui').style.opacity = 1 - leave;
   $('b1').style.transform = `translate(${-300 + Math.sin(t * .35) * 220}px,${100 + Math.cos(t * .28) * 260}px)`;
   $('b2').style.transform = `translate(${380 + Math.cos(t * .4) * 240}px,${900 + Math.sin(t * .31) * 230}px)`;
-  $('grid').style.transform = `translate(${(t * 9) % 60}px,${(t * 14) % 60}px)`;
-  const g = GIRL[shot], prev = GIRL[(D.scenes[n - 1] || s).shot || 'phone'], m = out(k / .45);
-  $('girl').style.transform = `translate(${prev[0] + (g[0] - prev[0]) * m}px,${prev[1] + (g[1] - prev[1]) * m}px) scale(${prev[2] + (g[2] - prev[2]) * m})`;
+  $('grid').style.transform = `translate(${(t * 7) % 60}px,${(t * 11) % 60}px)`;
+  tiles.forEach(({ n: tile, z }, j) => tile.style.transform = `translate(${Math.sin(t * .22 * z + j) * 36 * z - dir * punch * 120 * z}px,${Math.cos(t * .27 + j * 2) * 30 * z - t * 3 * z}px) rotate(${(j % 2 ? 1 : -1) * (9 + Math.sin(t * .3 + j) * 4)}deg)`);
+  const g = GIRL[shot], prev = GIRL[(D.scenes[n - 1] || s).shot || 'phone'], m = out(k / .5), arc = Math.hypot(g[0] - prev[0], g[1] - prev[1]) > 40 ? Math.sin(clamp(k / .5) * Math.PI) * -60 : 0;
+  $('girl').style.transform = `translate(${prev[0] + (g[0] - prev[0]) * m}px,${prev[1] + (g[1] - prev[1]) * m + arc}px) scale(${prev[2] + (g[2] - prev[2]) * m})`;
   const talking = k < s.voice, face = shot === 'approve' && k > s.dur * .68 ? 'joy' : shot === 'hook' && k > 1.4 ? 'worried' : g[4];
-  draw({ t, pose: g[3], from: prev[3], k: clamp(k / .45), face, level: talking ? level : 0 });
+  draw({ t, pose: g[3], from: prev[3], k: clamp(k / .45), face, level: talking ? level : 0, vis: viseme(s, t), since: first ? 9 : k });
+  if (dock) {
+    const a = back((k - .25) / .45); dock.box.style.opacity = clamp((k - .25) / .2) * (1 - leave); dock.box.style.transform = `translateX(${(1 - a) * 140}px)`;
+    dock.bars.forEach((b, j) => b.style.transform = `scaleY(${.14 + (talking ? level : 0) * (.4 + .6 * Math.abs(Math.sin(j * 1.7 + t * 9))) * (.55 + .45 * Math.sin(j / 21 * Math.PI))})`);
+  }
   const lk = $('lockup'); lk.style.display = shot === 'cta' ? 'block' : 'none'; lk.style.opacity = out((k - .2) / .4);
-  $('cap').style.top = shot === 'cta' ? '1455px' : shot === 'hook' ? '1425px' : '1445px';
-  const title = $('title'), a = back(k / .45);
-  title.textContent = s.title; title.style.opacity = clamp(k / .15); title.style.transform = `translateY(${(1 - a) * 50}px) scale(${.9 + .1 * a})`;
-  // kinetic captions: short groups, the spoken word is highlighted
+  // headline: words rise out of a mask one after another (the opening frame is already readable)
+  [...$('title').children].forEach((b, j) => { const a = first ? 1 : out((k - .08 - j * .07) / .38); b.firstChild.style.transform = `translateY(${(1 - a) * 115}%)`; });
+  $('title').style.opacity = 1 - leave; $('title').style.transform = `translateY(${-leave * 30}px)`;
+  const eb = first ? 1 : out(k / .35); $('eyebrow').style.opacity = eb * (1 - leave); $('eyebrow').style.transform = `translateY(${(1 - eb) * -24}px)`;
+  // captions: short groups in a fixed box, the spoken word is highlighted without moving its neighbours
   const w = s.words, now = Math.max(0, w.findLastIndex((x) => t >= x.t)), group = s.groups.find((r) => now >= r[0] && now <= r[1]), cap = $('cap');
   const key = n + ':' + group[0];
   if (cap.dataset.k !== key) { cap.dataset.k = key; cap.replaceChildren(...w.slice(group[0], group[1] + 1).map((x) => { const e = document.createElement('span'); e.textContent = x.w; return e; })); }
-  [...cap.children].forEach((e, j) => { const idx = group[0] + j, since = t - w[idx].t, cur = idx === now && since >= 0; e.style.opacity = since >= -.05 ? 1 : .38; e.style.background = cur ? '#B5532F' : 'transparent'; e.style.transform = `translateY(${cur ? -4 : 0}px) scale(${cur ? 1 + .12 * Math.sin(clamp(since / .22) * Math.PI) + .03 : 1})`; });
-  // wipe across every cut
-  let wp = -1; for (const c of D.scenes.slice(1)) if (Math.abs(t - c.start) < .24) wp = (t - c.start + .24) / .48;
-  $('wipe').style.display = wp < 0 ? 'none' : 'block'; $('wipe').style.transform = `translateX(${-1900 + wp * 3800}px) skewX(-12deg)`;
-  $('bar').style.transform = `scaleX(${t / D.total})`;
+  const pop = back((t - Math.max(s.start, w[group[0]].t - .05)) / .22);
+  cap.style.transform = `translateY(${(1 - pop) * 18}px) scale(${.94 + .06 * pop})`; cap.style.opacity = 1 - leave;
+  [...cap.children].forEach((e, j) => { const idx = group[0] + j, since = t - w[idx].t, cur = idx === now && since >= 0; e.style.opacity = since >= 0 ? 1 : .55; e.style.background = cur ? '#B5532F' : 'transparent'; e.style.transform = `scale(${cur ? 1 + .05 * Math.sin(clamp(since / .22) * Math.PI) : 1})`; });
+  // transitions: every other cut gets a three-layer slanted sweep, the rest cut on the camera move
+  let wp = -1, side = 1; D.scenes.forEach((c, j) => { if (j % 2 === 0 && j && Math.abs(t - c.start) < .3) { wp = (t - c.start + .3) / .6; side = j % 4 ? 1 : -1; } });
+  [0, 1, 2].forEach((j) => { const e = $('w' + j); e.style.display = wp < 0 ? 'none' : 'block'; if (wp < 0) return; const q = clamp(wp * 1.24 - j * .12), ease = q < .5 ? 4 * q * q * q : 1 - Math.pow(-2 * q + 2, 3) / 2; e.style.transform = `translateX(${side * (-2300 + ease * 4600)}px) skewX(${-12 * side}deg)`; });
+  [...$('bar').children].forEach((seg, j) => seg.firstChild.style.transform = `scaleX(${clamp((t - D.scenes[j].start) / D.scenes[j].dur)})`);
 }
 </script>

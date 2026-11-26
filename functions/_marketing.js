@@ -78,6 +78,14 @@ export async function seed(env, posts) {
     await sql(env, 'INSERT INTO marketing_posts (id, post) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING', [p.id, JSON.stringify(clean(p))]);
   }
 }
+// A new renderer look re-renders every unpublished video. Like any edit, it clears the approval.
+export async function relook(env, look) {
+  if (!/^[a-z0-9-]{1,40}$/.test(look || '') || (await setting(env, 'look')) === look) return;
+  const rows = await sql(env, `UPDATE marketing_posts SET version = version + 1, status = 'rendering', slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, ig_container_id = NULL, publish_started_at = NULL, error = NULL, attempts = 0, video_sha = NULL, updated_at = now()
+    WHERE status IN ('rendering', 'review', 'scheduled') RETURNING id`);
+  for (const r of rows) { await dropMedia(env, r.id); await log(env, r.id, 'new_look', look); }
+  await setSetting(env, 'look', look);
+}
 export const queue = (env) => sql(env, "SELECT id, version, post FROM marketing_posts WHERE status = 'rendering' ORDER BY created_at, id LIMIT 10");
 export async function putChunk(env, id, version, n, bytes) {
   if (!bytes.length || bytes.length > CHUNK || !(n >= 0 && n < 40)) return 'Bad chunk';

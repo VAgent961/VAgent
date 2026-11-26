@@ -5,6 +5,7 @@ from pathlib import Path
 
 HQ = "https://vagent.online/hook/marketing"
 UA = "vagent-marketing-render"
+LOOK = "vee-pet-2"  # change when the look changes: HQ re-renders unpublished videos, which need approval again
 
 def http(url, data=None, headers=None):
     req = urllib.request.Request(url, data=data, headers={"User-Agent": UA, **(headers or {})})
@@ -36,7 +37,7 @@ def send(body, raw, query):
 def main():
     if sys.argv[1] == "check":
         posts = [json.loads(f.read_text()) for f in sorted((Path(__file__).parent / "posts").glob("*.json"))]
-        hq({"action": "seed", "posts": posts})
+        hq({"action": "seed", "posts": posts, "look": LOOK})
         n = len(hq({"action": "queue"})["posts"])
         print("queued:", n)
         with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
