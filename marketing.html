@@ -8,13 +8,26 @@
 <link rel="stylesheet" href="/assets/marketing.css">
 </head>
 <body>
-<header><a href="/office"><img src="/assets/brand/mark-dark.svg" alt="VAgent" width="32" height="32"></a><h1>Marketing queue</h1><a href="/office">Back to office</a></header>
+<section id="login" hidden>
+  <form id="signin" class="card">
+    <img src="/assets/brand/lockup-dark.svg" alt="VAgent" width="150">
+    <h1>Sign in to marketing</h1>
+    <label>Email<input type="email" name="email" autocomplete="username" required></label>
+    <label>Password<input type="password" name="password" autocomplete="current-password" required></label>
+    <label class="check"><input type="checkbox" name="remember"> Keep me signed in for 30 days</label>
+    <p id="login-msg" role="alert"></p>
+    <button class="primary" type="submit">Sign in</button>
+  </form>
+</section>
+<div id="app" hidden>
+<header><a href="/office" class="owner"><img src="/assets/brand/mark-dark.svg" alt="VAgent" width="32" height="32"></a><h1>Marketing queue</h1><a href="/office" class="owner">Back to office</a><form method="post" action="/api/logout?next=marketing"><button type="submit">Sign out</button></form></header>
 <main>
-  <p class="note">Posts go out Tue, Thu and Sat at 19:00 (Beirut), only after you approve them. Editing clears the approval. Declining or publishing deletes the video.</p>
+  <p class="note">Posts go out Tue, Thu and Sat at 19:00 (Beirut), only after you approve them. Editing clears the approval. Declining or publishing deletes the video. A platform in dry run is only simulated.</p>
   <p id="msg" role="status"></p>
-  <section id="ig" class="card"></section>
+  <section id="platforms"></section>
   <section id="list"></section>
 </main>
+</div>
 <script src="/assets/marketing.js"></script>
 </body>
 </html>

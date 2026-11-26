@@ -1,10 +1,16 @@
 // Marketing queue: rendering -> review -> scheduled -> publishing -> published (or declined / failed).
+// "scheduled" is the approved state. Publishing to Instagram / TikTok lives in _publish.js.
 // Video lives in marketing_media (base64 chunks) and is deleted on publish, decline and re-render.
 import { sql, encrypt, decrypt } from './_lib.js';
 
 export const CHUNK = 400000;
 export const SHOTS = ['hook', 'phone', 'flow', 'browser', 'list', 'approve', 'alert', 'cta'];
-const SITE = 'https://vagent.online', GRAPH = 'https://graph.instagram.com/v23.0';
+export const SITE = 'https://vagent.online';
+// Per-platform columns are added on first use (also in scripts/migrate.mjs).
+let ready;
+export const schema = (env) => (ready ||= sql(env, "ALTER TABLE marketing_posts ADD COLUMN IF NOT EXISTS targets jsonb, ADD COLUMN IF NOT EXISTS pub jsonb NOT NULL DEFAULT '{}'::jsonb").catch((e) => { ready = null; throw e; }));
+// Platforms that already published stay recorded, so they are never posted twice.
+const KEEP = `pub = COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(pub) WHERE value->>'state' = 'published'), '{}'::jsonb)`;
 export const BANNED = /whats\s?app|wa\.me|\bfree(ly)?\b|\bcosts?\b|\bpric(e|es|ed|ing)\b|[$€£]|\bpaid\b|\bcheap|\bdiscount|\bsubscri|\bfees?\b|\bafford|واتس|مجان|سعر|أسعار|كلفة|تكلفة/i;
 const str = (v, n) => typeof v === 'string' && v.trim().length > 0 && v.length <= n;
 
@@ -33,27 +39,29 @@ export function lint(p) {
 const clean = (p) => ({ id: p.id, keyword: p.keyword, info: p.info && { title: p.info.title, summary: p.info.summary }, direction: p.direction && { world: p.direction.world, concept: p.direction.concept }, scenes: p.scenes.map((s) => ({ say: s.say, title: s.title, mood: s.mood === 'think' ? 'think' : 'talk', ...(s.chat ? { chat: [s.chat[0], s.chat[1]] } : {}), ...(s.end ? { end: true } : {}), ...(s.shot ? { shot: s.shot } : {}), ...(s.items?.length ? { items: [...s.items] } : {}) })), caption: p.caption, hashtags: p.hashtags });
 
 export async function digest(row) {
-  const raw = new TextEncoder().encode(JSON.stringify([row.id, row.version, row.post, row.video_sha]));
+  const raw = new TextEncoder().encode(JSON.stringify([row.id, row.version, row.post, row.video_sha, ...(row.targets ? [row.targets] : [])]));
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', raw))].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 export const log = (env, id, event, detail = '') => sql(env, 'INSERT INTO marketing_events (post_id, event, detail) VALUES ($1, $2, $3)', [id, event, String(detail).slice(0, 300)]);
-const dropMedia = (env, id) => sql(env, 'DELETE FROM marketing_media WHERE post_id = $1', [id]);
+export const dropMedia = (env, id) => sql(env, 'DELETE FROM marketing_media WHERE post_id = $1', [id]);
 const one = async (env, id) => (await sql(env, 'SELECT * FROM marketing_posts WHERE id = $1', [id]))[0];
 
 export async function setting(env, k) { return (await sql(env, 'SELECT v FROM marketing_settings WHERE k = $1', [k]))[0]?.v ?? null; }
 export const setSetting = (env, k, v) => sql(env, 'INSERT INTO marketing_settings (k, v) VALUES ($1, $2) ON CONFLICT (k) DO UPDATE SET v = $2', [k, v]);
 
 // ── owner actions ──
-export async function approve(env, id, version, who) {
+export async function approve(env, id, version, who, defaults = ['instagram', 'tiktok']) {
   const row = await one(env, id);
   if (!row || row.status !== 'review' || Number(row.version) !== Number(version)) return 'This post changed. Reload and review it again.';
   const err = lint(row.post); if (err) return err;
+  const targets = row.targets || defaults;
+  if (targets.every((t) => row.pub?.[t]?.state === 'published')) return 'Already published on every chosen platform.';
   // next free Tue/Thu/Sat 19:00 Beirut, computed by Postgres so daylight saving is right
-  const done = await sql(env, `UPDATE marketing_posts SET status = 'scheduled', approved_hash = $3, approved_by = $4, error = NULL, dry_run_at = NULL, updated_at = now(), slot = (
+  const done = await sql(env, `UPDATE marketing_posts SET status = 'scheduled', approved_hash = $3, approved_by = $4, targets = $5::jsonb, ${KEEP}, error = NULL, dry_run_at = NULL, updated_at = now(), slot = (
       SELECT s FROM (SELECT (d::date + time '19:00') AT TIME ZONE 'Asia/Beirut' AS s FROM generate_series((now() AT TIME ZONE 'Asia/Beirut')::date::timestamp, (now() AT TIME ZONE 'Asia/Beirut')::date::timestamp + interval '365 days', interval '1 day') d
         WHERE extract(isodow FROM d) IN (2, 4, 6)) c
       WHERE s > now() AND NOT EXISTS (SELECT 1 FROM marketing_posts p WHERE p.slot = s AND p.status IN ('scheduled', 'publishing', 'published')) ORDER BY s LIMIT 1)
-    WHERE id = $1 AND version = $2 AND status = 'review' RETURNING slot`, [id, row.version, await digest(row), who]);
+    WHERE id = $1 AND version = $2 AND status = 'review' RETURNING slot`, [id, row.version, await digest({ ...row, targets }), who, JSON.stringify(targets)]);
   if (!done.length) return 'This post changed. Reload and review it again.';
   await log(env, id, 'approved', who); return '';
 }
@@ -61,6 +69,22 @@ export async function decline(env, id, who) {
   const r = await sql(env, `UPDATE marketing_posts SET status = 'declined', slot = NULL, approved_hash = NULL, video_sha = NULL, updated_at = now() WHERE id = $1 AND status IN ('rendering', 'review', 'scheduled', 'failed') RETURNING id`, [id]);
   if (!r.length) return 'This post cannot be declined now.';
   await dropMedia(env, id); await log(env, id, 'declined', who); return '';
+}
+// Choosing platforms is an edit: it clears the approval.
+export async function setTargets(env, id, version, targets, who) {
+  const list = ['instagram', 'tiktok'].filter((t) => Array.isArray(targets) && targets.includes(t));
+  if (!list.length) return 'Choose at least one platform.';
+  const r = await sql(env, `UPDATE marketing_posts SET targets = $3::jsonb, status = CASE WHEN status = 'scheduled' THEN 'review' ELSE status END, slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, ${KEEP}, updated_at = now()
+    WHERE id = $1 AND version = $2 AND status IN ('rendering', 'review', 'scheduled') RETURNING id`, [id, version, JSON.stringify(list)]);
+  if (!r.length) return 'This post changed. Reload first.';
+  await log(env, id, 'targets', `${list.join(',')} ${who}`); return '';
+}
+// After a failed publish: back to review with the video kept. Needs a new approval; published platforms are skipped.
+export async function republish(env, id, version, who) {
+  const r = await sql(env, `UPDATE marketing_posts SET status = 'review', slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, publish_started_at = NULL, error = NULL, ${KEEP}, updated_at = now()
+    WHERE id = $1 AND version = $2 AND status = 'failed' AND video_sha IS NOT NULL RETURNING id`, [id, version]);
+  if (!r.length) return 'This post cannot be tried again. Reload first.';
+  await log(env, id, 'republish', who); return '';
 }
 // Any edit clears the approval. Changing a scene renders a new video; caption/hashtags only go back to review.
 export async function edit(env, id, version, input, who) {
@@ -71,7 +95,7 @@ export async function edit(env, id, version, input, who) {
   const post = clean(next);
   const redo = !row.video_sha || row.status === 'failed' || JSON.stringify(post.scenes) !== JSON.stringify(clean(row.post).scenes);
   if (!redo && JSON.stringify(post) === JSON.stringify(clean(row.post))) return '';
-  const r = await sql(env, `UPDATE marketing_posts SET post = $3, version = version + 1, status = $4, slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, ig_container_id = NULL, publish_started_at = NULL, error = NULL, attempts = 0,
+  const r = await sql(env, `UPDATE marketing_posts SET post = $3, version = version + 1, status = $4, slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, ig_container_id = NULL, publish_started_at = NULL, error = NULL, attempts = 0, ${KEEP},
       video_sha = CASE WHEN $5 THEN NULL ELSE video_sha END, updated_at = now() WHERE id = $1 AND version = $2 AND status = $6 RETURNING version`,
   [id, row.version, JSON.stringify(post), redo ? 'rendering' : 'review', redo, row.status]);
   if (!r.length) return 'This post changed. Reload first.';
@@ -100,7 +124,7 @@ function heal(row, draft) {
 }
 // Unpublished: waiting, or failed while rendering (a failed publish is never retried by itself).
 const OPEN = "(status IN ('rendering', 'review', 'scheduled') OR (status = 'failed' AND video_sha IS NULL AND publish_started_at IS NULL))";
-const RESET = "version = version + 1, status = 'rendering', slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, ig_container_id = NULL, publish_started_at = NULL, error = NULL, attempts = 0, video_sha = NULL, updated_at = now()";
+const RESET = "version = version + 1, status = 'rendering', slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, ig_container_id = NULL, publish_started_at = NULL, error = NULL, attempts = 0, video_sha = NULL, updated_at = now(), pub = COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(pub) WHERE value->>'state' = 'published'), '{}'::jsonb)";
 export async function retry(env, id, version, who) {
   const r = await sql(env, `UPDATE marketing_posts SET ${RESET} WHERE id = $1 AND version = $2 AND status = 'failed' AND ${OPEN} RETURNING id`, [id, version]);
   if (!r.length) return 'This post cannot be rendered again. Reload first.';
@@ -175,84 +199,6 @@ export async function video(env, request, id) {
 export async function mediaSig(env, id, exp) {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.SESSION_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   return [...new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`mk:${id}:${exp}`)))].map((x) => x.toString(16).padStart(2, '0')).join('');
-}
-
-// ── Instagram ──
-async function graph(token, path, params, method = 'GET') {
-  const q = new URLSearchParams({ ...params, access_token: token });
-  const r = await fetch(`${GRAPH}/${path}${method === 'GET' ? '?' + q : ''}`, method === 'GET' ? {} : { method, body: q });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok || j.error) throw new Error(j.error?.message || 'Instagram error ' + r.status);
-  return j;
-}
-export async function connect(env, token, who) {
-  const me = await graph(token, 'me', { fields: 'user_id,username' });
-  await setSetting(env, 'ig_token', await encrypt(env, token));
-  await setSetting(env, 'ig_user', JSON.stringify({ id: String(me.user_id || me.id), name: me.username }));
-  await setSetting(env, 'ig_refreshed', new Date().toISOString());
-  await log(env, '-', 'instagram_connected', who);
-}
-const fail = async (env, id, why) => {
-  await sql(env, "UPDATE marketing_posts SET status = 'failed', error = $2, updated_at = now() WHERE id = $1 AND status = 'publishing'", [id, String(why).slice(0, 300)]);
-  await log(env, id, 'publish_failed', why);
-};
-async function published(env, id, mediaId) {
-  await sql(env, "UPDATE marketing_posts SET status = 'published', ig_media_id = $2, video_sha = NULL, error = NULL, updated_at = now() WHERE id = $1 AND status = 'publishing'", [id, mediaId]);
-  await dropMedia(env, id); await log(env, id, 'published', mediaId);
-}
-
-// Called every few minutes by n8n. Dry run unless an owner switched "live" on.
-export async function tick(env) {
-  const out = [];
-  const token = await setting(env, 'ig_token'), live = (await setting(env, 'live')) === 'true' && !!token;
-  if (!live) {
-    const due = await sql(env, "UPDATE marketing_posts SET dry_run_at = now() WHERE status = 'scheduled' AND slot <= now() AND dry_run_at IS NULL RETURNING *");
-    for (const row of due) {
-      const ok = row.approved_hash === await digest(row);
-      await log(env, row.id, ok ? 'dry_run' : 'blocked', ok ? 'would publish to Instagram' : 'approval does not match');
-      out.push({ id: row.id, result: ok ? 'dry_run' : 'blocked' });
-    }
-    return { live, posts: out };
-  }
-  const ig = JSON.parse(await setting(env, 'ig_user'));
-  let access = await decrypt(env, token);
-  if (Date.now() - Date.parse(await setting(env, 'ig_refreshed')) > 7 * 864e5) {
-    try {
-      const r = await fetch('https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=' + encodeURIComponent(access));
-      const j = await r.json();
-      if (j.access_token) { access = j.access_token; await setSetting(env, 'ig_token', await encrypt(env, access)); await setSetting(env, 'ig_refreshed', new Date().toISOString()); }
-    } catch { await log(env, '-', 'token_refresh_failed'); }
-  }
-  // 1) containers already created: poll until FINISHED, then publish exactly once
-  for (const row of await sql(env, "SELECT *, updated_at < now() - interval '1 hour' AS old, updated_at < now() - interval '10 minutes' AS stuck FROM marketing_posts WHERE status = 'publishing'")) {
-    if (row.publish_started_at) { if (row.stuck) await fail(env, row.id, 'Unclear result: check Instagram before retrying'); continue; }
-    if (!row.ig_container_id) { if (row.stuck) await fail(env, row.id, 'Container was not created'); continue; }
-    try {
-      const { status_code: code } = await graph(access, row.ig_container_id, { fields: 'status_code' });
-      out.push({ id: row.id, result: code });
-      if (code === 'ERROR' || code === 'EXPIRED') await fail(env, row.id, 'Instagram container ' + code);
-      else if (code === 'PUBLISHED') await published(env, row.id, row.ig_container_id);
-      else if (code !== 'FINISHED') { if (row.old) await fail(env, row.id, 'Instagram processing timed out'); }
-      else if ((await sql(env, "UPDATE marketing_posts SET publish_started_at = now(), updated_at = now() WHERE id = $1 AND status = 'publishing' AND publish_started_at IS NULL RETURNING id", [row.id])).length) {
-        try { const m = await graph(access, ig.id + '/media_publish', { creation_id: row.ig_container_id }, 'POST'); await published(env, row.id, m.id); }
-        catch (e) { await fail(env, row.id, 'Unclear result, check Instagram before retrying: ' + e.message); }
-      }
-    } catch (e) { if (row.old) await fail(env, row.id, e.message); }
-  }
-  // 2) a slot that passed more than 6 hours ago is not published late: back to review
-  for (const m of await sql(env, "UPDATE marketing_posts SET status = 'review', slot = NULL, approved_hash = NULL, dry_run_at = NULL, error = 'Slot missed: approve again', updated_at = now() WHERE status = 'scheduled' AND slot < now() - interval '6 hours' RETURNING id")) await log(env, m.id, 'slot_missed');
-  // 3) claim due posts and create the Reels container
-  for (const row of await sql(env, "UPDATE marketing_posts SET status = 'publishing', updated_at = now() WHERE status = 'scheduled' AND slot <= now() RETURNING *")) {
-    try {
-      if (row.approved_hash !== await digest(row)) throw new Error('Approval does not match the post');
-      const exp = Math.floor(Date.now() / 1000) + 3600;
-      const url = `${SITE}/hook/marketing-media?id=${row.id}&exp=${exp}&sig=${await mediaSig(env, row.id, exp)}`;
-      const c = await graph(access, ig.id + '/media', { media_type: 'REELS', video_url: url, caption: row.post.caption + '\n\n' + row.post.hashtags.join(' ') }, 'POST');
-      await sql(env, 'UPDATE marketing_posts SET ig_container_id = $2, updated_at = now() WHERE id = $1', [row.id, c.id]);
-      await log(env, row.id, 'container_created', c.id); out.push({ id: row.id, result: 'container' });
-    } catch (e) { await fail(env, row.id, e.message); }
-  }
-  return { live, posts: out };
 }
 
 // ── GitHub Actions identity (OIDC): no stored secret; only our workflow on main is accepted ──

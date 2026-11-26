@@ -42,8 +42,9 @@ async function hmac(secret, data) {
 }
 
 // Session = signed cookie "va_session" (HttpOnly, Secure). No session table needed.
-export async function makeSession(env, email, days) {
-  const body = b64u(enc.encode(JSON.stringify({ e: email, x: Date.now() + days * 864e5 })));
+// scope 'mk' = an account that may only use the marketing queue.
+export async function makeSession(env, email, days, scope) {
+  const body = b64u(enc.encode(JSON.stringify({ e: email, x: Date.now() + days * 864e5, ...(scope ? { s: scope } : {}) })));
   return body + '.' + (await hmac(env.SESSION_SECRET, body));
 }
 

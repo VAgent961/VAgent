@@ -4,9 +4,13 @@
   const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids.filter(Boolean)); return n; };
   const when = (s) => new Date(s).toLocaleString('en-GB', { timeZone: 'Asia/Beirut', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' Beirut';
   let editing = null, last = '';
+  const NAMES = { instagram: 'Instagram', tiktok: 'TikTok' };
+  const STATE = { starting: 'starting', processing: 'processing', publishing: 'publishing', published: 'published', failed: 'failed', dry_run: 'dry run, not posted' };
+  const check = (label, checked, onchange, disabled) => el('label', { className: 'check' }, el('input', { type: 'checkbox', checked, disabled: !!disabled, onchange }), label);
   async function send(payload) {
     $('msg').textContent = '';
     const r = await fetch('/api/marketing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (r.status === 401) return signedOut();
     if (!r.ok) { $('msg').textContent = (await r.json().catch(() => ({}))).error || 'Something went wrong.'; $('msg').scrollIntoView({ block: 'nearest' }); return false; }
     editing = null; last = ''; await load(); return true;
   }
@@ -24,35 +28,96 @@
       btn('Save', () => send({ action: 'edit', id: p.id, version: p.version, post: { scenes: rows.map((r) => r.get()), caption: cap.value, hashtags: tags.value.split(/\s+/).filter(Boolean) } }), 'primary'),
       btn('Cancel', () => { editing = null; last = ''; load(); }));
   }
+  function targets(p) {
+    const editable = ['rendering', 'review', 'scheduled'].includes(p.status);
+    const box = el('div', { className: 'targets' }, el('span', { className: 'meta', textContent: 'Publish to' }));
+    for (const n of Object.keys(NAMES)) {
+      const s = p.pub?.[n];
+      box.append(check(NAMES[n], p.effective.includes(n), (e) => {
+        const next = Object.keys(NAMES).filter((x) => (x === n ? e.target.checked : p.effective.includes(x)));
+        if (p.status === 'scheduled' && !confirm('Changing platforms clears the approval. Continue?')) { e.target.checked = !e.target.checked; return; }
+        send({ action: 'targets', id: p.id, version: p.version, targets: next }).then((ok) => { if (!ok) { last = ''; load(); } });
+      }, !editable));
+      if (s) box.append(el('span', { className: 'chip ' + s.state, textContent: `${NAMES[n]}: ${STATE[s.state] || s.state}${s.error ? ' · ' + s.error : ''}` }));
+    }
+    return box;
+  }
   function card(p) {
     const open = ['rendering', 'review', 'scheduled', 'failed'].includes(p.status);
     const state = p.status === 'scheduled' ? `Approved · ${when(p.slot)}${p.dry_run_at ? ' · dry run done, nothing posted' : ''}` : p.status === 'review' ? 'Waiting for your approval' : p.status === 'rendering' ? (p.error ? `Last render failed (try ${p.attempts} of 3). Trying again automatically` : 'Rendering (usually within 15 to 30 minutes)') : p.status === 'failed' ? 'Failed' : p.status;
     const stuck = p.status === 'failed' && !p.has_video;
     const side = el('div', {}, el('h2', { textContent: p.post.scenes[0].say }), el('div', { className: 'meta', textContent: `${state} · version ${p.version}` }), p.error && el('div', { style: 'color:var(--bad)', textContent: `Error: ${p.error}` }));
     if (editing === p.id) side.append(editor(p));
-    else side.append(el('p', { className: 'cap', textContent: p.post.caption + '\n\n' + p.post.hashtags.join(' ') }), p.post.keyword && el('div', { className: 'meta', textContent: `Comment keyword: ${p.post.keyword} · ${p.post.info?.title || ''}` }), el('div', {},
+    else side.append(el('p', { className: 'cap', textContent: p.captions.instagram }),
+      p.captions.tiktok !== p.captions.instagram && el('details', {}, el('summary', { textContent: 'TikTok caption' }), el('p', { className: 'cap', textContent: p.captions.tiktok })),
+      p.post.keyword && el('div', { className: 'meta', textContent: `Comment keyword: ${p.post.keyword} · ${p.post.info?.title || ''}` }), targets(p), el('div', {},
       p.status === 'review' && btn('Approve', () => send({ action: 'approve', id: p.id, version: p.version }), 'primary'),
+      p.status === 'failed' && p.has_video && btn('Try publishing again', () => send({ action: 'republish', id: p.id, version: p.version }), 'primary'),
       stuck && btn('Render again', () => send({ action: 'retry', id: p.id, version: p.version }), 'primary'),
       open && btn(p.status === 'failed' ? 'Edit and retry' : 'Edit', () => { editing = p.id; last = ''; load(); }),
       open && btn('Decline', () => confirm('Decline this post and delete its video?') && send({ action: 'decline', id: p.id }))));
     return el('article', { className: 'card post' }, p.has_video ? el('video', { src: `/api/marketing?video=${p.id}&v=${p.version}`, controls: true, playsInline: true, preload: 'metadata' }) : el('div', { className: 'meta', textContent: p.status === 'rendering' ? (p.error ? 'No video yet: waiting for the next try' : 'The video is being made') : stuck ? 'Render failed: no video' : 'No video stored' }), side);
   }
-  function instagram(d) {
-    const box = $('ig'); box.replaceChildren(el('h2', { textContent: 'Instagram' }), el('div', { textContent: d.live ? `LIVE: approved posts are published to @${d.instagram}.` : 'Dry run: nothing is sent to Instagram.' }));
-    if (d.live) box.append(btn('Switch to dry run', () => send({ action: 'live', on: false })));
-    else if (d.instagram) box.append(btn(`Go live as @${d.instagram}`, () => confirm('Approved posts will really be published. Continue?') && send({ action: 'live', on: true }), 'primary'));
-    const token = el('input', { type: 'password', placeholder: 'Instagram long-lived access token', autocomplete: 'off' });
-    box.append(el('details', {}, el('summary', { textContent: d.instagram ? `Connected: @${d.instagram} (replace token)` : 'Connect Instagram' }), token, btn('Connect', () => send({ action: 'connect', token: token.value }))));
+  function mode(name, p) {
+    const box = el('section', { className: 'card' }, el('h2', { textContent: NAMES[name] }),
+      el('div', { textContent: p.live ? `LIVE: approved posts are published to @${p.name}.` : `Dry run: nothing is sent to ${NAMES[name]}.` }));
+    if (p.live) box.append(btn('Switch to dry run', () => send({ action: 'live', platform: name, on: false })));
+    else if (p.connected) box.append(btn(`Go live as @${p.name}`, () => confirm(`Approved posts will really be published to ${NAMES[name]}. Continue?`) && send({ action: 'live', platform: name, on: true }), 'primary'));
+    return box;
   }
+  function instagram(p) {
+    const box = mode('instagram', p), token = el('input', { type: 'password', placeholder: 'Instagram long-lived access token', autocomplete: 'off' });
+    box.append(el('details', {}, el('summary', { textContent: p.connected ? `Connected: @${p.name} (replace token)` : 'Connect Instagram' }), token, btn('Connect', () => send({ action: 'connect', token: token.value }))));
+    return box;
+  }
+  function tiktok(p) {
+    const box = mode('tiktok', p), o = p.options;
+    const key = el('input', { placeholder: 'Client key', autocomplete: 'off' }), secret = el('input', { type: 'password', placeholder: 'Client secret', autocomplete: 'off' });
+    const file = el('input', { placeholder: 'File name, e.g. tiktokAbc123.txt' }), line = el('input', { placeholder: 'tiktok-developers-site-verification=…' });
+    const privacy = el('select', {}, el('option', { value: '', textContent: p.privacyChoices.length ? 'Choose who can see posts' : 'Connect first to load choices' }), ...p.privacyChoices.map((v) => el('option', { value: v, textContent: v.replaceAll('_', ' ').toLowerCase() })));
+    privacy.value = o.privacy;
+    const source = el('select', {}, el('option', { value: 'url', textContent: 'TikTok pulls the video from vagent.online (needs domain verification)' }), el('option', { value: 'file', textContent: 'Upload the file directly' }));
+    source.value = o.source;
+    const flags = { comment: check('Allow comments', o.comment), duet: check('Allow duet', o.duet), stitch: check('Allow stitch', o.stitch) };
+    const on = (k) => flags[k].querySelector('input').checked;
+    box.append(el('details', {}, el('summary', { textContent: p.connected ? `Connected: @${p.name} · settings` : 'Connect TikTok' }),
+      el('p', { className: 'meta', textContent: `1. In developers.tiktok.com add Login Kit and Content Posting API (Direct Post), scopes user.info.basic and video.publish, redirect URI ${p.redirect}. Until TikTok audits the app, posts can only be private.` }),
+      key, secret, btn(p.app ? 'Replace app keys' : 'Save app keys', () => send({ action: 'tiktok_app', key: key.value, secret: secret.value })),
+      el('p', { className: 'meta', textContent: '2. Log in with the TikTok account.' }),
+      p.app && el('a', { href: '/api/marketing?tiktok=authorize', className: 'button', textContent: p.connected ? 'Log in again' : 'Log in with TikTok' }),
+      el('p', { className: 'meta', textContent: '3. Posting settings' }), privacy, source, ...Object.values(flags),
+      btn('Save settings', () => send({ action: 'tiktok_options', options: { privacy: privacy.value, source: source.value, comment: on('comment'), duet: on('duet'), stitch: on('stitch') } })),
+      p.connected && btn('Reload account info', () => send({ action: 'tiktok_creator' })),
+      el('p', { className: 'meta', textContent: `4. Domain verification: add the URL prefix https://vagent.online/hook/ in TikTok and paste its signature file here.${p.verify ? ' Served now: /hook/' + p.verify : ''}` }),
+      file, line, btn('Save verification file', () => send({ action: 'tiktok_verify', file: file.value, content: line.value }))));
+    return box;
+  }
+  function signedOut() {
+    $('app').hidden = true; $('login').hidden = false; $('list').replaceChildren(); $('platforms').replaceChildren(); last = ''; editing = null;
+  }
+  $('signin').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target, button = f.querySelector('button'); button.disabled = true; $('login-msg').textContent = '';
+    try {
+      const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: f.email.value, password: f.password.value, remember: f.remember.checked }) });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) { f.reset(); $('login').hidden = true; await load(); } else $('login-msg').textContent = d.error || 'Sign-in failed.';
+    } catch { $('login-msg').textContent = 'No connection. Try again.'; }
+    button.disabled = false;
+  });
   async function load() {
-    if (editing && last) return;
+    if ((editing && last) || !$('login').hidden) return;
     const r = await fetch('/api/marketing');
-    if (r.status === 401) return location.assign('/');
+    if (r.status === 401) return signedOut();
+    $('app').hidden = false;
     if (!r.ok) { $('msg').textContent = 'Could not load the queue.'; return; }
     const d = await r.json(), sig = JSON.stringify(d) + editing;
     if (sig === last) return; // do not restart videos that are playing
-    last = sig; instagram(d);
+    last = sig; $('platforms').replaceChildren(instagram(d.platforms.instagram), tiktok(d.platforms.tiktok));
+    document.querySelectorAll('.owner').forEach((a) => { a.style.visibility = d.role === 'owner' ? '' : 'hidden'; });
     $('list').replaceChildren(...(d.posts.length ? d.posts.map(card) : [el('p', { textContent: 'No posts yet.' })]));
   }
-  load(); setInterval(() => { if (!document.hidden && !document.querySelector('video:not([src=""])')?.matches(':hover') && ![...document.querySelectorAll('video')].some((v) => !v.paused) && !$('ig').querySelector('details[open]')) load(); }, 20000);
+  const back = new URLSearchParams(location.search).get('tiktok');
+  if (back) { $('msg').textContent = back === 'connected' ? 'TikTok connected. It stays in dry run until you switch it live.' : 'TikTok: ' + back; history.replaceState(null, '', location.pathname); }
+  load(); setInterval(() => { if (!document.hidden && !document.activeElement?.matches('input, select, textarea') && ![...document.querySelectorAll('video')].some((v) => !v.paused) && !$('platforms').querySelector('details[open]')) load(); }, 20000);
 })();

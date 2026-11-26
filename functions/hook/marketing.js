@@ -1,5 +1,6 @@
 import { json, bad, body } from '../_lib.js';
 import * as mk from '../_marketing.js';
+import { tick } from '../_publish.js';
 
 // POST /hook/marketing
 //  - n8n publisher: header X-VAgent-Secret, {action:"tick"}
@@ -9,9 +10,11 @@ export async function onRequestPost({ request, env }) {
   const secret = request.headers.get('X-VAgent-Secret') || '';
   if (env.WEBHOOK_SECRET && secret === env.WEBHOOK_SECRET) {
     const b = await body(request);
-    return b.action === 'tick' ? json(await mk.tick(env)) : bad('Unknown action');
+    if (b.action !== 'tick') return bad('Unknown action');
+    await mk.schema(env); return json(await tick(env));
   }
   if (!(await mk.isRenderer(request))) return bad('Not allowed', 401);
+  await mk.schema(env);
   const q = url.searchParams;
   if (q.get('action') === 'chunk') {
     const err = await mk.putChunk(env, q.get('id'), Number(q.get('version')), Number(q.get('n')), new Uint8Array(await request.arrayBuffer()));

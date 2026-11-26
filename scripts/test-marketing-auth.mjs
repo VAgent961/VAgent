@@ -1,0 +1,16 @@
+import assert from 'node:assert';
+const R = new URL('../functions/', import.meta.url).href;
+const { hashPassword, makeSession } = await import(R + '_lib.js'), { onRequest } = await import(R + '_middleware.js'), login = (await import(R + 'api/login.js')).onRequestPost;
+globalThis.fetch = async () => new Response(JSON.stringify({ rows: [{ n: 0 }] }));
+const env = { SESSION_SECRET: 's', DATABASE_URL: 'postgres://u:p@h.example/db', MARKETING_EMAIL: 'm@x.test', MARKETING_PASS_HASH: await hashPassword('Pw$1%x') };
+const r = await login({ env, request: new Request('https://vagent.online/api/login', { method: 'POST', body: JSON.stringify({ email: 'M@x.test', password: 'Pw$1%x' }) }) });
+assert.equal(r.status, 200); const ck = r.headers.get('Set-Cookie').split(';')[0];
+assert.equal((await login({ env, request: new Request('https://vagent.online/api/login', { method: 'POST', body: JSON.stringify({ email: 'm@x.test', password: 'no' }) }) })).status, 401);
+const go = async (path, cookie, e = env) => { const data = {}; const res = await onRequest({ env: e, data, next: async () => new Response('page'), request: new Request('https://vagent.online' + path, { headers: cookie ? { Cookie: cookie } : {} }) }); return [res.status, data.role, res.headers.get('Location')]; };
+assert.deepEqual(await go('/marketing'), [200, undefined, null]); assert.equal((await go('/api/marketing'))[0], 401); assert.equal((await go('/office'))[0], 302);
+assert.deepEqual(await go('/api/marketing', ck), [200, 'marketing', null]);
+for (const p of ['/api/office', '/api/act', '/api/accounts', '/api/marketing/x']) assert.equal((await go(p, ck))[0], 403, p);
+for (const p of ['/office', '/office.html', '/']) assert.equal((await go(p, ck))[2], 'https://vagent.online/marketing', p);
+assert.equal((await go('/api/marketing', ck, { ...env, MARKETING_EMAIL: 'other@x.test' }))[0], 401);
+const owner = 'va_session=' + await makeSession(env, 'o@x.test', 1); assert.equal((await go('/api/office', owner))[0], 200); assert.equal((await go('/', owner))[2], 'https://vagent.online/office');
+console.log('auth ok');

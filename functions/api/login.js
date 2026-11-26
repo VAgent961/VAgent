@@ -15,6 +15,10 @@ export async function onRequestPost({ request, env }) {
     const [{ n }] = await sql(env, "SELECT count(*)::int AS n FROM vagent_login_fails WHERE email = $1 AND at > now() - interval '15 minutes'", [email]);
     if (n >= 10) return json({ error: 'Too many tries. Wait 15 minutes and try again.' }, 429);
 
+    const days = body.remember ? 30 : 1;
+    // The marketing-only account: its email and password hash are Cloudflare settings, never in the repo.
+    if (env.MARKETING_EMAIL && email === env.MARKETING_EMAIL.toLowerCase() && await checkPassword(password, env.MARKETING_PASS_HASH))
+      return json({ ok: true, next: '/marketing' }, 200, { 'Set-Cookie': cookie(await makeSession(env, email, days, 'mk'), days * 86400) });
     const [owner] = await sql(env, 'SELECT email, pass_hash FROM vagent_owners WHERE email = $1', [email]);
     const ok = await checkPassword(password, owner ? owner.pass_hash : DUMMY) && !!owner;
     if (!ok) {
@@ -22,7 +26,6 @@ export async function onRequestPost({ request, env }) {
       return json({ error: 'Wrong email or password.' }, 401);
     }
     await sql(env, 'UPDATE vagent_owners SET last_login = now() WHERE email = $1', [email]);
-    const days = body.remember ? 30 : 1;
     return json({ ok: true, next: '/office' }, 200, { 'Set-Cookie': cookie(await makeSession(env, email, days), days * 86400) });
   } catch (e) {
     return json({ error: 'Sign-in is down for a moment. Try again.' }, 500);

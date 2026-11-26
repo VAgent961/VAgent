@@ -49,16 +49,23 @@ async function clientHost({ env, request, next }, host, path) {
 // The company HQ: guards /office and /api/* (sets data.owner); signed-in owners skip the sign-in page.
 async function mainSite({ request, env, next, data }, host, path) {
   if (path.startsWith('/api/client/')) return isDev(host) ? next() : notFound();   // the client portal API exists only on adminvoice.vagent.online
-  const isOffice = path === '/office' || path.startsWith('/office/') || path === '/office.html' || path === '/marketing' || path === '/marketing.html';
+  const isOffice = path === '/office' || path.startsWith('/office/') || path === '/office.html';
+  const isMarketing = path === '/marketing' || path === '/marketing.html'; // open page: it shows its own sign-in screen, its data needs a session
   const isLogin = path === '/' || path === '/index.html';
   // /api/public-* are open on purpose (the public call page); each one has its own Origin check + rate limit.
   const isApi = path.startsWith('/api/') && path !== '/api/login' && path !== '/api/logout' && !path.startsWith('/api/public-');
-  if (!isOffice && !isLogin && !isApi) return next();
-  const session = await readSession(env, request);
+  if (!isOffice && !isLogin && !isApi && !isMarketing) return next();
+  let session = await readSession(env, request);
+  if (session?.s === 'mk' && session.e !== env.MARKETING_EMAIL?.toLowerCase()) session = null; // account removed or changed
+  if (session?.s === 'mk') { // marketing only: no office, no other API
+    if (isOffice || isLogin) return Response.redirect(new URL('/marketing', request.url).toString(), 302);
+    if (isApi && path !== '/api/marketing' && path !== '/api/tiktok-callback') return json({ error: 'Not allowed.' }, 403);
+    data.owner = session.e; data.role = 'marketing'; data.access_depts = [];
+  }
   if (isApi && !session) return json({ error: 'Please sign in again.' }, 401);
   if (isOffice && !session) return Response.redirect(new URL('/', request.url).toString(), 302);
   if (isLogin && session) return Response.redirect(new URL('/office', request.url).toString(), 302);
-  if (session) {
+  if (session && session.s !== 'mk') {
     data.owner = session.e;
     try {
       const rows = await sql(env, 'SELECT role, access_depts FROM vagent_owners WHERE email = $1', [session.e]);

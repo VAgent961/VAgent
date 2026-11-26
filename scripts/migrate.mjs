@@ -9,6 +9,7 @@ const sql = async (query, params = []) => {
 };
 const steps = [
   "CREATE TABLE IF NOT EXISTS marketing_posts (id text PRIMARY KEY, post jsonb NOT NULL, version int NOT NULL DEFAULT 1, status text NOT NULL DEFAULT 'rendering', slot timestamptz, approved_hash text, approved_by text, video_sha text, video_size int, attempts int NOT NULL DEFAULT 0, ig_container_id text, ig_media_id text, publish_started_at timestamptz, dry_run_at timestamptz, error text, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now())",
+  "ALTER TABLE marketing_posts ADD COLUMN IF NOT EXISTS targets jsonb, ADD COLUMN IF NOT EXISTS pub jsonb NOT NULL DEFAULT '{}'::jsonb",
   "CREATE UNIQUE INDEX IF NOT EXISTS marketing_slot ON marketing_posts (slot) WHERE status IN ('scheduled', 'publishing', 'published')",
   "CREATE TABLE IF NOT EXISTS marketing_media (post_id text NOT NULL REFERENCES marketing_posts(id) ON DELETE CASCADE, version int NOT NULL, n int NOT NULL, data text NOT NULL, PRIMARY KEY (post_id, version, n))",
   "CREATE TABLE IF NOT EXISTS marketing_events (id bigserial PRIMARY KEY, post_id text NOT NULL, event text NOT NULL, detail text, at timestamptz NOT NULL DEFAULT now())",
