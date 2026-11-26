@@ -18,11 +18,19 @@ export function lint(p) {
     if (s.shot !== undefined && !SHOTS.includes(s.shot)) return 'Unknown scene type';
     if (s.items !== undefined && !(Array.isArray(s.items) && s.items.length <= 4 && s.items.every((x) => str(x, 60)))) return 'A scene takes up to 4 short on-screen lines';
   }
+  // every video: its own direction, and a 1-2 word comment keyword with the info an auto-reply will send
+  const key = p.keyword;
+  if (typeof key !== 'string' || key.length > 24 || !/^[\p{Lu}\p{N}]+( [\p{Lu}\p{N}]+)?$/u.test(key)) return 'Add a comment keyword of 1 or 2 words, in capitals';
+  if (!p.info || !str(p.info.title, 80) || !str(p.info.summary, 600)) return 'Add the keyword info (title and summary)';
+  if (!p.direction || !/^[a-z0-9][a-z0-9-]{1,40}$/.test(p.direction.world || '') || !str(p.direction.concept, 200)) return 'Add a direction (own world and concept) for this video';
+  const asks = new RegExp(`comment\\b[^\\n]{0,24}\\b${key}\\b`, 'iu');
+  if (!asks.test(String(p.caption))) return `The caption must ask people to comment ${key}`;
+  if (!asks.test(`${p.scenes.at(-1).say}\n${p.scenes.at(-1).title}`)) return `The last scene must ask people to comment ${key}`;
   if (!str(p.caption, 1800) || !Array.isArray(p.hashtags) || p.hashtags.length > 30 || !p.hashtags.every((h) => /^#[\p{L}\p{N}_]{1,50}$/u.test(h))) return 'Check the caption and hashtags';
-  const hit = JSON.stringify({ s: p.scenes, c: p.caption, h: p.hashtags }).match(BANNED);
+  const hit = JSON.stringify({ s: p.scenes, c: p.caption, h: p.hashtags, k: p.keyword, i: p.info, d: p.direction }).match(BANNED);
   return hit ? `Content rule: "${hit[0]}" is not allowed in a post` : '';
 }
-const clean = (p) => ({ id: p.id, scenes: p.scenes.map((s) => ({ say: s.say, title: s.title, mood: s.mood === 'think' ? 'think' : 'talk', ...(s.chat ? { chat: [s.chat[0], s.chat[1]] } : {}), ...(s.end ? { end: true } : {}), ...(s.shot ? { shot: s.shot } : {}), ...(s.items?.length ? { items: [...s.items] } : {}) })), caption: p.caption, hashtags: p.hashtags });
+const clean = (p) => ({ id: p.id, keyword: p.keyword, info: p.info && { title: p.info.title, summary: p.info.summary }, direction: p.direction && { world: p.direction.world, concept: p.direction.concept }, scenes: p.scenes.map((s) => ({ say: s.say, title: s.title, mood: s.mood === 'think' ? 'think' : 'talk', ...(s.chat ? { chat: [s.chat[0], s.chat[1]] } : {}), ...(s.end ? { end: true } : {}), ...(s.shot ? { shot: s.shot } : {}), ...(s.items?.length ? { items: [...s.items] } : {}) })), caption: p.caption, hashtags: p.hashtags });
 
 export async function digest(row) {
   const raw = new TextEncoder().encode(JSON.stringify([row.id, row.version, row.post, row.video_sha]));
@@ -58,8 +66,9 @@ export async function decline(env, id, who) {
 export async function edit(env, id, version, input, who) {
   const row = await one(env, id);
   if (!row || !['rendering', 'review', 'scheduled', 'failed'].includes(row.status) || Number(row.version) !== Number(version)) return 'This post changed. Reload first.';
-  const err = lint({ ...input, id }); if (err) return err;
-  const post = clean({ ...input, id });
+  const next = { ...row.post, ...input, id, direction: row.post.direction }; // the direction belongs to the repo
+  const err = lint(next) || await taken(env, next); if (err) return err;
+  const post = clean(next);
   const redo = !row.video_sha || row.status === 'failed' || JSON.stringify(post.scenes) !== JSON.stringify(clean(row.post).scenes);
   if (!redo && JSON.stringify(post) === JSON.stringify(clean(row.post))) return '';
   const r = await sql(env, `UPDATE marketing_posts SET post = $3, version = version + 1, status = $4, slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, ig_container_id = NULL, publish_started_at = NULL, error = NULL, attempts = 0,
@@ -70,20 +79,40 @@ export async function edit(env, id, version, input, who) {
   await log(env, id, 'edited', who); return '';
 }
 
+// No two videos share a world, and no two live ones share a keyword (the auto-reply maps keyword -> video).
+async function taken(env, p) {
+  const [hit] = await sql(env, `SELECT id FROM marketing_posts WHERE id <> $1 AND (post->'direction'->>'world' = $2 OR (status <> 'declined' AND post->>'keyword' = $3)) LIMIT 1`, [p.id, p.direction.world, p.keyword]);
+  return hit ? `The world or keyword is already used by ${hit.id}` : '';
+}
+
 // ── renderer (GitHub Actions) ──
 export async function seed(env, posts) {
   for (const p of posts) {
-    const err = lint(p);
+    if (p?.id && await one(env, String(p.id))) continue;
+    const err = lint(p) || await taken(env, p);
     if (err) { await log(env, String(p?.id), 'rejected_seed', err); continue; }
     await sql(env, 'INSERT INTO marketing_posts (id, post) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING', [p.id, JSON.stringify(clean(p))]);
   }
 }
 // A new renderer look re-renders every unpublished video. Like any edit, it clears the approval.
-export async function relook(env, look) {
+// Rows also pick up the repo draft; a post the owner edited keeps their wording and only gains what is missing.
+export async function relook(env, look, drafts = []) {
   if (!/^[a-z0-9-]{1,40}$/.test(look || '') || (await setting(env, 'look')) === look) return;
-  const rows = await sql(env, `UPDATE marketing_posts SET version = version + 1, status = 'rendering', slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, ig_container_id = NULL, publish_started_at = NULL, error = NULL, attempts = 0, video_sha = NULL, updated_at = now()
-    WHERE status IN ('rendering', 'review', 'scheduled') RETURNING id`);
-  for (const r of rows) { await dropMedia(env, r.id); await log(env, r.id, 'new_look', look); }
+  const rows = await sql(env, "SELECT id, post, EXISTS (SELECT 1 FROM marketing_events e WHERE e.post_id = p.id AND e.event = 'edited') AS edited FROM marketing_posts p WHERE status IN ('rendering', 'review', 'scheduled')");
+  await setSetting(env, `backup:${look}`, JSON.stringify(rows)); // the posts as they were
+  for (const r of rows) {
+    const draft = drafts.find((d) => d?.id === r.id);
+    let post = r.post;
+    if (draft && !lint(draft)) {
+      post = clean(draft);
+      if (r.edited) {
+        const ask = draft.caption.split('\n\n').at(-1);
+        post = { ...post, scenes: [...r.post.scenes.slice(0, -1), post.scenes.at(-1)], caption: `${r.post.caption}\n\n${ask}`, hashtags: r.post.hashtags };
+      }
+    }
+    await sql(env, `UPDATE marketing_posts SET post = $2, version = version + 1, status = 'rendering', slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, ig_container_id = NULL, publish_started_at = NULL, error = NULL, attempts = 0, video_sha = NULL, updated_at = now() WHERE id = $1 AND status IN ('rendering', 'review', 'scheduled')`, [r.id, JSON.stringify(post)]);
+    await dropMedia(env, r.id); await log(env, r.id, 'new_look', look);
+  }
   await setSetting(env, 'look', look);
 }
 export const queue = (env) => sql(env, "SELECT id, version, post FROM marketing_posts WHERE status = 'rendering' ORDER BY created_at, id LIMIT 10");

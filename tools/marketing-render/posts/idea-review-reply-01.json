@@ -1,5 +1,14 @@
 {
  "id": "idea-review-reply-01",
+ "keyword": "REPLY",
+ "info": {
+  "title": "Review replies (an idea we can build)",
+  "summary": "An agent that reads each new review and drafts a polite reply in your tone. You edit and approve it before it is posted."
+ },
+ "direction": {
+  "world": "star-cafe",
+  "concept": "A bright cafe morning with review stars, where replies are drafted"
+ },
  "scenes": [
   {
    "say": "One review, no reply. Your next customer already noticed.",
@@ -64,17 +73,17 @@
    ]
   },
   {
-   "say": "Want help with your reviews? Message us the word reply.",
-   "title": "Message us REPLY",
+   "say": "Want help with your reviews? Comment the word reply.",
+   "title": "Comment REPLY",
    "shot": "cta",
    "mood": "talk",
    "items": [
-    "Message us REPLY"
+    "Comment REPLY"
    ],
    "end": true
   }
  ],
- "caption": "One review, no reply. Your next customer already noticed.\n\nAn idea we can build: an agent drafts the answer, and you approve it before it is posted.\n\nMessage us REPLY if you want it.",
+ "caption": "One review, no reply. Your next customer already noticed.\n\nAn idea we can build: an agent drafts the answer, and you approve it before it is posted.\n\nComment REPLY and we will send you the details.",
  "hashtags": [
   "#CustomerService",
   "#SmallBusiness",

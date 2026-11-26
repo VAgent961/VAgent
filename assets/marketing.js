@@ -29,7 +29,7 @@
     const state = p.status === 'scheduled' ? `Approved · ${when(p.slot)}${p.dry_run_at ? ' · dry run done, nothing posted' : ''}` : p.status === 'review' ? 'Waiting for your approval' : p.status === 'rendering' ? 'Rendering (usually within 15 to 30 minutes)' : p.status;
     const side = el('div', {}, el('h2', { textContent: p.post.scenes[0].say }), el('div', { className: 'meta', textContent: `${state} · version ${p.version}` }), p.error && el('div', { style: 'color:var(--bad)', textContent: p.error }));
     if (editing === p.id) side.append(editor(p));
-    else side.append(el('p', { className: 'cap', textContent: p.post.caption + '\n\n' + p.post.hashtags.join(' ') }), el('div', {},
+    else side.append(el('p', { className: 'cap', textContent: p.post.caption + '\n\n' + p.post.hashtags.join(' ') }), p.post.keyword && el('div', { className: 'meta', textContent: `Comment keyword: ${p.post.keyword} · ${p.post.info?.title || ''}` }), el('div', {},
       p.status === 'review' && btn('Approve', () => send({ action: 'approve', id: p.id, version: p.version }), 'primary'),
       open && btn(p.status === 'failed' ? 'Edit and retry' : 'Edit', () => { editing = p.id; last = ''; load(); }),
       open && btn('Decline', () => confirm('Decline this post and delete its video?') && send({ action: 'decline', id: p.id }))));

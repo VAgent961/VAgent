@@ -66,7 +66,7 @@ def align(words, audio, rate, start):
             w["end"] = float(max(end, w["t"] + 0.08))
     return share
 
-def timeline(scenes, total, page):
+def timeline(scenes, total, page, cues, post, world):
     """The plan in video-director's schema, with the on-screen headline boxes measured in the browser."""
     texts = []
     for i, role in ((0, "hook"), (len(scenes) - 1, "term")):
@@ -74,9 +74,12 @@ def timeline(scenes, total, page):
         at = s["start"] + (0 if i == 0 else 0.9)
         texts.append({"id": role, "text": s["title"], "role": role, "from": round(at, 3), "to": round(s["start"] + s["dur"], 3),
                       **page.evaluate("i => headline(i)", int((at + 0.1) * FPS))})
-    return {"meta": {"w": 1080, "h": 1920, "fps": FPS, "dur": round(total, 3), "clock": "voice"},
+    beats = [{f"c{j}": round(c["t"], 3) for j, c in enumerate(cues) if c["scene"] == i} for i in range(len(scenes))]
+    return {"concept": {"video": post["id"], "world": world, "idea": post["direction"]["concept"], "keyword": post["keyword"]},
+            "sfx": [{"at": f"s{c['scene']}.c{j}", "src": f"synth:{world}:{c['kind']}", "why": f"{c['kind']} lands on screen"} for j, c in enumerate(cues)],
+            "terms": [], "meta": {"w": 1080, "h": 1920, "fps": FPS, "dur": round(total, 3), "clock": "voice"},
             "scenes": [{"id": f"s{i}", "start": round(s["start"], 3), "end": round(total if i == len(scenes) - 1 else s["start"] + s["dur"], 3),
-                        "transitionOut": {"why": "next spoken line"}} for i, s in enumerate(scenes)],
+                        "beats": beats[i], "transitionOut": {"why": "next spoken line"}} for i, s in enumerate(scenes)],
             "hero": {"t": round(scenes[-1]["start"], 3), "what": "closing card"},
             "captions": [{"text": " ".join(w["w"] for w in s["words"][a:b + 1]), "from": s["words"][a]["t"], "to": s["words"][b]["end"]}
                          for s in scenes for a, b in s["groups"]],
@@ -107,14 +110,27 @@ def master(wav):
                          capture_output=True, text=True, check=True).stderr
     return chain(gain + (-14 - float(json.loads(log[log.rindex("{"):log.rindex("}") + 1])["input_i"])))
 
+def direction(post):
+    """No default look: every video names its own world, and no two drafts may share one."""
+    name = (post.get("direction") or {}).get("world", "")
+    files = [ROOT / "worlds" / f"{name}.mjs", ROOT / "worlds" / f"{name}.json"]
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,40}", name) or name == "lib" or not all(f.is_file() for f in files):
+        raise RuntimeError(f"no direction: add worlds/{name or '<name>'}.mjs and .json for this video")
+    others = [p["id"] for p in (json.loads(f.read_text()) for f in (ROOT / "posts").glob("*.json"))
+              if p["id"] != post["id"] and p.get("direction", {}).get("world") == name]
+    if others:
+        raise RuntimeError(f"world {name} already belongs to {others[0]}: every video needs its own")
+    return name, json.loads(files[1].read_text())
+
 def render_video(post, out, tmp):
     from kokoro_onnx import Kokoro
     from playwright.sync_api import sync_playwright
+    world, look = direction(post)
     tts = Kokoro(str(MODELS / "kokoro-v1.0.onnx"), str(MODELS / "voices-v1.0.bin"))
     parts, scenes, t, rate, heard = [], [], 0.0, 24000, []
     for n, sc in enumerate(post["scenes"]):
         audio, rate = tts.create(sc["say"], voice="af_heart", speed=1.05, lang="en-us")
-        tail = 1.4 if n == len(post["scenes"]) - 1 else 0.3
+        tail = 1.4 if n == len(post["scenes"]) - 1 else look["tail"]
         clip = np.concatenate([audio, np.zeros(int(rate * tail), dtype=audio.dtype)])
         words, groups = captions(sc["say"], t, audio, rate)
         heard.append(align(words, audio, rate, t))
@@ -130,20 +146,9 @@ def render_video(post, out, tmp):
     level = [min(1.0, v / peak) for v in level]
     level = [(0.2 * level[max(0, i - 1)] + 0.6 * v + 0.2 * level[min(len(level) - 1, i + 1)]) for i, v in enumerate(level)]
     data = {"fps": FPS, "total": t, "scenes": scenes, "level": level,
-            "mark": uri(ASSETS / "brand" / "mark-dark.svg"), "lockup": uri(ASSETS / "brand" / "lockup-dark.svg")}
-    wav = Path(tmp) / "mix.wav"
-    with wave.open(str(wav), "wb") as w:
-        w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate)
-        w.writeframes((np.clip(mix(voice, rate, [s["start"] for s in scenes[1:]]), -1, 1) * 32767).astype("<i2").tobytes())
+            "world": world, "keyword": post["keyword"], "logos": {f: uri(ASSETS / "brand" / f) for f in ("lockup.svg", "lockup-dark.svg")}}
     rate_cap = min(3600, int(14e6 * 8 / t / 1000) - 192)  # stay under the HQ upload limit
-    # frames are piped straight into ffmpeg: no frame files on disk
-    enc = subprocess.Popen(
-        ["ffmpeg", "-y", "-loglevel", "error", "-f", "image2pipe", "-c:v", "mjpeg", "-framerate", str(FPS), "-i", "-",
-         "-i", str(wav), "-vf", "scale=in_range=pc:out_range=tv:out_color_matrix=bt709,format=yuv420p",
-         "-c:v", "libx264", "-preset", "slow", "-tune", "animation", "-crf", "19", "-maxrate", f"{rate_cap}k", "-bufsize", f"{rate_cap * 2}k",
-         "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv",
-         "-af", master(wav), "-ar", "48000", "-ac", "2", "-c:a", "aac", "-b:a", "160k",
-         "-movflags", "+faststart", "-shortest", str(out)], stdin=subprocess.PIPE)
+    enc = None
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch()
@@ -152,11 +157,24 @@ def render_video(post, out, tmp):
             page.goto("http://scene.local/scene.html")
             page.wait_for_function("() => window.FX")
             page.evaluate("d => setup(d)", data)
+            cues = page.evaluate("() => cues()")
+            wav = Path(tmp) / "mix.wav"
+            with wave.open(str(wav), "wb") as w:
+                w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate)
+                w.writeframes((np.clip(mix(voice, rate, cues, look["sound"]), -1, 1) * 32767).astype("<i2").tobytes())
             plan = Path(tmp) / "timeline.json"
-            plan.write_text(json.dumps(timeline(scenes, t, page)))
+            plan.write_text(json.dumps(timeline(scenes, t, page, cues, post, world)))
             pre = director("check_timeline.py", plan)
             if pre.returncode:
                 raise RuntimeError("timeline check: " + (pre.stdout + pre.stderr)[-250:])
+            # frames are piped straight into ffmpeg: no frame files on disk
+            enc = subprocess.Popen(
+                ["ffmpeg", "-y", "-loglevel", "error", "-f", "image2pipe", "-c:v", "mjpeg", "-framerate", str(FPS), "-i", "-",
+                 "-i", str(wav), "-vf", "scale=in_range=pc:out_range=tv:out_color_matrix=bt709,format=yuv420p",
+                 "-c:v", "libx264", "-preset", "slow", "-tune", "animation", "-crf", "19", "-maxrate", f"{rate_cap}k", "-bufsize", f"{rate_cap * 2}k",
+                 "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv",
+                 "-af", master(wav), "-ar", "48000", "-ac", "2", "-c:a", "aac", "-b:a", "160k",
+                 "-movflags", "+faststart", "-shortest", str(out)], stdin=subprocess.PIPE)
             for i in range(len(data["level"])):
                 page.evaluate("i => seek(i)", i)
                 enc.stdin.write(page.screenshot(type="jpeg", quality=96))
@@ -170,10 +188,10 @@ def render_video(post, out, tmp):
             raise RuntimeError("QA could not run: " + qa.stderr[-250:])
         checks = json.loads(report.read_text())["checks"]
         bad = [f"{c['level']} {c['check']}: {c['detail']}" for c in checks if c["level"] != "PASS"]
-        note(f"QA {post['id']}", "\n".join([f"{len(checks) - len(bad)} of {len(checks)} checks passed; captions matched by whisper {np.mean(heard):.0%}; length {t:.1f}s", *bad,
+        note(f"QA {post['id']}", "\n".join([f"world {world}; {len(cues)} sound effects; {len(checks) - len(bad)} of {len(checks)} checks passed; captions matched by whisper {np.mean(heard):.0%}; length {t:.1f}s", *bad,
                                              *[x.strip() for x in pre.stdout.splitlines() if "WARN" in x][:5]]))
         if qa.returncode:  # a failed check never reaches review
             raise RuntimeError("QA: " + " | ".join(x for x in bad if x.startswith("FAIL"))[:280])
     finally:
-        if enc.poll() is None:
+        if enc and enc.poll() is None:
             enc.kill()

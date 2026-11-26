@@ -1,5 +1,14 @@
 {
  "id": "sniper-leads-01",
+ "keyword": "LEADS",
+ "info": {
+  "title": "Lead finder",
+  "summary": "Choose an area and a type of business and get a short list with the reason each one is worth a look. You decide who to contact."
+ },
+ "direction": {
+  "world": "radar-map",
+  "concept": "A district map from above with a radar sweep and dropping pins"
+ },
  "scenes": [
   {
    "say": "Stop guessing. Your next client is one district away.",
@@ -65,17 +74,17 @@
    ]
   },
   {
-   "say": "Want to see your own area? Message us the word demo.",
-   "title": "Message us DEMO",
+   "say": "Want to see your own area? Comment the word leads.",
+   "title": "Comment LEADS",
    "shot": "cta",
    "mood": "talk",
    "items": [
-    "Message us DEMO"
+    "Comment LEADS"
    ],
    "end": true
   }
  ],
- "caption": "Stop guessing. Your next client is one district away.\n\nChoose an area and a type of business, get a short list, and decide who to contact.\n\nMessage us DEMO to see it.",
+ "caption": "Stop guessing. Your next client is one district away.\n\nChoose an area and a type of business, get a short list, and decide who to contact.\n\nComment LEADS and we will send you the details.",
  "hashtags": [
   "#LeadGeneration",
   "#BeirutBusiness",

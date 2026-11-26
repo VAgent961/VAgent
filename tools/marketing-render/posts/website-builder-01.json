@@ -1,5 +1,14 @@
 {
  "id": "website-builder-01",
+ "keyword": "WEBSITE",
+ "info": {
+  "title": "Website builder",
+  "summary": "Describe your business in one chat, review the first version, ask for changes and approve it before it goes out."
+ },
+ "direction": {
+  "world": "blueprint",
+  "concept": "A blueprint build site where the website is assembled block by block"
+ },
  "scenes": [
   {
    "say": "No website? You lose customers before hello.",
@@ -65,17 +74,17 @@
    ]
   },
   {
-   "say": "Want one for your business? Message us the word demo.",
-   "title": "Message us DEMO",
+   "say": "Want one for your business? Comment the word website.",
+   "title": "Comment WEBSITE",
    "shot": "cta",
    "mood": "talk",
    "items": [
-    "Message us DEMO"
+    "Comment WEBSITE"
    ],
    "end": true
   }
  ],
- "caption": "No website? You lose customers before hello.\n\nDescribe your business, review the result, and approve it before it goes out.\n\nMessage us DEMO to see it.",
+ "caption": "No website? You lose customers before hello.\n\nDescribe your business, review the result, and approve it before it goes out.\n\nComment WEBSITE and we will send you the details.",
  "hashtags": [
   "#WebDesign",
   "#LebaneseBusiness",

@@ -1,5 +1,14 @@
 {
  "id": "voice-receptionist-01",
+ "keyword": "ORDER",
+ "info": {
+  "title": "Voice receptionist",
+  "summary": "Our voice receptionist answers from your own catalog in English or Arabic, shows the product and takes the order."
+ },
+ "direction": {
+  "world": "night-shop",
+  "concept": "A closed shop street at night; the pet answers while the shutters are down"
+ },
  "scenes": [
   {
    "say": "Closed at 9? You are still losing orders.",
@@ -65,17 +74,17 @@
    ]
   },
   {
-   "say": "Want your shop to answer tonight? Message us the word demo.",
-   "title": "Message us DEMO",
+   "say": "Want your shop to answer tonight? Comment the word order.",
+   "title": "Comment ORDER",
    "shot": "cta",
    "mood": "talk",
    "items": [
-    "Message us DEMO"
+    "Comment ORDER"
    ],
    "end": true
   }
  ],
- "caption": "Closed at 9? You are still losing orders.\n\nOur voice receptionist answers from your own catalog, in English or Arabic, shows the product and takes the order.\n\nMessage us DEMO to see it.",
+ "caption": "Closed at 9? You are still losing orders.\n\nOur voice receptionist answers from your own catalog, in English or Arabic, shows the product and takes the order.\n\nComment ORDER and we will send you the details.",
  "hashtags": [
   "#VoiceAI",
   "#LebaneseBusiness",

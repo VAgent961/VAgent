@@ -10,6 +10,7 @@
 ## What I sound like
 - **Samples:** "Your shop is closed. Who answers?" / "From one chat to a working website." / "Finding your next client, district by district."
 - **On camera I am:** calm and direct
+- **Every video:** ends with "Comment <1-2 word keyword about this video>"; follow `marketing/video-craft.md`
 - **Words I actually use:** agent, your shop, your customers, ready, message us
 - **Words I would never say:** revolutionary, game-changer, unlock, supercharge
 - **Do I swear:** no

@@ -40,11 +40,13 @@ body{width:1080px;height:1920px;overflow:hidden;background:#141413;color:#FAF9F5
 .pill{position:absolute;border-radius:60px;background:#B5532F;color:#fff;font:800 48px Inter;text-align:center;padding:26px 0}
 #lockup{position:absolute;z-index:2;left:340px;top:1150px;width:400px}
 #cam .pill{box-shadow:0 24px 44px rgba(0,0,0,.35)}
-</style>
-<div class="full" id="bg"><div class="blob" id="b1" style="background:radial-gradient(circle,rgba(181,83,47,.55),transparent 65%)"></div><div class="blob" id="b2" style="background:radial-gradient(circle,rgba(224,129,86,.25),transparent 65%)"></div><div id="grid"></div></div>
-<div class="full" id="depth"></div><canvas class="fx" id="fx-back"></canvas>
+#kw{position:absolute;z-index:2;left:190px;width:700px;height:215px;display:none;flex-direction:column;align-items:center;justify-content:center;font-family:Inter,sans-serif}
+#kw small{font-size:40px;font-weight:600;letter-spacing:6px;text-transform:uppercase;opacity:.85}#kw strong{font-size:104px;line-height:1.1;font-weight:800;white-space:nowrap}
+#cap span.cur{background:#B5532F}
+</style><style id="world"></style>
+<canvas class="fx" id="fx-back"></canvas>
 <div class="full" id="shade"></div>
-<div class="full" id="cam"><div class="full" id="ui"></div><div class="full" id="dockwrap"></div><div id="girl"></div><img id="lockup"></div>
+<div class="full" id="cam"><div class="full" id="ui"></div><div class="full" id="dockwrap"></div><div id="girl"></div><img id="lockup"><div id="kw"><small>Comment</small><strong></strong></div></div>
 <div class="a" id="eyebrow"><span></span></div><div id="title"></div><div id="cap"></div>
 <canvas class="fx" id="fx-front"></canvas><canvas class="fx" id="fx-cut"></canvas>
 <img class="a" id="mark"><div class="a" id="ai">AI character</div><div class="a" id="bar"></div>
@@ -57,34 +59,50 @@ const clamp = (v) => Math.max(0, Math.min(1, v));
 const out = (k) => 1 - Math.pow(1 - clamp(k), 3);
 const back = (k) => { k = clamp(k) - 1; return 1 + k * k * (2.7 * k + 1.7); };
 const el = (parent, cls, css = '', text = '') => { const n = document.createElement('div'); n.className = cls; n.style.cssText = css; n.textContent = text; parent.append(n); return n; };
-// character per shot: position, size, pose, face
-const GIRL = { hook: [200, 470, 1.7, 'explain', 'wow'], phone: [40, 1008, .84, 'point', 'happy'], flow: [40, 1008, .84, 'point', 'happy'], browser: [40, 1008, .84, 'explain', 'happy'], list: [40, 1008, .84, 'think', 'think'], approve: [40, 1008, .84, 'point', 'happy'], alert: [40, 1008, .84, 'think', 'worried'], cta: [260, 440, 1.4, 'wave', 'joy'] };
-
 const LABEL = { hook: 'Listen up', phone: 'The moment', flow: 'Step by step', browser: 'On screen', list: 'At a glance', approve: 'Your call', alert: 'The problem', cta: 'Next step' };
-let tiles = [], dock = null;
+let dock = null, V;
 async function setup(d) {
-  D = d; $('mark').src = d.lockup; $('lockup').src = d.lockup; draw = makePet($('girl'));
+  D = d; await window.loadWorld(d.world); V = window.WORLD;
+  $('world').textContent = V.css;
+  $('mark').src = $('lockup').src = d.logos[V.logo]; draw = makePet($('girl'));
+  $('lockup').style.top = V.cta.lockup + 'px'; $('kw').style.top = V.cta.kw + 'px';
+  $('kw').querySelector('strong').textContent = d.keyword;
   await Promise.all([$('mark').decode(), $('lockup').decode(), document.fonts.ready]);
   await Promise.all(['600 90px Newsreader', '800 60px Inter', '500 38px Inter'].map((f) => document.fonts.load(f)));
-  // background depth: soft tiles drifting at different speeds
-  tiles = [[-70, 620, 250, 190, .5], [900, 430, 270, 210, .8], [930, 1180, 220, 220, 1.2], [-90, 1560, 300, 200, .9], [760, 1700, 340, 180, .6], [40, 110, 160, 120, 1.1]].map(([x, y, w, h, z]) => ({ n: el($('depth'), 'tile', `left:${x}px;top:${y}px;width:${w}px;height:${h}px`), z }));
   D.scenes.forEach((x) => { const seg = el($('bar'), '', `flex:${x.dur}`); seg.append(document.createElement('i')); });
+}
+// the visual beats of every scene, matching the animations below: sound effects are placed on these
+function cues() {
+  const list = [];
+  D.scenes.forEach((s, n) => {
+    const shot = s.shot || 'phone', items = s.items || [], add = (kind, k, i = 0) => k < s.dur && list.push({ scene: n, kind, i, t: s.start + k });
+    if (n) add('cut', 0); if (n) add('title', .14);
+    if (shot === 'hook') items.forEach((_, i) => add('item', .62 + i * .45, i));
+    if (shot === 'phone' && s.chat) add('msg', .45);
+    if (shot === 'flow' || shot === 'list') { const step = Math.max(.35, (s.dur - 1) / Math.max(1, items.length)); items.forEach((_, i) => add('item', .7 + i * step, i)); }
+    if (shot === 'browser') [0, 1, 2, 3].slice(0, items.length || 1).forEach((i) => add('item', .42 + i * .4, i));
+    if (shot === 'approve') { for (let i = 0; i < 10; i++) add('type', .35 + i * s.dur * .038, i); add('press', s.dur * .68); }
+    if (shot === 'alert') { add('tap', 1.1); add('tap', 1.5, 1); add('alert', 1.75); }
+    if (shot === 'cta') add('cta', .5);
+  });
+  return list;
 }
 // Builds the mockup for one scene and returns its animator(k = seconds since the cut, dur).
 function build(n) {
   const s = D.scenes[n], ui = $('ui'); ui.replaceChildren();
   const items = s.items || [], shot = s.shot || 'phone';
   if (shot === 'hook') {
-    const chips = items.map((x, i) => el(ui, 'pill', `z-index:2;left:${i % 2 ? 620 : 70}px;top:${i % 2 ? 1285 : 585}px;width:390px;font-size:38px;background:#FAF9F5;color:#141413;box-shadow:0 20px 40px rgba(0,0,0,.4)`, x));
+    const chips = items.map((x, i) => el(ui, 'pill', `z-index:2;left:${V.chips[i % 2][0]}px;top:${V.chips[i % 2][1]}px;width:390px;font-size:38px;background:#FAF9F5;color:#141413;box-shadow:0 20px 40px rgba(0,0,0,.4)`, x));
     return (k) => chips.forEach((c, i) => { const a = back((k - .5 - i * .45) / .4); c.style.opacity = clamp(a); c.style.transform = `translateY(${Math.sin(k * 2 + i * 2) * 10}px) scale(${a}) rotate(${i % 2 ? 5 : -5}deg)`; });
   }
   if (shot === 'cta') {
-    const p = el(ui, 'pill', 'left:230px;top:1300px;width:620px', items[0] || 'Message us');
-    return (k) => { p.style.opacity = clamp((k - .4) / .2); p.style.transform = `scale(${back((k - .4) / .45) * (1 + Math.max(0, Math.sin(k * 5)) * .035)})`; };
+    const kw = $('kw'), strong = kw.querySelector('strong'); let size = 104; kw.style.display = 'flex'; strong.style.fontSize = size + 'px';
+    while (size > 60 && strong.offsetWidth > 640) strong.style.fontSize = (size -= 4) + 'px';
+    return (k) => { kw.style.opacity = clamp((k - .4) / .2); strong.style.display = 'block'; strong.style.transform = `scale(${back((k - .45) / .45) * (1 + Math.max(0, Math.sin(k * 5)) * .04)})`; };
   }
-  const g2 = el(ui, 'ghost', 'left:190px;top:478px;width:700px;height:600px'), g1 = el(ui, 'ghost', 'left:150px;top:500px;width:780px;height:600px;opacity:.28');
+  const [cx, cy, cw] = V.card, g2 = el(ui, 'ghost', `left:${cx + 40}px;top:${cy - 27}px;width:${cw - 80}px;height:600px`), g1 = el(ui, 'ghost', `left:${cx}px;top:${cy - 5}px;width:${cw}px;height:600px;opacity:.28`);
   const phone = shot === 'phone';
-  const card = el(ui, 'card', phone ? 'left:190px;top:505px;width:760px;height:600px' : 'left:100px;top:505px;width:880px;height:600px');
+  const card = el(ui, 'card', `left:${cx}px;top:${cy}px;width:${cw}px;height:600px`), inner = () => card.clientWidth;
   el(card, 'head', '', { phone: 'Chat', flow: 'Workflow', browser: 'Website', list: 'Shortlist', approve: 'Draft', alert: 'Check' }[shot]);
   el(card, 'demo', '', 'Demo');
   let anim = () => {};
@@ -111,19 +129,19 @@ function build(n) {
   } else if (shot === 'browser') {
     el(card, 'a', 'left:40px;right:40px;top:100px;height:3px;background:#E4E0D5');
     const hero = el(card, 'a', 'left:40px;right:40px;top:130px;height:190px;border-radius:30px;background:linear-gradient(120deg,#B5532F,#E08156);color:#fff;font:600 54px Newsreader,serif;display:flex;align-items:center;justify-content:center', items[0] || '');
-    const tiles = items.slice(1, 4).map((x, i) => el(card, 'a', `left:${40 + i * 272}px;top:345px;width:256px;height:215px;border-radius:28px;background:#F3F1EA;font:600 32px Inter;display:flex;align-items:flex-end;justify-content:center;padding-bottom:26px`, x));
-    const shapes = tiles.map((t) => el(t, 'a', 'left:73px;top:34px;width:110px;height:100px;border-radius:30px;background:#E3C3B4'));
+    const tw = (inner() - 112) / 3, tiles = items.slice(1, 4).map((x, i) => el(card, 'a', `left:${40 + i * (tw + 16)}px;top:345px;width:${tw}px;height:215px;border-radius:28px;background:#F3F1EA;font:600 32px Inter;display:flex;align-items:flex-end;justify-content:center;padding-bottom:26px`, x));
+    const shapes = tiles.map((t) => el(t, 'a', `left:${(tw - 110) / 2}px;top:34px;width:110px;height:100px;border-radius:30px;background:#E3C3B4`));
     anim = (k) => { [hero, ...tiles].forEach((n2, i) => { const a = back((k - .3 - i * .4) / .45); n2.style.opacity = clamp(a); n2.style.transform = `translateY(${(1 - a) * 60}px) scale(${.8 + .2 * a})`; }); shapes.forEach((sh, i) => sh.style.transform = `translateY(${Math.sin(k * 2.4 + i) * 6}px)`); };
   } else if (shot === 'approve') {
     const text = el(card, 'a', 'left:50px;right:50px;top:125px;font:500 44px/1.4 Inter', '');
-    const bars = [760, 610].map((w, i) => el(card, 'line', `left:50px;top:${320 + i * 50}px;width:${w}px`));
-    const yes = el(card, 'pill', 'left:50px;top:445px;width:380px;font-size:40px', 'Approve');
-    el(card, 'pill', 'left:460px;top:445px;width:370px;font-size:40px;background:#E4E0D5;color:#141413', 'Edit');
+    const bars = [inner() - 120, inner() - 270].map((w, i) => el(card, 'line', `left:50px;top:${320 + i * 50}px;width:${w}px`));
+    const half = (inner() - 130) / 2, yes = el(card, 'pill', `left:50px;top:445px;width:${half}px;font-size:40px`, 'Approve');
+    el(card, 'pill', `left:${80 + half}px;top:445px;width:${half}px;font-size:40px;background:#E4E0D5;color:#141413`, 'Edit');
     const cur = el(card, 'a', 'width:54px;height:54px;border-radius:50%;background:rgba(20,20,19,.35);border:6px solid #fff');
     anim = (k, dur) => {
       const full = items[0] || '', press = dur * .68; text.textContent = full.slice(0, Math.floor(clamp((k - .3) / (dur * .4)) * full.length));
       bars.forEach((b, i) => b.style.transform = `scaleX(${out((k - .5 - i * .2) / .6)})`);
-      const m = out((k - press + .7) / .7); cur.style.left = 760 - 540 * m + 'px'; cur.style.top = 580 - 100 * m + 'px';
+      const m = out((k - press + .7) / .7); cur.style.left = inner() * .86 - (inner() * .86 - 50 - half * .55) * m + 'px'; cur.style.top = 580 - 100 * m + 'px';
       const hit = k > press; yes.textContent = hit ? 'Approved ✓' : 'Approve'; yes.style.background = hit ? '#2F7D4F' : '#B5532F'; yes.style.transform = `scale(${1 - .09 * Math.sin(clamp((k - press) / .3) * Math.PI)})`;
     };
   } else if (shot === 'alert') {
@@ -138,7 +156,7 @@ function build(n) {
   }
   return (k, dur) => {
     const a = back(k / .5);
-    card.style.transform = `perspective(1600px) translateY(${(1 - a) * 200}px) rotateY(${-6 + out(k / dur) * 8}deg) rotateX(${(1 - a) * 12}deg)`; card.style.opacity = clamp(k / .2);
+    card.style.transform = V.enter(a, k, dur, n); card.style.opacity = clamp(k / .2);
     g1.style.transform = `translate(${Math.sin(k * .8) * 14}px,${(1 - out(k / .7)) * 140}px) rotate(${-4 + k * .5}deg)`;
     g2.style.transform = `translate(${-Math.sin(k * .7) * 18}px,${(1 - out(k / .9)) * 100}px) rotate(${5 - k * .6}deg)`;
     anim(k, dur);
@@ -146,10 +164,10 @@ function build(n) {
 }
 function buildDock(n, shot) {
   const w = $('dockwrap'); w.replaceChildren(); dock = null;
-  if (shot === 'hook' || shot === 'cta') return;
-  const box = el(w, 'dock');
+  if (!V.dock || shot === 'hook' || shot === 'cta') return;
+  const box = el(w, 'dock', `left:${V.dock.left}px;top:${V.dock.top}px;width:${V.dock.width}px`);
   const name = document.createElement('b'); name.textContent = 'Vee · VAgent'; const num = document.createElement('small'); num.textContent = `${n + 1} / ${D.scenes.length}`; box.append(name, num);
-  dock = { box, bars: Array.from({ length: 22 }, (_, i) => { const b = document.createElement('i'); b.style.left = 38 + i * 25 + 'px'; box.append(b); return b; }) };
+  dock = { box, bars: Array.from({ length: Math.floor((V.dock.width - 70) / 25) }, (_, i) => { const b = document.createElement('i'); b.style.left = 38 + i * 25 + 'px'; box.append(b); return b; }) };
 }
 // mouth shape from the letter being spoken inside the current word
 function viseme(s, t) {
@@ -172,32 +190,29 @@ function seek(i) {
   const s = D.scenes[n], k = t - s.start, shot = s.shot || 'phone', level = D.level[i] || 0, lastScene = n === D.scenes.length - 1;
   if (n !== built) {
     built = n; animate = build(n); buildDock(n, shot);
-    $('eyebrow').firstChild.textContent = LABEL[shot];
+    $('eyebrow').firstChild.textContent = V.labels[shot] || LABEL[shot];
+    if (shot !== 'cta') $('kw').style.display = 'none';
     const title = $('title'); title.replaceChildren(...s.title.split(' ').map((x) => { const b = document.createElement('b'), c = document.createElement('i'); c.textContent = x; b.append(c); return b; }));
     let size = shot === 'hook' ? 108 : 90; title.style.fontSize = size + 'px'; while (size > (shot === 'hook' ? 84 : 56) && (title.scrollHeight > 186 || title.scrollWidth > 940)) title.style.fontSize = (size -= 4) + 'px';
   }
   animate(k, s.dur);
   const first = n === 0, leave = lastScene ? 0 : Math.pow(clamp((k - s.dur + .2) / .2), 2);
-  // camera: punch in on the cut, slow push and pan that alternates, quick pull-away before the next cut
-  const p = clamp(k / s.dur), dir = n % 2 ? -1 : 1, punch = first ? 0 : 1 - out(k / .5);
-  const zoom = (shot === 'hook' ? 1 + p * .09 : shot === 'cta' ? 1.05 - p * .04 : 1 + (n % 3 === 2 ? .05 - p * .04 : p * .045)) + punch * .07 + leave * .05;
-  $('cam').style.transform = `translate(${dir * (p - .5) * 22 - dir * leave * 70}px,${(p - .5) * -12}px) scale(${zoom})`;
+  // camera, card and headline motion all come from the video's own world
+  const p = clamp(k / s.dur), punch = first ? 0 : 1 - out(k / .5);
+  $('cam').style.transform = V.camera({ p, k, n, t, shot, punch, leave });
   $('ui').style.opacity = 1 - leave;
-  $('b1').style.transform = `translate(${-300 + Math.sin(t * .35) * 220}px,${100 + Math.cos(t * .28) * 260}px)`;
-  $('b2').style.transform = `translate(${380 + Math.cos(t * .4) * 240}px,${900 + Math.sin(t * .31) * 230}px)`;
-  $('grid').style.transform = `translate(${(t * 7) % 60}px,${(t * 11) % 60}px)`;
-  tiles.forEach(({ n: tile, z }, j) => tile.style.transform = `translate(${Math.sin(t * .22 * z + j) * 36 * z - dir * punch * 120 * z}px,${Math.cos(t * .27 + j * 2) * 30 * z - t * 3 * z}px) rotate(${(j % 2 ? 1 : -1) * (9 + Math.sin(t * .3 + j) * 4)}deg)`);
-  const g = GIRL[shot], prev = GIRL[(D.scenes[n - 1] || s).shot || 'phone'], m = out(k / .5), arc = Math.hypot(g[0] - prev[0], g[1] - prev[1]) > 40 ? Math.sin(clamp(k / .5) * Math.PI) * -60 : 0;
+  const spot = (x) => V.pet[x === 'hook' ? 'hook' : x === 'cta' ? 'cta' : 'mid'], mood = { hook: ['explain', 'wow'], phone: ['point', 'happy'], flow: ['point', 'happy'], browser: ['explain', 'happy'], list: ['think', 'think'], approve: ['point', 'happy'], alert: ['think', 'worried'], cta: ['wave', 'joy'] };
+  const before = (D.scenes[n - 1] || s).shot || 'phone', g = spot(shot), prev = spot(before), m = out(k / .5), arc = Math.hypot(g[0] - prev[0], g[1] - prev[1]) > 40 ? Math.sin(clamp(k / .5) * Math.PI) * -60 : 0;
   $('girl').style.transform = `translate(${prev[0] + (g[0] - prev[0]) * m}px,${prev[1] + (g[1] - prev[1]) * m + arc}px) scale(${prev[2] + (g[2] - prev[2]) * m})`;
-  const talking = k < s.voice, face = shot === 'approve' && k > s.dur * .68 ? 'joy' : shot === 'hook' && k > 1.4 ? 'worried' : g[4];
-  draw({ t, pose: g[3], from: prev[3], k: clamp(k / .45), face, level: talking ? level : 0, vis: viseme(s, t), since: first ? 9 : k });
+  const talking = k < s.voice, face = shot === 'approve' && k > s.dur * .68 ? 'joy' : shot === 'hook' && k > 1.4 ? 'worried' : mood[shot][1];
+  draw({ t, pose: mood[shot][0], from: mood[before][0], k: clamp(k / .45), face, level: talking ? level : 0, vis: viseme(s, t), since: first ? 9 : k });
   if (dock) {
     const a = back((k - .25) / .45); dock.box.style.opacity = clamp((k - .25) / .2) * (1 - leave); dock.box.style.transform = `translateX(${(1 - a) * 140}px)`;
     dock.bars.forEach((b, j) => b.style.transform = `scaleY(${.14 + (talking ? level : 0) * (.4 + .6 * Math.abs(Math.sin(j * 1.7 + t * 9))) * (.55 + .45 * Math.sin(j / 21 * Math.PI))})`);
   }
   const lk = $('lockup'); lk.style.display = shot === 'cta' ? 'block' : 'none'; lk.style.opacity = out((k - .2) / .4);
   // headline: words rise out of a mask one after another (the opening frame is already readable)
-  [...$('title').children].forEach((b, j) => { const a = first ? 1 : out((k - .08 - j * .07) / .38); b.firstChild.style.transform = `translateY(${(1 - a) * 115}%)`; });
+  [...$('title').children].forEach((b, j) => { const a = first ? 1 : out((k - .08 - j * .07) / .38); b.firstChild.style.transform = V.word(a, j); });
   $('title').style.opacity = 1 - leave; $('title').style.transform = `translateY(${-leave * 30}px)`;
   const eb = first ? 1 : out(k / .35); $('eyebrow').style.opacity = eb * (1 - leave); $('eyebrow').style.transform = `translateY(${(1 - eb) * -24}px)`;
   // captions: short groups in a fixed box, the spoken word is highlighted without moving its neighbours
@@ -206,11 +221,11 @@ function seek(i) {
   if (cap.dataset.k !== key) { cap.dataset.k = key; cap.replaceChildren(...w.slice(group[0], group[1] + 1).map((x) => { const e = document.createElement('span'); e.textContent = x.w; return e; })); }
   const pop = back((t - Math.max(s.start, w[group[0]].t - .05)) / .22);
   cap.style.transform = `translateY(${(1 - pop) * 18}px) scale(${.94 + .06 * pop})`; cap.style.opacity = 1 - leave;
-  [...cap.children].forEach((e, j) => { const idx = group[0] + j, since = t - w[idx].t, cur = idx === now && since >= 0; e.style.opacity = since >= 0 ? 1 : .55; e.style.background = cur ? '#B5532F' : 'transparent'; e.style.transform = `scale(${cur ? 1 + .05 * Math.sin(clamp(since / .22) * Math.PI) : 1})`; });
-  // transitions: every other cut gets a blocky pixel sweep, the rest cut on the camera move
-  let cut = null; D.scenes.forEach((c, j) => { if (j % 2 === 0 && j && Math.abs(t - c.start) < .3) cut = { p: (t - c.start + .3) / .6, side: j % 4 ? 1 : -1 }; });
+  [...cap.children].forEach((e, j) => { const idx = group[0] + j, since = t - w[idx].t, cur = idx === now && since >= 0; e.style.opacity = since >= 0 ? 1 : .55; e.classList.toggle('cur', cur); e.style.transform = `scale(${cur ? 1 + .05 * Math.sin(clamp(since / .22) * Math.PI) : 1})`; });
+  // the world's own transition, at its own rhythm
+  let cut = null; D.scenes.forEach((c, j) => { const half = V.cut.dur / 2; if (j && j % V.cut.every === 0 && Math.abs(t - c.start) < half) cut = { p: (t - c.start + half) / V.cut.dur, side: j % 4 < 2 ? 1 : -1 }; });
   const size = prev[2] + (g[2] - prev[2]) * m;
-  window.FX({ t, k, n, shot, dur: s.dur, cut, pet: [prev[0] + (g[0] - prev[0]) * m + 200 * size, prev[1] + (g[1] - prev[1]) * m + 300 * size, 192 * size] });
+  window.FX({ t, k, n, shot, dur: s.dur, cut, level: talking ? level : 0, pet: [prev[0] + (g[0] - prev[0]) * m + 200 * size, prev[1] + (g[1] - prev[1]) * m + 312 * size, 192 * size] });
   [...$('bar').children].forEach((seg, j) => seg.firstChild.style.transform = `scaleX(${clamp((t - D.scenes[j].start) / D.scenes[j].dur)})`);
 }
 </script>

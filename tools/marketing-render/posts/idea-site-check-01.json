@@ -1,5 +1,14 @@
 {
  "id": "idea-site-check-01",
+ "keyword": "SITE CHECK",
+ "info": {
+  "title": "Website checker (an idea we can build)",
+  "summary": "An agent that visits your website like a customer, tries the buttons and forms, checks twice and tells you what broke and where."
+ },
+ "direction": {
+  "world": "arcade",
+  "concept": "An arcade bug hunt across a website"
+ },
  "scenes": [
   {
    "say": "One broken button? You lose orders and never know.",
@@ -65,17 +74,17 @@
    ]
   },
   {
-   "say": "Want this watching your site? Message us the word check.",
-   "title": "Message us CHECK",
+   "say": "Want this watching your site? Comment the words site check.",
+   "title": "Comment SITE CHECK",
    "shot": "cta",
    "mood": "talk",
    "items": [
-    "Message us CHECK"
+    "Comment SITE CHECK"
    ],
    "end": true
   }
  ],
- "caption": "One broken button? You lose orders and never know.\n\nAn idea we can build: an agent that clicks through your site like a customer and tells you what failed.\n\nMessage us CHECK if you want it.",
+ "caption": "One broken button? You lose orders and never know.\n\nAn idea we can build: an agent that clicks through your site like a customer and tells you what failed.\n\nComment SITE CHECK and we will send you the details.",
  "hashtags": [
   "#WebsiteTips",
   "#SmallBusiness",

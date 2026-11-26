@@ -1,5 +1,14 @@
 {
  "id": "company-approval-01",
+ "keyword": "APPROVE",
+ "info": {
+  "title": "Approval first",
+  "summary": "Our agents collect the facts, write the draft and check the rules, then wait. Any change after approval comes back to you."
+ },
+ "direction": {
+  "world": "paper-desk",
+  "concept": "An editor desk where nothing leaves without a stamp"
+ },
  "scenes": [
   {
    "say": "Stop. Never let a robot post in your name unchecked.",
@@ -66,17 +75,17 @@
    ]
   },
   {
-   "say": "That is how we work. Follow to see what we build next.",
-   "title": "Follow VAgent",
+   "say": "That is how we work. Comment the word approve to see more.",
+   "title": "Comment APPROVE",
    "shot": "cta",
    "mood": "talk",
    "items": [
-    "Follow for more"
+    "Comment APPROVE"
    ],
    "end": true
   }
  ],
- "caption": "Stop. Never let a robot post in your name unchecked.\n\nAt VAgent, agents prepare the work and a person approves it before it goes out.\n\nFollow to see the agents we are building.",
+ "caption": "Stop. Never let a robot post in your name unchecked.\n\nAt VAgent, agents prepare the work and a person approves it before it goes out.\n\nComment APPROVE and we will send you the details.",
  "hashtags": [
   "#AIAgents",
   "#LebaneseBusiness",
