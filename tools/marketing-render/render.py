@@ -1,5 +1,5 @@
 """post dict -> 1080x1920 H.264 MP4. Kokoro-82M voice, HTML scene in headless Chromium, ffmpeg."""
-import base64, json, os, subprocess, wave
+import base64, difflib, json, os, re, subprocess, sys, wave
 from pathlib import Path
 import numpy as np
 from music import mix
@@ -38,23 +38,86 @@ def captions(text, start, audio, rate):
             groups.append([first, i]); first = i + 1
     return timed, groups
 
+_whisper = None
+
+def align(words, audio, rate, start):
+    """Move the estimated word timings onto what local openai/whisper hears. Returns the share matched;
+    below 60% (or without whisper) the estimate is kept."""
+    global _whisper
+    try:
+        import whisper
+    except ImportError:
+        return 0.0
+    _whisper = _whisper or whisper.load_model("base.en", device="cpu", download_root=str(MODELS / "whisper"))
+    pcm = np.interp(np.arange(0, len(audio), rate / 16000), np.arange(len(audio)), audio).astype(np.float32)
+    heard = [w for s in _whisper.transcribe(pcm, language="en", word_timestamps=True, fp16=False, temperature=0,
+                                            condition_on_previous_text=False)["segments"] for w in s.get("words", [])]
+    key = lambda s: re.sub(r"[^a-z0-9]", "", s.lower())
+    blocks = difflib.SequenceMatcher(None, [key(w["w"]) for w in words], [key(h["word"]) for h in heard], autojunk=False).get_matching_blocks()
+    found = {a + i: heard[b + i] for a, b, n in blocks for i in range(n)}
+    share = len(found) / len(words)
+    if share >= 0.6:
+        known = sorted(found)
+        times = np.interp([w["t"] for w in words], [words[i]["t"] for i in known], [start + found[i]["start"] for i in known])
+        for i, w in enumerate(words):  # unmatched words keep their spacing between the matched ones
+            w["t"] = float(max(times[i], words[i - 1]["t"] + 0.04 if i else start))
+        for i, w in enumerate(words):
+            end = start + found[i]["end"] if i in found else (words[i + 1]["t"] if i + 1 < len(words) else w["end"])
+            w["end"] = float(max(end, w["t"] + 0.08))
+    return share
+
+def timeline(scenes, total, page):
+    """The plan in video-director's schema, with the on-screen headline boxes measured in the browser."""
+    texts = []
+    for i, role in ((0, "hook"), (len(scenes) - 1, "term")):
+        s = scenes[i]
+        at = s["start"] + (0 if i == 0 else 0.9)
+        texts.append({"id": role, "text": s["title"], "role": role, "from": round(at, 3), "to": round(s["start"] + s["dur"], 3),
+                      **page.evaluate("i => headline(i)", int((at + 0.1) * FPS))})
+    return {"meta": {"w": 1080, "h": 1920, "fps": FPS, "dur": round(total, 3), "clock": "voice"},
+            "scenes": [{"id": f"s{i}", "start": round(s["start"], 3), "end": round(total if i == len(scenes) - 1 else s["start"] + s["dur"], 3),
+                        "transitionOut": {"why": "next spoken line"}} for i, s in enumerate(scenes)],
+            "hero": {"t": round(scenes[-1]["start"], 3), "what": "closing card"},
+            "captions": [{"text": " ".join(w["w"] for w in s["words"][a:b + 1]), "from": s["words"][a]["t"], "to": s["words"][b]["end"]}
+                         for s in scenes for a, b in s["groups"]],
+            "texts": texts}
+
+def director(script, *args):
+    return subprocess.run([sys.executable, str(ROOT / "vendor" / "video-director" / script), *map(str, args)], capture_output=True, text=True)
+
+def note(title, text):
+    """A GitHub Actions annotation, so the QA result is readable on the run page."""
+    print(f"::notice title={title}::" + text.replace("%", "%25").replace("\n", "%0A"), flush=True)
+
+def serve(route):
+    f = (ROOT / route.request.url.split("scene.local/", 1)[1]).resolve()
+    if ROOT not in f.parents or not f.is_file():
+        return route.abort()
+    kind = {".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript"}.get(f.suffix, "application/octet-stream")
+    route.fulfill(body=f.read_bytes(), content_type=kind)
+
 def master(wav):
     """Static gain to -14 LUFS plus a peak limiter: no pumping, so the voice and music balance is kept."""
     log = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(wav), "-af", "loudnorm=I=-14:TP=-1.5:print_format=json", "-f", "null", "-"],
                          capture_output=True, text=True, check=True).stderr
     gain = -14 - float(json.loads(log[log.rindex("{"):log.rindex("}") + 1])["input_i"])
-    return f"volume={gain:.2f}dB,alimiter=limit=0.84:attack=4:release=60:level=false"
+    chain = lambda g: f"volume={g:.2f}dB,alimiter=limit=0.79:attack=4:release=60:level=false"
+    # second pass: make up whatever the limiter took away
+    log = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(wav), "-af", chain(gain) + ",loudnorm=I=-14:TP=-1.5:print_format=json", "-f", "null", "-"],
+                         capture_output=True, text=True, check=True).stderr
+    return chain(gain + (-14 - float(json.loads(log[log.rindex("{"):log.rindex("}") + 1])["input_i"])))
 
 def render_video(post, out, tmp):
     from kokoro_onnx import Kokoro
     from playwright.sync_api import sync_playwright
     tts = Kokoro(str(MODELS / "kokoro-v1.0.onnx"), str(MODELS / "voices-v1.0.bin"))
-    parts, scenes, t, rate = [], [], 0.0, 24000
+    parts, scenes, t, rate, heard = [], [], 0.0, 24000, []
     for n, sc in enumerate(post["scenes"]):
         audio, rate = tts.create(sc["say"], voice="af_heart", speed=1.05, lang="en-us")
         tail = 1.4 if n == len(post["scenes"]) - 1 else 0.3
         clip = np.concatenate([audio, np.zeros(int(rate * tail), dtype=audio.dtype)])
         words, groups = captions(sc["say"], t, audio, rate)
+        heard.append(align(words, audio, rate, t))
         scenes.append({**sc, "start": t, "voice": len(audio) / rate, "dur": len(clip) / rate, "words": words, "groups": groups})
         t += len(clip) / rate; parts.append(clip)
     voice = np.concatenate(parts)
@@ -85,8 +148,15 @@ def render_video(post, out, tmp):
         with sync_playwright() as p:
             browser = p.chromium.launch()
             page = browser.new_page(viewport={"width": 1080, "height": 1920})
-            page.goto((ROOT / "scene.html").as_uri())
+            page.route("http://scene.local/**", serve)
+            page.goto("http://scene.local/scene.html")
+            page.wait_for_function("() => window.FX")
             page.evaluate("d => setup(d)", data)
+            plan = Path(tmp) / "timeline.json"
+            plan.write_text(json.dumps(timeline(scenes, t, page)))
+            pre = director("check_timeline.py", plan)
+            if pre.returncode:
+                raise RuntimeError("timeline check: " + (pre.stdout + pre.stderr)[-250:])
             for i in range(len(data["level"])):
                 page.evaluate("i => seek(i)", i)
                 enc.stdin.write(page.screenshot(type="jpeg", quality=96))
@@ -94,6 +164,16 @@ def render_video(post, out, tmp):
         enc.stdin.close()
         if enc.wait():
             raise RuntimeError("ffmpeg failed")
+        qa = director("qa_video.py", out, "--out", Path(tmp) / "qa", "--beats", plan)
+        report = Path(tmp) / "qa" / "report.json"
+        if not report.exists():
+            raise RuntimeError("QA could not run: " + qa.stderr[-250:])
+        checks = json.loads(report.read_text())["checks"]
+        bad = [f"{c['level']} {c['check']}: {c['detail']}" for c in checks if c["level"] != "PASS"]
+        note(f"QA {post['id']}", "\n".join([f"{len(checks) - len(bad)} of {len(checks)} checks passed; captions matched by whisper {np.mean(heard):.0%}; length {t:.1f}s", *bad,
+                                             *[x.strip() for x in pre.stdout.splitlines() if "WARN" in x][:5]]))
+        if qa.returncode:  # a failed check never reaches review
+            raise RuntimeError("QA: " + " | ".join(x for x in bad if x.startswith("FAIL"))[:280])
     finally:
         if enc.poll() is None:
             enc.kill()

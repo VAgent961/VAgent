@@ -25,7 +25,8 @@ body{width:1080px;height:1920px;overflow:hidden;background:#141413;color:#FAF9F5
 .dock b{position:absolute;left:36px;top:26px;font:700 33px Inter}
 .dock small{position:absolute;right:36px;top:31px;font:600 25px Inter;color:#A9A294}
 .dock i{position:absolute;bottom:25px;width:13px;height:62px;border-radius:7px;background:#D97757}
-.wipe{position:absolute;z-index:4;left:-420px;top:-100px;width:1920px;height:2120px;display:none}
+.fx{position:absolute;left:0;top:0;width:1080px;height:1920px;image-rendering:pixelated;pointer-events:none}
+#fx-front{z-index:2}#fx-cut{z-index:4}#mark,#ai,#bar{z-index:6}
 .card{position:absolute;background:#FAF9F5;color:#141413;border-radius:44px;box-shadow:0 40px 80px rgba(0,0,0,.5)}
 .ghost{position:absolute;border-radius:44px;background:#F3F1EA;opacity:.14}
 .demo{position:absolute;right:34px;top:30px;font:600 24px Inter;color:#8A8478;border:2px solid #DDD8CC;border-radius:30px;padding:4px 18px}
@@ -41,13 +42,14 @@ body{width:1080px;height:1920px;overflow:hidden;background:#141413;color:#FAF9F5
 #cam .pill{box-shadow:0 24px 44px rgba(0,0,0,.35)}
 </style>
 <div class="full" id="bg"><div class="blob" id="b1" style="background:radial-gradient(circle,rgba(181,83,47,.55),transparent 65%)"></div><div class="blob" id="b2" style="background:radial-gradient(circle,rgba(224,129,86,.25),transparent 65%)"></div><div id="grid"></div></div>
-<div class="full" id="depth"></div>
+<div class="full" id="depth"></div><canvas class="fx" id="fx-back"></canvas>
 <div class="full" id="shade"></div>
 <div class="full" id="cam"><div class="full" id="ui"></div><div class="full" id="dockwrap"></div><div id="girl"></div><img id="lockup"></div>
 <div class="a" id="eyebrow"><span></span></div><div id="title"></div><div id="cap"></div>
-<div class="wipe" id="w0" style="background:#B5532F"></div><div class="wipe" id="w1" style="background:#F3F1EA"></div><div class="wipe" id="w2" style="background:#1B1917"></div>
+<canvas class="fx" id="fx-front"></canvas><canvas class="fx" id="fx-cut"></canvas>
 <img class="a" id="mark"><div class="a" id="ai">AI character</div><div class="a" id="bar"></div>
 <script src="character.js"></script>
+<script type="module" src="fx.mjs"></script>
 <script>
 let D, draw, built = -1;
 const $ = (id) => document.getElementById(id);
@@ -56,12 +58,12 @@ const out = (k) => 1 - Math.pow(1 - clamp(k), 3);
 const back = (k) => { k = clamp(k) - 1; return 1 + k * k * (2.7 * k + 1.7); };
 const el = (parent, cls, css = '', text = '') => { const n = document.createElement('div'); n.className = cls; n.style.cssText = css; n.textContent = text; parent.append(n); return n; };
 // character per shot: position, size, pose, face
-const GIRL = { hook: [200, 545, 1.7, 'explain', 'wow'], phone: [16, 1047, .86, 'point', 'happy'], flow: [16, 1047, .86, 'point', 'happy'], browser: [16, 1047, .86, 'explain', 'happy'], list: [16, 1047, .86, 'think', 'think'], approve: [16, 1047, .86, 'point', 'happy'], alert: [16, 1047, .86, 'think', 'worried'], cta: [260, 475, 1.4, 'wave', 'joy'] };
+const GIRL = { hook: [200, 470, 1.7, 'explain', 'wow'], phone: [40, 1008, .84, 'point', 'happy'], flow: [40, 1008, .84, 'point', 'happy'], browser: [40, 1008, .84, 'explain', 'happy'], list: [40, 1008, .84, 'think', 'think'], approve: [40, 1008, .84, 'point', 'happy'], alert: [40, 1008, .84, 'think', 'worried'], cta: [260, 440, 1.4, 'wave', 'joy'] };
 
 const LABEL = { hook: 'Listen up', phone: 'The moment', flow: 'Step by step', browser: 'On screen', list: 'At a glance', approve: 'Your call', alert: 'The problem', cta: 'Next step' };
 let tiles = [], dock = null;
 async function setup(d) {
-  D = d; $('mark').src = d.lockup; $('lockup').src = d.lockup; draw = makeGirl($('girl'));
+  D = d; $('mark').src = d.lockup; $('lockup').src = d.lockup; draw = makePet($('girl'));
   await Promise.all([$('mark').decode(), $('lockup').decode(), document.fonts.ready]);
   await Promise.all(['600 90px Newsreader', '800 60px Inter', '500 38px Inter'].map((f) => document.fonts.load(f)));
   // background depth: soft tiles drifting at different speeds
@@ -73,7 +75,7 @@ function build(n) {
   const s = D.scenes[n], ui = $('ui'); ui.replaceChildren();
   const items = s.items || [], shot = s.shot || 'phone';
   if (shot === 'hook') {
-    const chips = items.map((x, i) => el(ui, 'pill', `z-index:2;left:${i % 2 ? 620 : 70}px;top:${i % 2 ? 1305 : 560}px;width:390px;font-size:38px;background:#FAF9F5;color:#141413;box-shadow:0 20px 40px rgba(0,0,0,.4)`, x));
+    const chips = items.map((x, i) => el(ui, 'pill', `z-index:2;left:${i % 2 ? 620 : 70}px;top:${i % 2 ? 1285 : 585}px;width:390px;font-size:38px;background:#FAF9F5;color:#141413;box-shadow:0 20px 40px rgba(0,0,0,.4)`, x));
     return (k) => chips.forEach((c, i) => { const a = back((k - .5 - i * .45) / .4); c.style.opacity = clamp(a); c.style.transform = `translateY(${Math.sin(k * 2 + i * 2) * 10}px) scale(${a}) rotate(${i % 2 ? 5 : -5}deg)`; });
   }
   if (shot === 'cta') {
@@ -158,6 +160,12 @@ function viseme(s, t) {
   return 'a' === c ? 'a' : 'eiy'.includes(c) ? 'e' : c === 'o' ? 'o' : 'uwq'.includes(c) ? 'u' : 'mbp'.includes(c) ? 'm' : 'fv'.includes(c) ? 'f' : 'x';
 }
 let animate;
+// for the QA timeline: where the headline sits on a frame, and its font size
+function headline(i) {
+  seek(i);
+  const r = [...$('title').children].map((b) => b.getBoundingClientRect()), x = Math.min(...r.map((a) => a.left)) - 12, y = Math.min(...r.map((a) => a.top)) - 8;
+  return { box: [Math.floor(x), Math.floor(y), Math.ceil(Math.max(...r.map((a) => a.right)) + 12 - x), Math.ceil(Math.max(...r.map((a) => a.bottom)) + 8 - y)], px: parseFloat($('title').style.fontSize) };
+}
 function seek(i) {
   const t = i / D.fps;
   let n = D.scenes.length - 1; while (n > 0 && t < D.scenes[n].start) n--;
@@ -166,7 +174,7 @@ function seek(i) {
     built = n; animate = build(n); buildDock(n, shot);
     $('eyebrow').firstChild.textContent = LABEL[shot];
     const title = $('title'); title.replaceChildren(...s.title.split(' ').map((x) => { const b = document.createElement('b'), c = document.createElement('i'); c.textContent = x; b.append(c); return b; }));
-    let size = 90; title.style.fontSize = size + 'px'; while (size > 56 && (title.scrollHeight > 186 || title.scrollWidth > 940)) title.style.fontSize = (size -= 4) + 'px';
+    let size = shot === 'hook' ? 108 : 90; title.style.fontSize = size + 'px'; while (size > (shot === 'hook' ? 84 : 56) && (title.scrollHeight > 186 || title.scrollWidth > 940)) title.style.fontSize = (size -= 4) + 'px';
   }
   animate(k, s.dur);
   const first = n === 0, leave = lastScene ? 0 : Math.pow(clamp((k - s.dur + .2) / .2), 2);
@@ -199,9 +207,10 @@ function seek(i) {
   const pop = back((t - Math.max(s.start, w[group[0]].t - .05)) / .22);
   cap.style.transform = `translateY(${(1 - pop) * 18}px) scale(${.94 + .06 * pop})`; cap.style.opacity = 1 - leave;
   [...cap.children].forEach((e, j) => { const idx = group[0] + j, since = t - w[idx].t, cur = idx === now && since >= 0; e.style.opacity = since >= 0 ? 1 : .55; e.style.background = cur ? '#B5532F' : 'transparent'; e.style.transform = `scale(${cur ? 1 + .05 * Math.sin(clamp(since / .22) * Math.PI) : 1})`; });
-  // transitions: every other cut gets a three-layer slanted sweep, the rest cut on the camera move
-  let wp = -1, side = 1; D.scenes.forEach((c, j) => { if (j % 2 === 0 && j && Math.abs(t - c.start) < .3) { wp = (t - c.start + .3) / .6; side = j % 4 ? 1 : -1; } });
-  [0, 1, 2].forEach((j) => { const e = $('w' + j); e.style.display = wp < 0 ? 'none' : 'block'; if (wp < 0) return; const q = clamp(wp * 1.24 - j * .12), ease = q < .5 ? 4 * q * q * q : 1 - Math.pow(-2 * q + 2, 3) / 2; e.style.transform = `translateX(${side * (-2300 + ease * 4600)}px) skewX(${-12 * side}deg)`; });
+  // transitions: every other cut gets a blocky pixel sweep, the rest cut on the camera move
+  let cut = null; D.scenes.forEach((c, j) => { if (j % 2 === 0 && j && Math.abs(t - c.start) < .3) cut = { p: (t - c.start + .3) / .6, side: j % 4 ? 1 : -1 }; });
+  const size = prev[2] + (g[2] - prev[2]) * m;
+  window.FX({ t, k, n, shot, dur: s.dur, cut, pet: [prev[0] + (g[0] - prev[0]) * m + 200 * size, prev[1] + (g[1] - prev[1]) * m + 300 * size, 192 * size] });
   [...$('bar').children].forEach((seg, j) => seg.firstChild.style.transform = `scaleX(${clamp((t - D.scenes[j].start) / D.scenes[j].dur)})`);
 }
 </script>

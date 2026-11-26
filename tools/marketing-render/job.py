@@ -5,7 +5,7 @@ from pathlib import Path
 
 HQ = "https://vagent.online/hook/marketing"
 UA = "vagent-marketing-render"
-LOOK = "vee-pet-2"  # change when the look changes: HQ re-renders unpublished videos, which need approval again
+LOOK = "pixel-pet-1"  # change when the look changes: HQ re-renders unpublished videos, which need approval again
 
 def http(url, data=None, headers=None):
     req = urllib.request.Request(url, data=data, headers={"User-Agent": UA, **(headers or {})})
