@@ -3,7 +3,7 @@ import assert from 'node:assert';
 const R = new URL('../functions/', import.meta.url).href;
 const ig = await import(R + '_instagram.js'), pub = await import(R + '_publish.js'), { digest } = await import(R + '_marketing.js');
 const env = { SESSION_SECRET: 's', DATABASE_URL: 'postgres://u:p@h.example/db', ENC_KEY: Buffer.alloc(32, 1).toString('base64') };
-const settings = {}, calls = []; let row, pages;
+const settings = {}, calls = [], sent = []; let row, pages, telegramDown = false;
 const ID = '17841460984287876', reply = (j, status = 200) => new Response(JSON.stringify(j), { status });
 globalThis.fetch = async (url, o = {}) => {
   const u = new URL(url);
@@ -14,13 +14,14 @@ globalThis.fetch = async (url, o = {}) => {
     else if (/jsonb_set\(pub, ARRAY/.test(q)) row.pub[p[1]] = JSON.parse(p[2]);
     else if (/'\{instagram,state\}'/.test(q)) { row.pub.instagram.state = 'publishing'; rows = [row]; }
     else if (/SET status = 'publishing'/.test(q)) { row.status = 'publishing'; rows = [row]; }
-    else if (/SET status = 'published'/.test(q)) { row.status = 'published'; row.video_sha = null; }
+    else if (/SET status = 'published'/.test(q)) { row.status = 'published'; row.video_sha = null; rows = [row]; }
     else if (/SET dry_run_at/.test(q)) rows = [row];
     else if (/WHERE id = \$1 AND version = \$2 AND status = 'scheduled'$/.test(q)) rows = row.status === 'scheduled' ? [row] : [];
     else if (/status = 'publishing'/.test(q)) rows = row?.status === 'publishing' ? [row] : [];
     else if (/slot <= now/.test(q)) rows = row?.status === 'scheduled' ? [row] : [];
     return reply({ rows });
   }
+  if (u.host === 'api.telegram.org') { if (telegramDown) throw new TypeError('down ' + url); sent.push(JSON.parse(o.body).text); return reply({ ok: true }); }
   const q = o.body || u.searchParams, path = u.pathname.replace('/v23.0/', ''), fields = q.get('fields') || '';
   calls.push({ host: u.host, path, method: o.method || 'GET', type: q.get('media_type') });
   const fb = u.host === 'graph.facebook.com';
@@ -60,4 +61,13 @@ assert.equal(calls.slice(before).filter((c) => c.path.endsWith('/media_publish')
 pages = []; await ig.connect(env, ' EAAdirect\n', '', 'o'); assert.equal((await ig.user(env)).id, ID); assert.equal(settings.ig_expires, 'never');
 await assert.rejects(ig.connect(env, 'abc', '', 'o'), /EAA/);
 await assert.rejects(ig.graph('IGx', 'me', {}, 'GET', 'https://graph.facebook.com/v23.0'), /graph\.facebook\.com could not read/);
+// Telegram reminder: off without config, live only by default, Dry Run opt-in, and a failure never breaks publishing
+assert.equal(sent.length, 0);
+Object.assign(env, { TELEGRAM_BOT_TOKEN: 't', TELEGRAM_CHAT_ID: '1' });
+const goLive = async () => { await fresh(); await pub.tick(env, TUE); await pub.tick(env, TUE); assert.equal(row.status, 'published'); assert.equal(row.video_sha, null); };
+await pub.setDryRun(env, true, '', 'o'); await fresh(); await pub.tick(env, TUE); assert.equal(sent.length, 0);
+env.TELEGRAM_NOTIFY_DRY_RUN = 'on'; await fresh(); await pub.tick(env, TUE); assert.equal(sent.length, 1); assert.match(sent[0], /DRY RUN/); assert.equal(row.video_sha, 'x');
+await pub.setDryRun(env, false, 'PUBLISH', 'o'); await goLive(); await pub.tick(env, TUE);
+assert.equal(sent.length, 2); assert.match(sent[1], /LIVE[\s\S]*TikTok[\s\S]*Hi[\s\S]*\/marketing$/);
+telegramDown = true; await goLive(); assert.equal(sent.length, 2);
 console.log('instagram ok');
