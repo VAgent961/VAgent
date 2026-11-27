@@ -21,6 +21,7 @@
 - Why not our server: its n8n has command execution disabled and has no SSH credential. To move later, run `job.py` there with another sign-in method.
 - Storage: video chunks in `marketing_media`, private behind the owner session; Instagram gets a signed link valid 1 hour.
 - Publisher: n8n `V-Agent | Marketing Publisher` (Z4m9GTCAxMeHCkGm, every 5 min) -> `/hook/marketing` tick: create REELS container -> poll until FINISHED -> publish once -> delete video. Unclear result = failed, never auto-retried. A slot missed by 6 h goes back to review.
+- TikTok (by hand): Tue/Thu/Sat 16:00-19:00 Beirut the tick sends one Telegram reminder (`functions/_telegram.js`) for today's video, to download from /marketing before publishing deletes it.
 - Dry run is the default: logs "would publish", keeps the video, publishes nothing. Going live = connect a token on /marketing, then turn Dry Run off. Posts whose slot passed more than 6 h earlier need approval again.
 
 ## Publishing (Instagram only, @v_agent961)

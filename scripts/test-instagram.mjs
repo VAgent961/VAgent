@@ -3,22 +3,24 @@ import assert from 'node:assert';
 const R = new URL('../functions/', import.meta.url).href;
 const ig = await import(R + '_instagram.js'), pub = await import(R + '_publish.js'), { digest } = await import(R + '_marketing.js');
 const env = { SESSION_SECRET: 's', DATABASE_URL: 'postgres://u:p@h.example/db', ENC_KEY: Buffer.alloc(32, 1).toString('base64') };
-const settings = {}, calls = [], sent = []; let row, pages, telegramDown = false;
+const settings = {}, calls = [], sent = []; let notDue = false, row, pages, telegramDown = false;
 const ID = '17841460984287876', reply = (j, status = 200) => new Response(JSON.stringify(j), { status });
 globalThis.fetch = async (url, o = {}) => {
   const u = new URL(url);
   if (u.host === 'api.example') {
     const { query: q, params: p = [] } = JSON.parse(o.body); let rows = [];
     if (/FROM marketing_settings/.test(q)) rows = p[0] in settings ? [{ v: settings[p[0]] }] : [];
-    else if (/INTO marketing_settings/.test(q)) settings[p[0]] = p[1];
+    else if (/INTO marketing_settings/.test(q) && !/ WHERE /.test(q)) settings[p[0]] = p[1];
     else if (/jsonb_set\(pub, ARRAY/.test(q)) row.pub[p[1]] = JSON.parse(p[2]);
     else if (/'\{instagram,state\}'/.test(q)) { row.pub.instagram.state = 'publishing'; rows = [row]; }
     else if (/SET status = 'publishing'/.test(q)) { row.status = 'publishing'; rows = [row]; }
-    else if (/SET status = 'published'/.test(q)) { row.status = 'published'; row.video_sha = null; rows = [row]; }
+    else if (/SET status = 'published'/.test(q)) { row.status = 'published'; row.video_sha = null; }
+    else if (/ON CONFLICT \(k\) DO UPDATE SET v = \$2 WHERE/.test(q)) { if (settings[p[0]] !== p[1]) { settings[p[0]] = p[1]; rows = [{}]; } }
+    else if (/video_sha IS NOT NULL AND \(\(status = 'scheduled'/.test(q)) rows = row.video_sha && ['scheduled', 'review'].includes(row.status) ? [row] : [];
     else if (/SET dry_run_at/.test(q)) rows = [row];
     else if (/WHERE id = \$1 AND version = \$2 AND status = 'scheduled'$/.test(q)) rows = row.status === 'scheduled' ? [row] : [];
     else if (/status = 'publishing'/.test(q)) rows = row?.status === 'publishing' ? [row] : [];
-    else if (/slot <= now/.test(q)) rows = row?.status === 'scheduled' ? [row] : [];
+    else if (/slot <= now/.test(q)) rows = row?.status === 'scheduled' && !notDue ? [row] : [];
     return reply({ rows });
   }
   if (u.host === 'api.telegram.org') { if (telegramDown) throw new TypeError('down ' + url); sent.push(JSON.parse(o.body).text); return reply({ ok: true }); }
@@ -61,13 +63,17 @@ assert.equal(calls.slice(before).filter((c) => c.path.endsWith('/media_publish')
 pages = []; await ig.connect(env, ' EAAdirect\n', '', 'o'); assert.equal((await ig.user(env)).id, ID); assert.equal(settings.ig_expires, 'never');
 await assert.rejects(ig.connect(env, 'abc', '', 'o'), /EAA/);
 await assert.rejects(ig.graph('IGx', 'me', {}, 'GET', 'https://graph.facebook.com/v23.0'), /graph\.facebook\.com could not read/);
-// Telegram reminder: off without config, live only by default, Dry Run opt-in, and a failure never breaks publishing
-assert.equal(sent.length, 0);
+// Telegram reminder: 16:00-19:00 Beirut before publishing, once per video, retried after a failure, nothing after publishing
+const at = (h) => new Date(`2026-12-01T${h}:00+02:00`);
+const today = async (extra) => { await fresh(); notDue = true; Object.assign(row, { slot: at('19:00').toISOString() }, extra); delete settings.tg_reminded; sent.length = 0; };
+await today(); await pub.tick(env, at('16:00')); assert.equal(sent.length, 0); // not configured
 Object.assign(env, { TELEGRAM_BOT_TOKEN: 't', TELEGRAM_CHAT_ID: '1' });
-const goLive = async () => { await fresh(); await pub.tick(env, TUE); await pub.tick(env, TUE); assert.equal(row.status, 'published'); assert.equal(row.video_sha, null); };
-await pub.setDryRun(env, true, '', 'o'); await fresh(); await pub.tick(env, TUE); assert.equal(sent.length, 0);
-env.TELEGRAM_NOTIFY_DRY_RUN = 'on'; await fresh(); await pub.tick(env, TUE); assert.equal(sent.length, 1); assert.match(sent[0], /DRY RUN/); assert.equal(row.video_sha, 'x');
-await pub.setDryRun(env, false, 'PUBLISH', 'o'); await goLive(); await pub.tick(env, TUE);
-assert.equal(sent.length, 2); assert.match(sent[1], /LIVE[\s\S]*TikTok[\s\S]*Hi[\s\S]*\/marketing$/);
-telegramDown = true; await goLive(); assert.equal(sent.length, 2);
+await pub.setDryRun(env, true, '', 'o'); await today(); await pub.tick(env, at('16:00')); assert.equal(sent.length, 0);
+env.TELEGRAM_NOTIFY_DRY_RUN = 'on'; await pub.tick(env, at('15:55')); await pub.tick(env, at('19:00')); assert.equal(sent.length, 0);
+await pub.tick(env, at('16:00')); await pub.tick(env, at('16:05')); assert.equal(sent.length, 1); assert.match(sent[0], /DRY RUN/);
+await pub.setDryRun(env, false, 'PUBLISH', 'o'); await today(); telegramDown = true; await pub.tick(env, at('16:00')); assert.equal(sent.length, 0); assert.equal(row.status, 'scheduled');
+telegramDown = false; await pub.tick(env, at('16:05')); await pub.tick(env, at('16:10')); assert.equal(sent.length, 1);
+assert.match(sent[0], /LIVE[\s\S]*TikTok before 19:00[\s\S]*Hi[\s\S]*\/marketing$/);
+await today({ status: 'review', slot: null }); await pub.tick(env, at('16:00')); assert.match(sent[0], /not approved yet/);
+await today(); notDue = false; await pub.publishNow(env, 'p', 1, 'PUBLISH', 'o'); await pub.tick(env, TUE); assert.equal(row.status, 'published'); assert.equal(row.video_sha, null); assert.equal(sent.length, 0);
 console.log('instagram ok');

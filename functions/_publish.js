@@ -66,7 +66,6 @@ async function poll(env, row, s, old) {
 async function simulate(env, row) {
   await put(env, row.id, { state: 'dry_run' });
   await log(env, row.id, 'instagram_dry_run', `would publish to Instagram: ${captionFor(row.post)}`);
-  await remindTikTok(env, row, captionFor(row.post), true);
 }
 
 // Once the state is final the post is closed. Published (video deleted) means it really went out.
@@ -79,10 +78,8 @@ async function settle(env, id) {
     await sql(env, "UPDATE marketing_posts SET status = 'failed', error = $2, updated_at = now() WHERE id = $1", [id, `Instagram: ${s.error}`.slice(0, 300)]);
     return 'failed';
   }
-  // only the caller that closes the post sends the reminder, so it arrives once
-  const closed = await sql(env, "UPDATE marketing_posts SET status = 'published', video_sha = NULL, error = NULL, updated_at = now() WHERE id = $1 AND status = 'publishing' RETURNING id", [id]);
+  await sql(env, "UPDATE marketing_posts SET status = 'published', video_sha = NULL, error = NULL, updated_at = now() WHERE id = $1", [id]);
   await dropMedia(env, id); await log(env, id, 'published', `instagram:${s.state}`);
-  if (closed.length) await remindTikTok(env, row, captionFor(row.post), false);
   return 'published';
 }
 
@@ -152,6 +149,8 @@ export async function tick(env, now = new Date()) {
   }
   // 4) tomorrow's content is today's job: write or replace the reel when the schedule asks for it
   const auto = await autopilot(env, now);
+  // 5) from 16:00: remind the owner to post today's video on TikTok while it still exists
+  await remindTikTok(env, now, live, captionFor);
   await sweepMedia(env);
   return { live, autopilot: auto, posts: out };
 }
