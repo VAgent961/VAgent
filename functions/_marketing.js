@@ -16,6 +16,7 @@ const UPGRADE = [
   `UPDATE marketing_posts SET status = 'failed', targets = NULL, error = 'Not approved for Instagram: approve again', updated_at = now() WHERE status = 'publishing' AND ${NOT_IG}`,
   "UPDATE marketing_posts SET status = 'published', video_sha = NULL, error = NULL, updated_at = now() WHERE status IN ('failed', 'review', 'scheduled') AND pub->'instagram'->>'state' = 'published'",
   "DELETE FROM marketing_media WHERE post_id IN (SELECT id FROM marketing_posts WHERE status = 'published')",
+  "DELETE FROM marketing_settings WHERE left(k, 3) = 'tt_'", // its saved keys, tokens and options
 ];
 let ready;
 export const schema = (env) => (ready ||= (async () => { for (const q of UPGRADE) await sql(env, q); })().catch((e) => { ready = null; throw e; }));
