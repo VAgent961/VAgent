@@ -1,7 +1,7 @@
 import { json, bad, body } from '../_lib.js';
 import * as mk from '../_marketing.js';
 import { tick } from '../_publish.js';
-import { clock } from '../_autopilot.js';
+import { clock, generate, history, sameTopic } from '../_autopilot.js';
 
 // POST /hook/marketing
 //  - n8n publisher: header X-VAgent-Secret, {action:"tick"}
@@ -17,8 +17,17 @@ export async function onRequestPost({ request, env }) {
   const secret = request.headers.get('X-VAgent-Secret') || '';
   if (env.WEBHOOK_SECRET && secret === env.WEBHOOK_SECRET) {
     const b = await body(request);
-    if (b.action !== 'tick') return bad('Unknown action');
-    await mk.schema(env); return json(await tick(env));
+    if (!['tick', 'generate', 'check'].includes(b.action)) return bad('Unknown action');
+    await mk.schema(env);
+    if (b.action === 'tick') return json(await tick(env));
+    try {
+      // manual, any day: one new idea into the render queue (never approves or publishes)
+      if (b.action === 'generate') { const r = await generate(env); return r.post ? json({ id: r.post.id, title: r.post.info.title, first: r.post.scenes[0].say, keyword: r.post.keyword }) : bad(r.skipped, 409); }
+      // is this draft new? checked against the whole queue and the Instagram page
+      const err = mk.lint(b.post); if (err) return bad(err);
+      const used = await history(env);
+      return json({ duplicate: mk.repeats(b.post, used) || await sameTopic(env, b.post, used) });
+    } catch (e) { return bad(e.message, 502); }
   }
   if (!(await mk.isRenderer(request))) return bad('Not allowed', 401);
   await mk.schema(env);

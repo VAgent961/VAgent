@@ -10,6 +10,12 @@ Writes drafts only. Never publishes, approves, declines or changes Dry Run. Inst
 ## Schedule (automatic, no Claude session needed)
 `functions/_autopilot.js`, driven by the n8n publisher tick, writes the scheduled reels with the office AI. Tue/Thu/Sat Beirut from 06:00 (waiting for approval by 08:00); a declined or failed one is replaced 2 hours later until a post holds that day's 19:00 slot or it is 19:00. Sun/Mon/Wed/Fri: nothing. Its videos use generated worlds. This skill is for **manual** requests (hand-made worlds); do not schedule it as well.
 
+## Duplicates (never render one)
+Every idea is checked against the whole queue (published and declined included) and every post on the Instagram page: keyword, title, first line, script, caption (`repeats()` in `_marketing.js`), then a meaning check by the office AI (`sameTopic()`). `check.mjs <id>` runs both for a new draft; an unreadable page or unclear answer = FAIL.
+
+## Generate now through the autopilot (when asked for videos without topics)
+`node scripts/generate-reels.mjs <n>`: HQ invents n ideas itself and queues them for rendering. Give it no topic. Then follow `reel-render-and-cleanup` step 4.
+
 ## Run (no questions needed)
 1. Read `marketing/voice.md`, `marketing/video-craft.md`, `marketing/ideas.md`.
 2. `node .claude/skills/reel-idea-generator/check.mjs list`: used topics, keywords, worlds, hooks.

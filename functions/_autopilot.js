@@ -3,7 +3,8 @@
 // Other days: nothing. It only queues a draft for rendering; approving and publishing stay with the owner and _publish.js.
 import { sql } from './_lib.js';
 import { think, parseJSON } from './_brain.js';
-import { lint, log, SHOTS } from './_marketing.js';
+import { lint, log, repeats, setting, SHOTS } from './_marketing.js';
+import * as ig from './_instagram.js';
 
 export const DAYS = ['Tue', 'Thu', 'Sat'];
 export const PREP = '06:00', CUTOFF = '19:00', PACE = 2 * 36e5; // 06:00 leaves two hours for a slow render queue
@@ -27,46 +28,87 @@ const today = async (env, date) => (await sql(env, `SELECT
   EXISTS (SELECT 1 FROM marketing_posts WHERE auto_day = $1::date AND status IN ('rendering', 'review')) AS pending,
   (SELECT max(updated_at) FROM marketing_posts WHERE (updated_at AT TIME ZONE 'Asia/Beirut')::date = $1::date AND (status = 'declined' OR (auto_day = $1::date AND status = 'failed' AND video_sha IS NULL))) AS closed`, [date]))[0] || {};
 
-const STOP = new Set('a an the and or of to in on is it you your we our for with that this who are be can no not never one get just here want comment words word agent vagent'.split(' '));
-const words = (s) => new Set(String(s).toLowerCase().match(/[a-z]{3,}/g)?.filter((w) => !STOP.has(w)).map((w) => w.replace(/s$/, '')) || []);
-export const alike = (a, b) => { const x = words(a), y = words(b), both = [...x].filter((w) => y.has(w)).length; return both / (x.size + y.size - both || 1); };
-const said = (p) => (p.scenes || []).map((s) => s.say).join(' ');
-
-// Error text, or '' when the idea is valid and new.
+// Error text, or '' when the idea is well formed and passes the text duplicate check.
 export function judge(p, used) {
   const err = lint(p); if (err) return err;
-  const n = said(p).split(/\s+/).length, first = p.scenes[0].say;
+  const n = p.scenes.map((x) => x.say).join(' ').split(/\s+/).length;
   if (p.scenes.length < 6 || p.scenes.length > 8) return 'Use 6 to 8 scenes';
   if (n < 65 || n > 90) return `The spoken script is ${n} words; it must be 65 to 90`;
-  if (first.split(/\s+/).length > 12) return 'The first spoken line must be 12 words or fewer';
-  if (p.scenes.at(-1).shot !== 'cta' || p.scenes.some((s) => !SHOTS.includes(s.shot))) return `Every scene needs a shot from ${SHOTS.join(', ')}; the last is cta`;
-  for (const o of used) {
-    if (o.keyword === p.keyword) return `The keyword ${p.keyword} is already used`;
-    if (alike(first, o.scenes?.[0]?.say) >= .4) return `The first line is too close to "${o.scenes[0].say}"`;
-    if (alike(`${p.info.title} ${p.info.summary}`, `${o.info?.title} ${o.info?.summary}`) >= .35) return `The topic repeats "${o.info?.title}"; pick another`;
-    if (alike(said(p), said(o)) >= .3) return 'The script repeats an earlier video';
+  if (p.scenes[0].say.split(/\s+/).length > 12) return 'The first spoken line must be 12 words or fewer';
+  if (p.scenes.at(-1).shot !== 'cta' || p.scenes.some((x) => !SHOTS.includes(x.shot))) return `Every scene needs a shot from ${SHOTS.join(', ')}; the last is cta`;
+  return repeats(p, used);
+}
+
+// Everything that already exists: the whole queue (published and declined too) and every post on the Instagram page.
+// With Instagram connected, a page that cannot be read stops the run: nothing is accepted unchecked.
+export async function history(env) {
+  const used = (await sql(env, 'SELECT post FROM marketing_posts ORDER BY created_at')).map((r) => r.post).filter(Boolean);
+  if (!(await setting(env, 'ig_token'))) return used;
+  const access = await ig.token(env), me = await ig.user(env);
+  for (let after = '', i = 0; i < 20; i++) {
+    const r = await ig.graph(access, `${me.id}/media`, { fields: 'caption', limit: '50', ...(after ? { after } : {}) });
+    for (const m of r.data || []) if (m.caption) used.push({ page: true, caption: m.caption });
+    after = r.paging?.next && r.paging.cursors?.after;
+    if (!after) break;
+  }
+  return used;
+}
+const brief = (o) => (o.page ? `page post: ${o.caption.replace(/\s+/g, ' ').slice(0, 200)}` : `${o.info?.title || ''} | ${o.scenes?.[0]?.say || ''} | ${String(o.info?.summary || o.caption || '').slice(0, 160)}`);
+const SAME = `You are a strict duplicate checker for a video page. The NEW idea is a duplicate if any EARLIER video is about the same business problem, or shows an agent doing the same job, even with different words, keyword or industry example. Reply with JSON only: {"duplicate":true|false,"of":"the earlier title, or empty"}`;
+// Meaning check by the office AI, over all of history in pieces it can read. An unclear answer counts as a failure.
+export async function sameTopic(env, p, used) {
+  const lines = used.filter((o) => !o.id || o.id !== p.id).map(brief), parts = [''];
+  for (const l of lines) { if (parts.at(-1).length + l.length > 9000) parts.push(''); parts[parts.length - 1] += `- ${l}\n`; }
+  for (const part of parts.filter(Boolean)) {
+    const j = parseJSON(await think(env, SAME, `NEW: ${brief(p)}\nScript: ${p.scenes.map((x) => x.say).join(' ')}\n\nEARLIER:\n${part}`));
+    if (typeof j?.duplicate !== 'boolean') return 'The duplicate check gave no clear answer';
+    if (j.duplicate) return `It covers the same topic as "${String(j.of).slice(0, 80)}"`;
   }
   return '';
 }
 
 const SYSTEM = `You write one 9:16 Instagram Reel for VAgent (vagent.online, @v_agent961), which builds AI agents for owners of shops, cafes and small businesses in Lebanon. The presenter is a terracotta pixel-art pet. Reply with JSON only, minified on one line (a long reply gets cut off). Keep items to 2 or 3 short ones.
-Rules: plain calm English. Never mention WhatsApp, free, cost, price, discounts, subscriptions or money signs. No client names, no invented numbers or results. Built and "ready": a voice receptionist (answers from a catalog, takes the order), a website builder (from a chat, owner approves), Sniper (finds prospective businesses by district and niche). Anything else is "an agent we can build". Nothing goes out until a person approves.
+Rules: plain calm English. Never mention WhatsApp, free, cost, price, discounts, subscriptions or money signs. No client names, no invented numbers or results. Invent a fresh everyday problem that none of the already used videos covers, and show it as "an agent we can build". Describe only what such an agent could really do; never promise more sales or results. Nothing goes out until a person approves.
 JSON shape:
 {"keyword":"1 or 2 words in CAPITALS","info":{"title":"max 80 chars","summary":"1-2 sentences"},"concept":"the visual world of this video, one sentence","scenes":[{"say":"spoken line","title":"on-screen headline, max 40 chars","shot":"hook|phone|flow|browser|list|approve|alert|cta","mood":"talk|think","items":["up to 4 short on-screen lines"]}],"caption":"...","hashtags":["#VAgent"]}
 Exactly 7 scenes. The "say" lines total 70 to 85 words. Scene 1: shot hook, a say of at most 10 words that is concrete, addresses "you" and puts something at stake. Scene 7: shot cta, its say asks to comment the keyword, title "Comment <KEYWORD>". The caption starts with the first line and says "Comment <KEYWORD>".`;
 
 export async function write(env, used, id) {
-  const ask = `Already used (choose a clearly different problem, keyword and opening line):\n${used.slice(-60).map((p) => `${p.keyword} | ${p.info?.title} | ${p.scenes?.[0]?.say}`).join('\n').slice(-9000)}`;
+  const list = used.slice(-60).map(brief).join('\n').slice(-9000), until = Date.now() + 18e4, rejected = [];
   let why = '';
-  for (let i = 0; i < 3; i++) {
-    const j = parseJSON(await think(env, SYSTEM, why ? `${ask}\n\nYour last answer was rejected: ${why}. Write a corrected one.` : ask));
+  for (let i = 0; i < 5 && Date.now() < until; i++) {
+    const ask = `Already used (choose a clearly different problem, keyword and opening line):\n${list}${why ? `\n\nRejected just now:\n${rejected.join('\n')}\nYour last answer was rejected: ${why}. Write a corrected or entirely different one.` : ''}`;
+    const j = parseJSON(await think(env, SYSTEM, ask));
     if (!j || !Array.isArray(j.scenes)) { why = 'the reply was not complete JSON: answer minified and shorter'; continue; }
     const scenes = j.scenes.map((s, n) => ({ say: s.say, title: s.title, shot: s.shot, mood: s.mood === 'think' ? 'think' : 'talk', ...(Array.isArray(s.items) && s.items.length ? { items: s.items.slice(0, 4) } : {}), ...(n === j.scenes.length - 1 ? { end: true } : {}) }));
     const post = { id, keyword: j.keyword, info: j.info, direction: { world: `auto-${id}`, concept: String(j.concept || scenes[0]?.title || id).slice(0, 200) }, scenes, caption: j.caption, hashtags: j.hashtags };
-    why = judge(post, used);
+    why = judge(post, used) || await sameTopic(env, post, used);
     if (!why) return post;
+    if (post.info?.title) rejected.push(`- ${post.keyword} | ${post.info.title}`);
   }
   throw new Error('No usable idea: ' + why);
+}
+
+// Writes one new idea and queues it for rendering. `day` marks a scheduled one; `still` re-checks the schedule afterwards.
+export async function generate(env, now = new Date(), day = null, still = async () => '') {
+  // one writer at a time; a failed attempt is tried again after 15 minutes
+  const lock = await sql(env, "INSERT INTO marketing_settings (k, v) VALUES ('autopilot_lock', $1) ON CONFLICT (k) DO UPDATE SET v = $1 WHERE marketing_settings.v < $2 RETURNING k", [now.toISOString(), new Date(now - 9e5).toISOString()]);
+  if (!lock.length) return { skipped: 'busy' };
+  const free = () => sql(env, "DELETE FROM marketing_settings WHERE k = 'autopilot_lock'");
+  try {
+    const c = clock(now), id = `reel-${c.date.replaceAll('-', '')}-${c.time.replace(':', '')}${String(now.getUTCSeconds()).padStart(2, '0')}`;
+    const post = await write(env, await history(env), id);
+    const skipped = await still();
+    if (!skipped) {
+      await sql(env, 'INSERT INTO marketing_posts (id, post, auto_day) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING', [post.id, JSON.stringify(post), day]);
+      await log(env, post.id, day ? 'autopilot_idea' : 'manual_idea', post.info.title);
+    }
+    await free();
+    return skipped ? { skipped } : { post };
+  } catch (e) {
+    if (!day) await free(); // a person asked: they may try again at once
+    await log(env, '-', 'autopilot_failed', e.message); throw e;
+  }
 }
 
 // Called by the publisher tick on active days.
@@ -80,18 +122,12 @@ export async function autopilot(env, now = new Date()) {
   }
   const first = decide(c, await today(env, c.date), now);
   if (first !== 'generate') return first;
-  // one writer at a time; a failed attempt is tried again after 15 minutes
-  const lock = await sql(env, "INSERT INTO marketing_settings (k, v) VALUES ('autopilot_lock', $1) ON CONFLICT (k) DO UPDATE SET v = $1 WHERE marketing_settings.v < $2 RETURNING k", [now.toISOString(), new Date(now - 9e5).toISOString()]);
-  if (!lock.length) return 'busy';
   try {
-    const used = (await sql(env, 'SELECT post FROM marketing_posts ORDER BY created_at')).map((r) => r.post);
-    const post = await write(env, used, `reel-${c.date.replaceAll('-', '')}-${c.time.replace(':', '')}`);
-    // writing takes a while: the owner may have approved something meanwhile, or the cutoff passed
-    const later = new Date(Math.max(Date.now(), now.getTime())), again = decide(clock(later), await today(env, c.date), later);
-    if (again !== 'generate') return again;
-    await sql(env, 'INSERT INTO marketing_posts (id, post, auto_day) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING', [post.id, JSON.stringify(post), c.date]);
-    await sql(env, "DELETE FROM marketing_settings WHERE k = 'autopilot_lock'");
-    await log(env, post.id, 'autopilot_idea', post.info.title);
-    return 'generated';
-  } catch (e) { await log(env, '-', 'autopilot_failed', e.message); return 'failed: ' + e.message.slice(0, 200); }
+    const r = await generate(env, now, c.date, async () => {
+      // writing takes a while: the owner may have approved something meanwhile, or the cutoff passed
+      const later = new Date(Math.max(Date.now(), now.getTime())), again = decide(clock(later), await today(env, c.date), later);
+      return again === 'generate' ? '' : again;
+    });
+    return r.skipped || 'generated';
+  } catch (e) { return 'failed: ' + e.message.slice(0, 200); }
 }

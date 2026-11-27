@@ -4,6 +4,7 @@
 - Zero paid video, voice, music or publishing services. Music is generated in code (`music.py`), so there is no track licence to follow.
 - 25-35 s per video; opening line scores 75+ in `ig-reel/hookscore.py`. Voice stays Kokoro `af_heart`, speed 1.05.
 - Autopilot (`functions/_autopilot.js`): Tue/Thu/Sat from 06:00 Beirut one new reel, waiting for approval by 08:00; declined or failed to render = a new one 2 h later, until a post holds today's slot or 19:00. Sun/Mon/Wed/Fri: no ideas, no scheduled publishing; only owner actions run. The publisher tick still runs to finish an in-flight "Publish now"; the render timer renders only what a person queued.
+- No repeats: each idea is checked against all queue posts and the Instagram page (text and meaning) before it is queued.
 - Tue, Thu, Sat 19:00 `Asia/Beirut`. Owner approval in HQ; any edit clears it.
 - Video is deleted on publish or decline. Nothing renders on a Mac.
 - Topics: the company, agents already built, ideas we can build at zero paid cost. No WhatsApp. Posts never mention free, cost or pricing (`lint` in `functions/_marketing.js` blocks it on seed, edit and approve).

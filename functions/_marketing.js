@@ -124,6 +124,32 @@ export async function edit(env, id, version, input, who) {
   await log(env, id, 'edited', who); return '';
 }
 
+// ── duplicates (text check). `used` holds earlier posts, and page posts as {page: true, caption}. ──
+const STOP = new Set('a an the and or of to in on is it you your we our for with that this who are be can no not never one get just here want comment words word agent agents vagent send details'.split(' '));
+const words = (s) => new Set(String(s || '').toLowerCase().match(/[a-z]{3,}/g)?.filter((w) => !STOP.has(w)).map((w) => w.replace(/s$/, '')) || []);
+export const alike = (a, b) => { const x = words(a), y = words(b), both = [...x].filter((w) => y.has(w)).length; return both / (x.size + y.size - both || 1); };
+const said = (p) => (p.scenes || []).map((s) => s.say).join(' ');
+const body = (c) => String(c || '').split('\n').filter((l) => !/^\s*(#|comment\b)/i.test(l)).join('\n');
+// Why the post repeats an earlier one, or ''.
+export function repeats(p, used) {
+  const first = p.scenes[0].say;
+  for (const o of used) {
+    if (o.id && o.id === p.id) continue;
+    const name = `"${o.info?.title || body(o.caption).split('\n')[0].slice(0, 80)}"`;
+    if (o.page) {
+      if (new RegExp(`comment\\b[^\\n]{0,24}\\b${p.keyword}\\b`, 'iu').test(o.caption)) return `The keyword ${p.keyword} is already used on the Instagram page`;
+      if (alike(first, body(o.caption).split('\n')[0]) >= .4 || alike(body(p.caption), body(o.caption)) >= .3) return `It repeats the page post ${name}`;
+      continue;
+    }
+    if (o.keyword === p.keyword) return `The keyword ${p.keyword} is already used`;
+    if (alike(first, o.scenes?.[0]?.say) >= .4) return `The first line is too close to the one in ${name}`;
+    if (alike(p.info.title, o.info?.title) >= .5 || alike(`${p.info.title} ${p.info.summary}`, `${o.info?.title || ''} ${o.info?.summary || ''}`) >= .35) return `The topic repeats ${name}`;
+    if (alike(said(p), said(o)) >= .3) return `The script repeats ${name}`;
+    if (alike(body(p.caption), body(o.caption)) >= .35) return `The caption repeats ${name}`;
+  }
+  return '';
+}
+
 // No two videos share a world, and no two live ones share a keyword (the auto-reply maps keyword -> video).
 async function taken(env, p) {
   const [hit] = await sql(env, `SELECT id FROM marketing_posts WHERE id <> $1 AND (post->'direction'->>'world' = $2 OR (status <> 'declined' AND post->>'keyword' = $3)) LIMIT 1`, [p.id, p.direction.world, p.keyword]);
@@ -153,11 +179,13 @@ export async function retry(env, id, version, who) {
 }
 export async function seed(env, posts) {
   // one lookup for all known ids: a request has a limited number of database calls and drafts keep piling up
-  const have = new Set((await states(env)).map((r) => r.id));
+  const rows = await sql(env, 'SELECT id, post FROM marketing_posts');
+  const have = new Set(rows.map((r) => r.id)), used = rows.map((r) => r.post).filter(Boolean);
   for (let p of posts) {
     if (p?.id && p.scenes && !p.direction) p = { ...p, direction: autoDirection(p) };
     if (p?.id && have.has(String(p.id))) continue;
-    const err = lint(p) || await taken(env, p);
+    const err = lint(p) || repeats(p, used) || await taken(env, p);
+    if (!err) used.push(p);
     if (err) { await log(env, String(p?.id), 'rejected_seed', err); continue; }
     await sql(env, 'INSERT INTO marketing_posts (id, post) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING', [p.id, JSON.stringify(clean(p))]);
   }

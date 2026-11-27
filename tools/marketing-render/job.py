@@ -43,8 +43,9 @@ def main():
             if attempt == 19:
                 raise RuntimeError("HQ is still running old code: deploy the site first")
             time.sleep(15)
-        n = len(hq({"action": "queue"})["posts"])
-        print("queued:", n)
+        queued = hq({"action": "queue"})["posts"]
+        n = len(queued)
+        print("queued:", n, *[p["id"] for p in queued])
         with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
             fh.write(f"queued={n}\n")
         return

@@ -13,7 +13,8 @@ Ends at the review queue. Never approve, publish, "Publish now" or turn Dry Run 
 3. GitHub Actions `marketing-render` seeds each draft (`rendering`), renders it (Kokoro `af_heart`, sound effects, pixel pet, world; 1080x1920), runs QA and uploads it (`review` = Waiting for approval). Do not render full videos on the Mac.
 4. `node .claude/skills/reel-render-and-cleanup/reel.mjs wait <id> ...` (run it again if still `rendering`; GitHub can be slow).
 5. On `failed` or no progress: `gh run list --workflow marketing-render.yml -L 3`, `gh run view <run> --log-failed | tail -40`. Fix the draft or world, push, and ask the owner to press "Render again". A draft that already seeded does not reseed: scene or caption edits go through HQ.
-6. `not in queue` after a successful run = HQ rejected the seed (invalid, or keyword/world taken).
+6. `not in queue` after a successful run = HQ rejected the seed (invalid, a duplicate of an earlier post, or keyword/world taken).
+7. Ideas from `scripts/generate-reels.mjs` are already queued: the render timer (about every 15 min, often later) or a push under `tools/marketing-render/` renders them.
 
 ## Cleanup
 | When | Server (automatic, in `functions/`) | This Mac |
