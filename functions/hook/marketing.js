@@ -1,6 +1,7 @@
 import { json, bad, body } from '../_lib.js';
 import * as mk from '../_marketing.js';
 import { tick } from '../_publish.js';
+import { clock } from '../_autopilot.js';
 
 // POST /hook/marketing
 //  - n8n publisher: header X-VAgent-Secret, {action:"tick"}
@@ -27,7 +28,8 @@ export async function onRequestPost({ request, env }) {
     return err ? bad(err, 409) : json({ ok: true });
   }
   const b = await body(request);
-  if (b.action === 'seed') { const posts = Array.isArray(b.posts) ? b.posts.slice(0, 1000) : []; await mk.seed(env, posts); await mk.relook(env, b.look, posts); return json({ ok: true, sync: 2 }); }
+  if (b.action === 'seed') { const posts = Array.isArray(b.posts) ? b.posts.slice(0, 1000) : []; // a timer run on an idle day changes nothing; a push or manual run does
+    if (!b.timer || clock().active) { await mk.seed(env, posts); await mk.relook(env, b.look, posts); } return json({ ok: true, sync: 2 }); }
   if (b.action === 'queue') return json({ posts: await mk.queue(env), chunk: mk.CHUNK });
   if (b.action === 'complete') { const err = await mk.complete(env, b.id, b.version, String(b.sha), b.size); return err ? bad(err, 409) : json({ ok: true }); }
   if (b.action === 'fail') { await mk.renderFailed(env, b.id, b.version, b.why); return json({ ok: true }); }

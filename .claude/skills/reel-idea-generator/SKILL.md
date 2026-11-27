@@ -1,11 +1,14 @@
 ---
 name: reel-idea-generator
-description: Generate fresh, non-duplicate 9:16 Instagram Reel drafts for VAgent (@v_agent961) in the format the renderer reads. Use when asked for new reel ideas, new marketing videos, to refill the review queue, or when run on a schedule before a Tuesday, Thursday or Saturday review.
+description: Generate fresh, non-duplicate 9:16 Instagram Reel drafts for VAgent (@v_agent961) in the format the renderer reads. Use when asked for new reel ideas, new marketing videos, to refill the review queue, or to change the automatic Tue/Thu/Sat schedule.
 ---
 
 # reel-idea-generator
 
 Writes drafts only. Never publishes, approves, declines or changes Dry Run. Instagram only.
+
+## Schedule (automatic, no Claude session needed)
+`functions/_autopilot.js`, driven by the n8n publisher tick, writes the scheduled reels with the office AI. Tue/Thu/Sat Beirut from 06:00 (waiting for approval by 08:00); a declined or failed one is replaced 2 hours later until a post holds that day's 19:00 slot or it is 19:00. Sun/Mon/Wed/Fri: nothing. Its videos use generated worlds. This skill is for **manual** requests (hand-made worlds); do not schedule it as well.
 
 ## Run (no questions needed)
 1. Read `marketing/voice.md`, `marketing/video-craft.md`, `marketing/ideas.md`.

@@ -38,7 +38,7 @@ def main():
     if sys.argv[1] == "check":
         posts = [json.loads(f.read_text()) for f in sorted((Path(__file__).parent / "posts").glob("*.json"))]
         for attempt in range(20):  # a push can arrive before the new site code is live everywhere: wait for it
-            if hq({"action": "seed", "posts": posts, "look": LOOK}).get("sync") == 2:
+            if hq({"action": "seed", "posts": posts, "look": LOOK, "timer": os.environ.get("GITHUB_EVENT_NAME") == "schedule"}).get("sync") == 2:
                 break
             if attempt == 19:
                 raise RuntimeError("HQ is still running old code: deploy the site first")

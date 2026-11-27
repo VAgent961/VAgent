@@ -4,6 +4,7 @@
 import { sql } from './_lib.js';
 import { setting, setSetting, log, digest, dropMedia, mediaSig, sweepMedia, SITE, KEEP } from './_marketing.js';
 import * as ig from './_instagram.js';
+import { autopilot, clock } from './_autopilot.js';
 
 export const connected = async (env) => !!(await setting(env, 'ig_token'));
 export const dryRun = async (env) => (await setting(env, 'dry_run')) !== 'off';
@@ -113,11 +114,12 @@ export async function publishNow(env, id, version, confirm, who) {
   return { notice: result === 'published' ? 'Published.' : 'Publishing started. It goes live once the video is processed, usually within 5 to 10 minutes.' };
 }
 
-// Called every few minutes by n8n.
-export async function tick(env) {
-  await setSetting(env, 'last_tick', new Date().toISOString());
-  await ig.maintain(env);
-  const out = [], live = await isLive(env);
+// Called every few minutes by n8n. Outside Tue/Thu/Sat (Beirut) it only finishes a publish already in flight
+// (started by "Publish now", or processing past midnight).
+export async function tick(env, now = new Date()) {
+  await setSetting(env, 'last_tick', now.toISOString());
+  const out = [], live = await isLive(env), { active } = clock(now);
+  if (active) await ig.maintain(env);
   // 1) in flight: poll Instagram
   for (const row of await sql(env, "SELECT * FROM marketing_posts WHERE status = 'publishing'")) {
     const s = row.pub.instagram, age = Date.now() - Date.parse(s?.at || row.updated_at);
@@ -126,6 +128,7 @@ export async function tick(env) {
     } else if ((!s || ['starting', 'publishing'].includes(s.state)) && age > 6e5) await failOn(env, row.id, 'Unclear result: check Instagram before retrying');
     const end = await settle(env, row.id); if (end) out.push({ id: row.id, result: end });
   }
+  if (!active) { await sweepMedia(env); return { live, idle: true, posts: out }; }
   // 2) a live slot that passed more than 6 hours ago is not published late: back to review
   if (live) for (const row of await sql(env, "SELECT id FROM marketing_posts WHERE status = 'scheduled' AND slot < now() - interval '6 hours'")) {
     if ((await sql(env, "UPDATE marketing_posts SET status = 'review', slot = NULL, approved_hash = NULL, dry_run_at = NULL, error = 'Slot missed: approve again', updated_at = now() WHERE id = $1 AND status = 'scheduled' RETURNING id", [row.id])).length) await log(env, row.id, 'slot_missed');
@@ -143,6 +146,8 @@ export async function tick(env) {
     if (!row) continue;
     out.push({ id: row.id, result: await launch(env, row, live) });
   }
+  // 4) tomorrow's content is today's job: write or replace the reel when the schedule asks for it
+  const auto = await autopilot(env, now);
   await sweepMedia(env);
-  return { live, posts: out };
+  return { live, autopilot: auto, posts: out };
 }

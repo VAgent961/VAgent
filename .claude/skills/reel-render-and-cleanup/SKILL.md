@@ -28,4 +28,5 @@ Ends at the review queue. Never approve, publish, "Publish now" or turn Dry Run 
 - Mac files are removed only when `clean` runs; the website cannot reach the Mac.
 
 ## Review days
-Owners review Tuesday, Thursday and Saturday (or any time). Approving takes the next free Tue/Thu/Sat 19:00 Beirut slot, so run the two skills the day before.
+Scheduled reels come from `functions/_autopilot.js` (see `reel-idea-generator`). Approving takes the next free Tue/Thu/Sat 19:00 Beirut slot (today's, if free and before 19:00). Scheduled publishing runs only on those days; "Publish now" works any day.
+`scripts/install-reel-cleanup.sh` runs `reel.mjs clean` on this Mac Tue/Thu/Sat 10:00 and 21:00.

@@ -15,6 +15,7 @@ const UPGRADE = [
   `UPDATE marketing_posts SET status = 'review', targets = NULL, slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, updated_at = now() WHERE status = 'scheduled' AND ${NOT_IG}`,
   `UPDATE marketing_posts SET status = 'failed', targets = NULL, error = 'Not approved for Instagram: approve again', updated_at = now() WHERE status = 'publishing' AND ${NOT_IG}`,
   "UPDATE marketing_posts SET status = 'published', video_sha = NULL, error = NULL, updated_at = now() WHERE status IN ('failed', 'review', 'scheduled') AND pub->'instagram'->>'state' = 'published'",
+  "ALTER TABLE marketing_posts ADD COLUMN IF NOT EXISTS auto_day date", // set on posts the autopilot wrote
   "DELETE FROM marketing_media WHERE post_id IN (SELECT id FROM marketing_posts WHERE status = 'published')",
   "DELETE FROM marketing_settings WHERE left(k, 3) = 'tt_'", // its saved keys, tokens and options
 ];
@@ -90,13 +91,13 @@ export async function reschedule(env, id, version, at, who) {
   let r;
   try {
     r = await sql(env, `UPDATE marketing_posts SET slot = $3::timestamp AT TIME ZONE 'Asia/Beirut', dry_run_at = NULL, ${KEEP}, updated_at = now()
-      WHERE id = $1 AND version = $2 AND status = 'scheduled' AND $3::timestamp AT TIME ZONE 'Asia/Beirut' > now() RETURNING id`, [id, version, at]);
+      WHERE id = $1 AND version = $2 AND status = 'scheduled' AND $3::timestamp AT TIME ZONE 'Asia/Beirut' > now() AND extract(isodow FROM $3::timestamp) IN (2, 4, 6) RETURNING id`, [id, version, at]);
   } catch (e) {
     if (e.message.includes('marketing_slot')) return 'Another post already has that time.';
     if (/out of range/.test(e.message)) return 'That date does not exist.';
     throw e;
   }
-  if (!r.length) return 'Choose a time in the future. If it is, this post changed: reload first.';
+  if (!r.length) return 'Choose a future Tuesday, Thursday or Saturday. If it is one, this post changed: reload first.';
   await log(env, id, 'rescheduled', `${at} ${who}`); return '';
 }
 // After a failed publish: back to review with the video kept. Needs a new approval.
@@ -115,7 +116,7 @@ export async function edit(env, id, version, input, who) {
   const post = clean(next);
   const redo = !row.video_sha || row.status === 'failed' || JSON.stringify(post.scenes) !== JSON.stringify(clean(row.post).scenes);
   if (!redo && JSON.stringify(post) === JSON.stringify(clean(row.post))) return '';
-  const r = await sql(env, `UPDATE marketing_posts SET post = $3, version = version + 1, status = $4, slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, ig_container_id = NULL, publish_started_at = NULL, error = NULL, attempts = 0, ${KEEP},
+  const r = await sql(env, `UPDATE marketing_posts SET post = $3, version = version + 1, status = $4, slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, ig_container_id = NULL, publish_started_at = NULL, error = NULL, attempts = 0, auto_day = NULL, ${KEEP},
       video_sha = CASE WHEN $5 THEN NULL ELSE video_sha END, updated_at = now() WHERE id = $1 AND version = $2 AND status = $6 RETURNING version`,
   [id, row.version, JSON.stringify(post), redo ? 'rendering' : 'review', redo, row.status]);
   if (!r.length) return 'This post changed. Reload first.';
@@ -146,7 +147,7 @@ function heal(row, draft) {
 const OPEN = "(status IN ('rendering', 'review', 'scheduled') OR (status = 'failed' AND video_sha IS NULL AND publish_started_at IS NULL))";
 const RESET = "version = version + 1, status = 'rendering', slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, ig_container_id = NULL, publish_started_at = NULL, error = NULL, attempts = 0, video_sha = NULL, updated_at = now(), pub = COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(pub) WHERE value->>'state' = 'published'), '{}'::jsonb)";
 export async function retry(env, id, version, who) {
-  const r = await sql(env, `UPDATE marketing_posts SET ${RESET} WHERE id = $1 AND version = $2 AND status = 'failed' AND ${OPEN} RETURNING id`, [id, version]);
+  const r = await sql(env, `UPDATE marketing_posts SET ${RESET}, auto_day = NULL WHERE id = $1 AND version = $2 AND status = 'failed' AND ${OPEN} RETURNING id`, [id, version]);
   if (!r.length) return 'This post cannot be rendered again. Reload first.';
   await dropMedia(env, id); await log(env, id, 'retry', who); return '';
 }
@@ -175,7 +176,7 @@ export async function relook(env, look, drafts = []) {
   }
   if (changed) await setSetting(env, 'look', look);
 }
-export const queue = (env) => sql(env, "SELECT id, version, post FROM marketing_posts WHERE status = 'rendering' ORDER BY created_at, id LIMIT 10");
+export const queue = (env) => sql(env, "SELECT id, version, post FROM marketing_posts WHERE status = 'rendering' AND (auto_day IS NULL OR now() < (auto_day + time '19:00') AT TIME ZONE 'Asia/Beirut') ORDER BY created_at, id LIMIT 10");
 export async function putChunk(env, id, version, n, bytes) {
   if (!bytes.length || bytes.length > CHUNK || !(n >= 0 && n < 40)) return 'Bad chunk';
   let s = ''; for (let i = 0; i < bytes.length; i += 32768) s += String.fromCharCode(...bytes.subarray(i, i + 32768));

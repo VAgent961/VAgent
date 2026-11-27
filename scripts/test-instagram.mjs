@@ -35,6 +35,7 @@ globalThis.fetch = async (url, o = {}) => {
   if (path.endsWith('/media_publish')) return reply({ id: 'M1' });
   return reply({ error: { code: 100, message: 'unknown ' + path } }, 400);
 };
+const TUE = new Date('2026-12-01T03:00:00Z'); // 05:00 Beirut: an active day, before the autopilot starts
 const post = { caption: 'Hi', hashtags: [] };
 const fresh = async () => { row = { id: 'p', post, version: 1, status: 'scheduled', slot: new Date().toISOString(), pub: {}, video_sha: 'x' }; row.approved_hash = await digest(row); };
 for (const [tok, host, id] of [['EAAtest', 'graph.facebook.com', ID], ['IGtest', 'graph.instagram.com', '555']]) {
@@ -42,8 +43,8 @@ for (const [tok, host, id] of [['EAAtest', 'graph.facebook.com', ID], ['IGtest',
   calls.length = 0; await pub.connectInstagram(env, tok, '', 'o');
   assert.equal((await ig.user(env)).id, id); assert.equal((await ig.check(env)).ok, true);
   // Dry Run is on after connecting: nothing is sent
-  await fresh(); const n = calls.length; assert.equal((await pub.tick(env)).posts[0].result, 'dry_run'); assert.equal(calls.length, n); assert.equal(row.video_sha, 'x');
-  await pub.setDryRun(env, false, 'PUBLISH', 'o'); await fresh(); await pub.tick(env); await pub.tick(env);
+  await fresh(); const n = calls.length; assert.equal((await pub.tick(env, TUE)).posts[0].result, 'dry_run'); assert.equal(calls.length, n); assert.equal(row.video_sha, 'x');
+  await pub.setDryRun(env, false, 'PUBLISH', 'o'); await fresh(); await pub.tick(env, TUE); await pub.tick(env, TUE);
   assert.equal(row.status, 'published'); assert.equal(row.video_sha, null);
   assert.ok(calls.every((c) => c.host === host)); assert.ok(calls.some((c) => c.path === `${id}/media` && c.type === 'REELS')); assert.ok(calls.some((c) => c.path === `${id}/media_publish`));
 }
@@ -53,7 +54,7 @@ assert.match((await pub.publishNow(env, 'p', 1, 'PUBLISH', 'o')).notice, /Dry ru
 assert.equal(calls.length, before); assert.equal(row.status, 'scheduled'); assert.equal(row.slot, slot); assert.equal(row.video_sha, 'x'); assert.equal(row.pub.instagram.state, 'dry_run');
 await pub.setDryRun(env, false, 'PUBLISH', 'o');
 assert.match((await pub.publishNow(env, 'p', 1, '', 'o')).error, /confirm/); assert.equal(calls.length, before);
-assert.match((await pub.publishNow(env, 'p', 1, 'PUBLISH', 'o')).notice, /started/); await pub.tick(env);
+assert.match((await pub.publishNow(env, 'p', 1, 'PUBLISH', 'o')).notice, /started/); await pub.tick(env, TUE);
 assert.equal(row.status, 'published'); assert.equal(row.video_sha, null); assert.ok((await pub.publishNow(env, 'p', 1, 'PUBLISH', 'o')).error);
 assert.equal(calls.slice(before).filter((c) => c.path.endsWith('/media_publish')).length, 1);
 pages = []; await ig.connect(env, ' EAAdirect\n', '', 'o'); assert.equal((await ig.user(env)).id, ID); assert.equal(settings.ig_expires, 'never');
