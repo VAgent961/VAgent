@@ -7,5 +7,5 @@ cd "$(dirname "$0")/.." && D=$(mktemp -d) && mkdir -p $D/public
 cp index.html office.html call.html admin-voice.html marketing.html *.png favicon.ico $D/public/ && cp -R assets _headers $D/public/ && cp -R functions $D/
 # the zone caches /assets for 4 hours in browsers: a content hash in the URL makes a release show at once
 for f in marketing.js marketing.css; do sed -i '' "s|/assets/$f\"|/assets/$f?v=$(shasum assets/$f | cut -c1-8)\"|" $D/public/marketing.html; done
-for f in office.js office.css research.js research.css; do sed -i '' "s|/assets/$f\"|/assets/$f?v=$(shasum assets/$f | cut -c1-8)\"|" $D/public/office.html; done
+for f in office.js office.css approvals.js netlify.js research.js research.css; do sed -i '' "s|/assets/$f\"|/assets/$f?v=$(shasum assets/$f | cut -c1-8)\"|" $D/public/office.html; done
 cd $D && npx --yes wrangler@3 pages deploy public --project-name vagent --branch main --commit-dirty=true 2>&1 | grep -E "Deployment complete|https://|rror" ; rm -rf $D

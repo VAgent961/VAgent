@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>VAgent · Sign in</title>
   <meta name="robots" content="noindex">
-  <link rel="icon" type="image/svg+xml" href="assets/brand/favicon.svg">
-  <link rel="icon" href="favicon.ico" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="icon" type="image/svg+xml" href="/assets/brand/favicon.svg">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0B0D12">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -132,7 +132,7 @@
 <body>
   <div class="root">
       <div class="art">
-        <img class="lockup" src="assets/brand/lockup-dark.svg" alt="VAgent">
+        <img class="lockup" src="/assets/brand/lockup-dark.svg" alt="VAgent">
         <svg class="mascot" role="img" aria-label="A friendly assistant and a small robot agent waving hello" viewBox="50 34 316 250">
           <g class="c-a">
             <path d="M70 250 C70 170 100 120 150 120 C200 120 230 170 230 250 Z" fill="#B5532F"/>
@@ -203,8 +203,8 @@
       eye.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
       eye.classList.toggle('on', show);
     });
-    // Sent here from /office with a marketing-only session: say why, and offer both ways out.
-    if (new URLSearchParams(location.search).get('switch') === 'owner') {
+    // The server marks the page when only a marketing session exists: say why, and offer both ways out.
+    if ('marketing' in document.body.dataset) {
       document.getElementById('intro').textContent = 'You are signed in to marketing only. Sign in with an owner account to open the office.';
       document.getElementById('intro').className = 'on';
       document.getElementById('switch').hidden = false;
@@ -227,9 +227,9 @@
       }
       busy(true);
       try {
-        const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, remember: form.remember.checked }) });
+        const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, remember: form.remember.checked, scope: 'owner' }) });
         const d = await r.json().catch(() => ({}));
-        if (r.ok && d.ok) { location.href = d.next || '/office'; return; }
+        if (r.ok && d.ok) { location.replace('/office'); return; }
         msg.textContent = d.error || 'Something went wrong. Try again.';
       } catch { msg.textContent = 'No connection. Check your internet and try again.'; }
       busy(false);

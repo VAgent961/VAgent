@@ -46,6 +46,13 @@ async function clientHost({ env, request, next }, host, path) {
   return page(env, request, '/call');   // call.html finds its business with /api/public-business?host=<this host>
 }
 
+// The owner sign-in, served in place (no redirect), so /office keeps its address and opens right after login.
+async function signIn(env, request, marketing) {
+  const r = await env.ASSETS.fetch(new Request(new URL('/', request.url).toString()));
+  const html = await r.text(), h = new Headers({ 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+  return new Response(marketing ? html.replace('<body>', '<body data-marketing>') : html, { status: r.status, headers: h });
+}
+
 // The company HQ: guards /office and /api/* (sets data.owner); signed-in owners skip the sign-in page.
 async function mainSite({ request, env, next, data }, host, path) {
   if (path.startsWith('/api/client/')) return isDev(host) ? next() : notFound();   // the client portal API exists only on adminvoice.vagent.online
@@ -57,13 +64,13 @@ async function mainSite({ request, env, next, data }, host, path) {
   if (!isOffice && !isLogin && !isApi && !isMarketing) return next();
   let session = await readSession(env, request);
   if (session?.s === 'mk' && session.e !== env.MARKETING_EMAIL?.toLowerCase()) session = null; // account removed or changed
-  if (session?.s === 'mk') { // marketing only: no office, no other API. "/" stays open so an owner can sign in over it.
-    if (isOffice) return Response.redirect(new URL('/?switch=owner', request.url).toString(), 302);
+  if (session?.s === 'mk') { // marketing only: no office, no other API. /office and / show the owner sign-in.
+    if (isOffice) return signIn(env, request, true);
     if (isApi && path !== '/api/marketing') return json({ error: 'Not allowed.' }, 403);
     data.owner = session.e; data.role = 'marketing'; data.access_depts = [];
   }
   if (isApi && !session) return json({ error: 'Please sign in again.' }, 401);
-  if (isOffice && !session) return Response.redirect(new URL('/', request.url).toString(), 302);
+  if (isOffice && !session) return signIn(env, request, false);
   if (isLogin && session && session.s !== 'mk') return Response.redirect(new URL('/office', request.url).toString(), 302);
   if (session && session.s !== 'mk') {
     data.owner = session.e;
@@ -74,6 +81,7 @@ async function mainSite({ request, env, next, data }, host, path) {
       data.access_depts = txt ? txt.split(',').map(Number).filter(Boolean) : [];
     } catch { data.role = 'owner'; data.access_depts = []; }
   }
+  if (isLogin && session?.s === 'mk') return signIn(env, request, true);
   const res = await next();
   const out = new Response(res.body, res);
   out.headers.set('Cache-Control', 'no-store');

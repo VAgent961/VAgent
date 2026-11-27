@@ -57,7 +57,7 @@
     loading = true; polled = Date.now();
     try {
       const r = await fetch('/api/netlify', { signal: AbortSignal.timeout(25000) });
-      if (r.status === 401) { location.href = '/'; return; }
+      if (r.status === 401) { location.replace('/office'); return; }
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Something went wrong.');
       data = j; failed = '';
@@ -70,7 +70,7 @@
     busy = id; note = null; render();
     try {
       const r = await fetch('/api/netlify', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ account: s.account, site_id: id, name: s.name }), signal: AbortSignal.timeout(90000) });
-      if (r.status === 401) { location.href = '/'; return; }
+      if (r.status === 401) { location.replace('/office'); return; }
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Something went wrong.');
       gone.add(id); note = { ok: true, text: j.already_gone ? s.name + ' was already gone from Netlify.' : 'Deleted ' + s.name + '.' };

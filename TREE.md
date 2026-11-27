@@ -61,7 +61,7 @@
 - `functions/api/daily.js` — GET /api/daily → last 30 reports (owner session). Office: 📋 button in the top bar → `openDaily()` drawer.
 - `functions/_lib.js` — sql() over Neon HTTPS, password check, signed session cookie, AES-GCM encrypt/decrypt, json().
 - `functions/_n8n.js` — n8n helpers: instances(), call(), workflow summaries (cached in DB 2 min), classify status.
-- `functions/_middleware.js` — guards /office and /api/* (sets `data.owner`); signed-in owners skip sign-in page. Marketing session: `/office` -> `/?switch=owner` (sign-in notice + marketing sign-out), `/` stays open. Sign out is always a POST form (`/api/logout` has no GET).
+- `functions/_middleware.js` — guards /office and /api/* (sets `data.owner`); signed-in owners skip sign-in page. Without an owner session `/office` (and `/` for marketing) serves the sign-in in place (marketing: notice + sign-out). `index.html` sends `scope:'owner'` to login, so an email that is also the marketing account gets an owner session; `/marketing` sign-in tries marketing first. Sign out is always a POST form (`/api/logout` has no GET).
 - `functions/api/login.js` · `logout.js` — sign in/out.
 - `functions/api/me.js` — GET current owner.
 - `functions/api/n8n.js` — GET list / POST connect {url (with or without https), key, label?} with friendly errors / DELETE ?id= (n8n instances).

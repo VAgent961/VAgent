@@ -2,7 +2,8 @@ import { sql, checkPassword, makeSession, cookie, json } from '../_lib.js';
 
 const DUMMY = 'pbkdf2$10000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
-// POST /api/login  {email, password, remember}
+// POST /api/login  {email, password, remember, scope}
+// scope 'owner' (the office sign-in) only ever signs in an owner. The same email may also be the marketing account, so the page decides.
 export async function onRequestPost({ request, env }) {
   let body = {};
   try { body = await request.json(); } catch { return json({ error: 'Bad request' }, 400); }
@@ -17,12 +18,15 @@ export async function onRequestPost({ request, env }) {
 
     const days = body.remember ? 30 : 1;
     // The marketing-only account: its email and password hash are Cloudflare settings, never in the repo.
-    if (env.MARKETING_EMAIL && email === env.MARKETING_EMAIL.toLowerCase() && await checkPassword(password, env.MARKETING_PASS_HASH))
+    const office = body.scope === 'owner';
+    const marketing = async () => !!env.MARKETING_EMAIL && email === env.MARKETING_EMAIL.toLowerCase() && await checkPassword(password, env.MARKETING_PASS_HASH);
+    if (!office && await marketing())
       return json({ ok: true, next: '/marketing' }, 200, { 'Set-Cookie': cookie(await makeSession(env, email, days, 'mk'), days * 86400) });
     const [owner] = await sql(env, 'SELECT email, pass_hash FROM vagent_owners WHERE email = $1', [email]);
     const ok = await checkPassword(password, owner ? owner.pass_hash : DUMMY) && !!owner;
     if (!ok) {
       await sql(env, 'INSERT INTO vagent_login_fails (email) VALUES ($1)', [email]);
+      if (office && await marketing()) return json({ error: 'That is the marketing password. Use your owner password to open the office.' }, 401);
       return json({ error: 'Wrong email or password.' }, 401);
     }
     await sql(env, 'UPDATE vagent_owners SET last_login = now() WHERE email = $1', [email]);

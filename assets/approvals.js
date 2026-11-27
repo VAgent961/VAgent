@@ -9,7 +9,7 @@
 
   async function request(opt) {
     const r = await fetch('/api/approvals', { signal: AbortSignal.timeout(40000), ...opt });
-    if (r.status === 401) { location.href = '/'; throw new Error('Signed out'); }
+    if (r.status === 401) { location.replace('/office'); throw new Error('Signed out'); }
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw Object.assign(new Error(j.error || 'Something went wrong'), { status: r.status });
     return j;

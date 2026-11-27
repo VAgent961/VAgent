@@ -24,8 +24,9 @@
 
   async function api(path, opt = {}) {
     const r = await fetch('/api/' + path + (opt.query ? '?' + opt.query : ''), { method: opt.method || (opt.body ? 'POST' : 'GET'), headers: opt.body ? { 'Content-Type': 'application/json' } : {}, body: opt.body ? JSON.stringify(opt.body) : undefined });
-    if (r.status === 401) { location.href = '/'; throw new Error('Signed out'); }
+    if (r.status === 401) { location.replace('/office'); throw new Error('Signed out'); }
     const j = await r.json().catch(() => ({}));
+    if (r.status === 403 && j.error === 'Not allowed.' && path === 'office') location.replace('/office'); // the cookie became marketing-only in another tab
     if (!r.ok) throw new Error(j.error || 'Something went wrong');
     return j;
   }
