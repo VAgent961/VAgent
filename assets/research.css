@@ -1,0 +1,28 @@
+/* Sniper research buttons (assets/research.js) */
+.vr{display:flex;flex-direction:column;gap:10px;min-width:0;flex:none}
+.vr-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.vr-actions .pick{min-height:46px;padding:6px 10px;font-size:13px;line-height:1.25}
+.vr-actions .pick[aria-pressed=true]{background:var(--clay);border-color:var(--clay);color:#fff}
+.vr-panel,.vr-card{display:flex;flex-direction:column;gap:10px;min-width:0}
+.vr-card,.vr-lead{border:1px solid var(--line2);border-radius:12px;background:var(--card);padding:12px}
+.vr-lead{display:flex;flex-direction:column;gap:8px;font-size:13px;min-width:0}
+.vr p{margin:0;font-size:13px;line-height:1.5;overflow-wrap:anywhere}.vr small{color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.vr details{font-size:13px}.vr details>*+*{margin-top:8px}.vr summary{cursor:pointer;min-height:32px;display:list-item;line-height:32px}
+.vr-f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}.vr-f .input{color:var(--ink)}
+.vr textarea.input{resize:vertical;line-height:1.45;font-family:inherit}.vr-doc{font-size:12.5px}
+.vr-two{display:grid;grid-template-columns:2fr 1fr;gap:8px}
+.vr-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.vr-top{justify-content:space-between}
+.vr .btn{flex:0 0 auto;max-width:100%;white-space:normal;text-align:center;line-height:1.25;padding-block:8px}.vr .btn:disabled{opacity:.5;cursor:default}
+.vr .btn.vr-sm{min-height:36px;font-size:12.5px;padding:4px 12px}
+.vr-sum{display:flex;flex-direction:column;gap:2px}
+.vr-lead header{display:flex;gap:10px;align-items:center}.vr-lead header div{display:flex;flex-direction:column;min-width:0;overflow-wrap:anywhere}
+.vr-score{flex:none;width:52px;height:52px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:600;font-size:18px;background:var(--sand);border:1px solid var(--line2)}
+.vr-score.Hot{border-color:var(--clay);background:var(--clay);color:#fff}.vr-score.Hot small{color:#fff}.vr-score.Warm{border-color:#D98E04}.vr-score small{font-size:10px;font-weight:500}
+.vr-findings{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.vr-findings li{display:flex;flex-direction:column;gap:3px;border-left:3px solid var(--clay);padding-left:10px;font-size:13px;overflow-wrap:anywhere}
+.vr-findings q{color:var(--muted);font-style:italic}
+.vr-dl{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:6px}.vr-dl div{background:var(--sand);border-radius:8px;padding:6px 10px}.vr-dl dt{font-size:11px;color:var(--muted)}.vr-dl dd{margin:0}
+.vr-text{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;font-family:inherit;font-size:13px;line-height:1.5;background:var(--sand);border-radius:8px;padding:10px}
+.vr-busy{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--clay2)}
+.vr .vr-err{color:var(--bad)}.vr .vr-warn{color:#F5B544}
+.vr .btn.primary{width:auto;padding:8px 14px}

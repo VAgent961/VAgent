@@ -22,3 +22,7 @@ Company site for VAgent (owners: Hassan, Fayez, Boudy). Sign-in page + a live is
 - Brand: cream #FAF9F5 / #F3F1EA, ink #141413, terracotta #B5532F (hover #9A4527), Newsreader headings, Inter text.
 - **Brand logo (locked):** the ONLY official VAgent mark is the "node tile" in `assets/brand/`: `mark.svg` (light surfaces), `mark-dark.svg` (dark surfaces), `mark-mono.svg` / `mark-mono-white.svg` (one colour), `lockup*.svg` (mark + VAgent wordmark, same four variants), `favicon.svg`, `app-icon.svg`; root rasters `favicon.ico`, `favicon-32x32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png` (rendered from them). Use only these files on every page, component, host and email. Never redraw, recolour, restyle or add another logo or stand-in glyph; no old logo (teal tile) anywhere.
 - Deploy = `./scripts/deploy.sh`, then `git push`. A push to `main` is a release.
+
+## Prospect research (`/sniper-research`)
+- `/sniper-research <niche in place>` (batch CSV) or `<company|URL>` (deep audit); flow in `.claude/skills/sniper-research/SKILL.md`.
+- Sales voice: `.claude/shared/voice-profile.md`. Outreach is draft only, never auto-sent. Output goes to `leads/` (never commit it).

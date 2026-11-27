@@ -964,7 +964,7 @@
   // Sniper drawers have two tabs: the hunt chat and Instagram Lookup (iglookup.js), which stays out of the chat.
   const IG_INPUT = /^(ig:|@[A-Za-z0-9._]{1,30}$|(https?:\/\/)?(www\.|m\.)?(instagram\.com|instagr\.am)\/)/i;
   const snOpen = (on) => on && D.role !== 'client'
-    ? '<div class="chips sn-tabs" role="tablist"><button class="pick" type="button" role="tab" data-sn-tab="hunt" aria-selected="true" aria-pressed="true">Hunt chat</button><button class="pick" type="button" role="tab" data-sn-tab="ig" aria-selected="false" aria-pressed="false">Instagram Lookup</button></div><div data-sn="hunt" class="sn-panel" role="tabpanel">' : '';
+    ? '<div class="chips sn-tabs" role="tablist"><button class="pick" type="button" role="tab" data-sn-tab="hunt" aria-selected="true" aria-pressed="true">Hunt chat</button><button class="pick" type="button" role="tab" data-sn-tab="ig" aria-selected="false" aria-pressed="false">Instagram Lookup</button></div><div data-sn="hunt" class="sn-panel" role="tabpanel"><div class="vr" data-research></div>' : '';
   const snClose = (on) => on && D.role !== 'client' ? '</div><div data-sn="ig" class="sn-panel" role="tabpanel" hidden></div>' : '';
   const snShow = (tab) => {
     inner.querySelectorAll('[data-sn-tab]').forEach((b) => { const on = b.dataset.snTab === tab; b.setAttribute('aria-selected', on); b.setAttribute('aria-pressed', on); });
@@ -973,6 +973,7 @@
   function snBind(key) {
     const panel = inner.querySelector('[data-sn="ig"]'); if (!panel) return;
     VIgLookup.mount(panel, { api, toast, agent: key });
+    const research = inner.querySelector('[data-research]'); if (research && window.VSniperResearch) VSniperResearch.mount(research, { api, toast });
     inner.querySelectorAll('[data-sn-tab]').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); snShow(b.dataset.snTab); }; });
   }
   document.addEventListener('submit', (e) => { if (e.target && e.target.id === 'f-chat') e.preventDefault(); }, true);
