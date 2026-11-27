@@ -69,6 +69,10 @@
     .remember input:checked{border-color:var(--accent);background-color:var(--accent);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.2 3.2L13 5'/%3E%3C/svg%3E")}
     .submit{height:48px;border:0;border-radius:8px;background:var(--accent);color:#fff;font:inherit;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:background-color .15s,transform .15s}
     .submit:hover{background:var(--accent-hover)}
+    #switch{display:flex;flex-direction:row;flex-wrap:wrap;gap:0 20px;margin-top:4px}
+    #switch[hidden]{display:none}
+    .intro #intro.on{display:block}
+    #switch a,#switch button{min-height:44px;display:inline-flex;align-items:center;padding:0;border:0;background:none;color:var(--ink);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer}
     .submit:active:not(:disabled){transform:translateY(1px)}
     .submit:disabled{background:var(--accent-hover);cursor:wait}
     .spin{display:none;width:16px;height:16px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
@@ -92,7 +96,7 @@
       .intro h1{font-size:30px}
       form{gap:14px}
     }
-    @media (max-height:640px) and (orientation:portrait){
+    @media (max-height:700px) and (orientation:portrait){
       .art{padding-top:14px;padding-bottom:14px;gap:8px}
       .mascot{height:76px}
       .tagline{font-size:20px}
@@ -101,6 +105,10 @@
       .intro p{display:none}
       form{gap:10px}
       .field{gap:4px}
+    }
+    @media (max-width:760px),(max-height:500px){
+      body:has(#intro.on) .mascot,body:has(#intro.on) .tagline{display:none}
+      body:has(#intro.on) #switch{margin:0}
     }
     @media (max-height:500px) and (orientation:landscape){
       :root{--pad:24px}
@@ -112,6 +120,7 @@
       .intro{padding-bottom:0;border-bottom:0}
       .intro h1{font-size:24px}
       .intro p{display:none}
+      .intro:has(#intro.on) h1{display:none}
       form{gap:8px}
       .field{gap:4px}
       .input,.submit{height:44px}
@@ -158,7 +167,8 @@
        <div class="inner">
         <div class="intro">
           <h1>Sign in</h1>
-          <p>Enter your email and password to open the office.</p>
+          <p id="intro">Enter your email and password to open the office.</p>
+          <form id="switch" method="post" action="/api/logout" hidden><a href="/marketing">Back to marketing</a><button type="submit">Sign out of marketing</button></form>
         </div>
         <form id="login" novalidate>
           <div class="field">
@@ -193,6 +203,12 @@
       eye.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
       eye.classList.toggle('on', show);
     });
+    // Sent here from /office with a marketing-only session: say why, and offer both ways out.
+    if (new URLSearchParams(location.search).get('switch') === 'owner') {
+      document.getElementById('intro').textContent = 'You are signed in to marketing only. Sign in with an owner account to open the office.';
+      document.getElementById('intro').className = 'on';
+      document.getElementById('switch').hidden = false;
+    }
     const form = document.getElementById('login'), msg = document.getElementById('msg'), go = document.getElementById('go');
     const label = document.getElementById('label'), fields = [form.email, form.password];
     const busy = (on) => {

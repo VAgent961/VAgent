@@ -10,7 +10,13 @@ const go = async (path, cookie, e = env) => { const data = {}; const res = await
 assert.deepEqual(await go('/marketing'), [200, undefined, null]); assert.equal((await go('/api/marketing'))[0], 401); assert.equal((await go('/office'))[0], 302);
 assert.deepEqual(await go('/api/marketing', ck), [200, 'marketing', null]);
 for (const p of ['/api/office', '/api/act', '/api/accounts', '/api/marketing/x']) assert.equal((await go(p, ck))[0], 403, p);
-for (const p of ['/office', '/office.html', '/']) assert.equal((await go(p, ck))[2], 'https://vagent.online/marketing', p);
+for (const p of ['/office', '/office.html']) assert.equal((await go(p, ck))[2], 'https://vagent.online/?switch=owner', p);
+assert.deepEqual(await go('/', ck), [200, 'marketing', null]); // the owner sign-in stays reachable: no trap
+assert.equal((await go('/office'))[2], 'https://vagent.online/');
+const out = await (await import(R + 'api/logout.js')).onRequestPost({ request: new Request('https://vagent.online/api/logout', { method: 'POST' }) });
+assert.equal(out.headers.get('Location'), '/'); assert.match(out.headers.get('Set-Cookie'), /^va_session=; Path=\/;.*Max-Age=0$/);
+const { readFileSync } = await import('node:fs'), html = readFileSync(new URL('../office.html', import.meta.url), 'utf8');
+assert.ok(!html.includes('href="/api/logout"'), 'logout must be a POST form'); // a GET link never reaches onRequestPost
 assert.equal((await go('/api/marketing', ck, { ...env, MARKETING_EMAIL: 'other@x.test' }))[0], 401);
 const owner = 'va_session=' + await makeSession(env, 'o@x.test', 1); assert.equal((await go('/api/office', owner))[0], 200); assert.equal((await go('/', owner))[2], 'https://vagent.online/office');
 console.log('auth ok');

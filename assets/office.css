@@ -223,7 +223,7 @@ a.btn[aria-disabled]{opacity:.5}
 .agent[data-pose="mug"]{--as:none;--am:inline}
 .agent[data-pose] .props{display:var(--props,inline)}.agent[data-pose="read"],.agent[data-pose="mug"]{--props:none}
 /* phones: the header keeps its title readable; sign-out shrinks to its icon */
-@media (max-width:560px){.top .logo{min-width:0;flex:1}.top .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.top .actions{flex:none;gap:6px}.top .actions a.btn{padding:0 12px;font-size:0!important;gap:0!important}.top .actions .btn.icon{min-width:40px}.top .actions a.btn svg{margin:0}}
+@media (max-width:560px){.top .logo{min-width:0;flex:1}.top .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.top .actions{flex:none;gap:6px}.top .actions a.btn,.top .actions .btn.out{padding:0 12px;font-size:0!important;gap:0!important}.top .actions .btn.icon{min-width:40px}.top .actions a.btn svg,.top .actions .btn.out svg{margin:0}}
 
 /* walking: the body stops breathing; legs and bob are driven per frame by office.js (--sl / --sr) */
 .agent.walking .body{animation:none}
@@ -296,7 +296,7 @@ a.pick{display:inline-flex;align-items:center;text-decoration:none;color:inherit
   .search input{min-height:44px;font-size:16px}
   .btn,.top .actions .btn,.top .actions .btn.icon,.top .actions a.btn{min-height:44px;min-width:44px}
   .top .actions .btn,.top .actions .btn.icon{width:44px;height:44px}
-  .top .actions a.btn{width:auto;height:44px;padding:0 14px}
+  .top .actions a.btn,.top .actions .btn.out{width:auto;height:44px;padding:0 14px}
   .top{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right));padding-top:env(safe-area-inset-top);height:calc(60px + env(safe-area-inset-top))}
   .zoom button{width:44px;height:44px}
   .filters{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:0 16px 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
@@ -332,7 +332,7 @@ a.pick{display:inline-flex;align-items:center;text-decoration:none;color:inherit
   .va-submit{position:sticky;bottom:0;z-index:2;background:var(--card);margin:8px -16px 0;padding:10px 16px max(12px,env(safe-area-inset-bottom));border-top:1px solid var(--line)}
   .va-submit .btn.primary{width:100%;min-height:48px}
 }
-@media (max-width:560px){.top .actions a.btn{width:44px;padding:0}}
+@media (max-width:560px){.top .actions a.btn,.top .actions .btn.out{width:44px;padding:0}}
 @media (max-width:430px){.top .name{display:none}.top .logo{flex:1}}
 
 /* Chat in a drawer: the drawer is a column flexbox, so the chat (overflow:auto) was squeezed to 0px height when the drawer had a lot of content, hiding the replies and the option buttons behind it. Keep its natural height (max 46vh, scrolls inside). */

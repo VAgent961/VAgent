@@ -57,14 +57,14 @@ async function mainSite({ request, env, next, data }, host, path) {
   if (!isOffice && !isLogin && !isApi && !isMarketing) return next();
   let session = await readSession(env, request);
   if (session?.s === 'mk' && session.e !== env.MARKETING_EMAIL?.toLowerCase()) session = null; // account removed or changed
-  if (session?.s === 'mk') { // marketing only: no office, no other API
-    if (isOffice || isLogin) return Response.redirect(new URL('/marketing', request.url).toString(), 302);
+  if (session?.s === 'mk') { // marketing only: no office, no other API. "/" stays open so an owner can sign in over it.
+    if (isOffice) return Response.redirect(new URL('/?switch=owner', request.url).toString(), 302);
     if (isApi && path !== '/api/marketing') return json({ error: 'Not allowed.' }, 403);
     data.owner = session.e; data.role = 'marketing'; data.access_depts = [];
   }
   if (isApi && !session) return json({ error: 'Please sign in again.' }, 401);
   if (isOffice && !session) return Response.redirect(new URL('/', request.url).toString(), 302);
-  if (isLogin && session) return Response.redirect(new URL('/office', request.url).toString(), 302);
+  if (isLogin && session && session.s !== 'mk') return Response.redirect(new URL('/office', request.url).toString(), 302);
   if (session && session.s !== 'mk') {
     data.owner = session.e;
     try {
