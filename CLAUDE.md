@@ -16,7 +16,7 @@ Company site for VAgent (owners: Hassan, Fayez, Boudy). Sign-in page + a live is
 - n8n API keys are stored AES-GCM encrypted (ENC_KEY) and only used server-side.
 
 ## Rules
-- Every `/api/*` route except login/logout needs an owner session (middleware does it; use `data.owner`). One exception: the marketing-only account (`MARKETING_EMAIL`) may use only `/api/marketing` and `/api/tiktok-callback`.
+- Every `/api/*` route except login/logout needs an owner session (middleware does it; use `data.owner`). One exception: the marketing-only account (`MARKETING_EMAIL`) may use only `/api/marketing`.
 - Never deactivate/activate an agent without the user confirming in the UI.
 - Sign-in page must fit one screen (no scroll) on desktop and phones.
 - Brand: cream #FAF9F5 / #F3F1EA, ink #141413, terracotta #B5532F (hover #9A4527), Newsreader headings, Inter text.

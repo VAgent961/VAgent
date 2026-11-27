@@ -36,7 +36,7 @@ globalThis.fetch = async (url, o = {}) => {
   return reply({ error: { code: 100, message: 'unknown ' + path } }, 400);
 };
 const post = { caption: 'Hi', hashtags: [] };
-const fresh = async () => { row = { id: 'p', post, version: 1, status: 'scheduled', slot: new Date().toISOString(), targets: ['instagram'], pub: {}, video_sha: 'x' }; row.approved_hash = await digest(row); };
+const fresh = async () => { row = { id: 'p', post, version: 1, status: 'scheduled', slot: new Date().toISOString(), pub: {}, video_sha: 'x' }; row.approved_hash = await digest(row); };
 for (const [tok, host, id] of [['EAAtest', 'graph.facebook.com', ID], ['IGtest', 'graph.instagram.com', '555']]) {
   pages = [{ instagram_business_account: { id: '9', username: 'other' } }, { instagram_business_account: { id: ID, username: 'v_agent961' } }];
   calls.length = 0; await pub.connectInstagram(env, tok, '', 'o');

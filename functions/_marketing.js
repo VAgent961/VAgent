@@ -1,15 +1,25 @@
 // Marketing queue: rendering -> review -> scheduled -> publishing -> published (or declined / failed).
-// "scheduled" is the approved state. Publishing to Instagram / TikTok lives in _publish.js.
+// "scheduled" is the approved state. Publishing to Instagram lives in _publish.js.
 // Video lives in marketing_media (base64 chunks) and is deleted on publish, decline and re-render.
 import { sql, encrypt, decrypt } from './_lib.js';
 
 export const CHUNK = 400000;
 export const SHOTS = ['hook', 'phone', 'flow', 'browser', 'list', 'approve', 'alert', 'cta'];
 export const SITE = 'https://vagent.online';
-// Per-platform columns are added on first use (also in scripts/migrate.mjs).
+// Publishing columns are added on first use (also in scripts/migrate.mjs). `targets` is legacy: only old approval hashes include it.
+// Posts left over from the removed second platform are settled here: never approved for Instagram = approval cleared;
+// already on Instagram = published and the video deleted.
+const NOT_IG = "targets IS NOT NULL AND NOT targets ? 'instagram'";
+const UPGRADE = [
+  "ALTER TABLE marketing_posts ADD COLUMN IF NOT EXISTS targets jsonb, ADD COLUMN IF NOT EXISTS pub jsonb NOT NULL DEFAULT '{}'::jsonb",
+  `UPDATE marketing_posts SET status = 'review', targets = NULL, slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, updated_at = now() WHERE status = 'scheduled' AND ${NOT_IG}`,
+  `UPDATE marketing_posts SET status = 'failed', targets = NULL, error = 'Not approved for Instagram: approve again', updated_at = now() WHERE status = 'publishing' AND ${NOT_IG}`,
+  "UPDATE marketing_posts SET status = 'published', video_sha = NULL, error = NULL, updated_at = now() WHERE status IN ('failed', 'review', 'scheduled') AND pub->'instagram'->>'state' = 'published'",
+  "DELETE FROM marketing_media WHERE post_id IN (SELECT id FROM marketing_posts WHERE status = 'published')",
+];
 let ready;
-export const schema = (env) => (ready ||= sql(env, "ALTER TABLE marketing_posts ADD COLUMN IF NOT EXISTS targets jsonb, ADD COLUMN IF NOT EXISTS pub jsonb NOT NULL DEFAULT '{}'::jsonb").catch((e) => { ready = null; throw e; }));
-// Platforms that already published stay recorded, so they are never posted twice.
+export const schema = (env) => (ready ||= (async () => { for (const q of UPGRADE) await sql(env, q); })().catch((e) => { ready = null; throw e; }));
+// A publish that succeeded stays recorded, so a post is never sent twice.
 const KEEP = `pub = COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(pub) WHERE value->>'state' = 'published'), '{}'::jsonb)`;
 export const BANNED = /whats\s?app|wa\.me|\bfree(ly)?\b|\bcosts?\b|\bpric(e|es|ed|ing)\b|[$€£]|\bpaid\b|\bcheap|\bdiscount|\bsubscri|\bfees?\b|\bafford|واتس|مجان|سعر|أسعار|كلفة|تكلفة/i;
 const str = (v, n) => typeof v === 'string' && v.trim().length > 0 && v.length <= n;
@@ -50,18 +60,17 @@ export async function setting(env, k) { return (await sql(env, 'SELECT v FROM ma
 export const setSetting = (env, k, v) => sql(env, 'INSERT INTO marketing_settings (k, v) VALUES ($1, $2) ON CONFLICT (k) DO UPDATE SET v = $2', [k, v]);
 
 // ── owner actions ──
-export async function approve(env, id, version, who, defaults = ['instagram', 'tiktok']) {
+export async function approve(env, id, version, who) {
   const row = await one(env, id);
   if (!row || row.status !== 'review' || Number(row.version) !== Number(version)) return 'This post changed. Reload and review it again.';
   const err = lint(row.post); if (err) return err;
-  const targets = row.targets || defaults;
-  if (targets.every((t) => row.pub?.[t]?.state === 'published')) return 'Already published on every chosen platform.';
+  if (row.pub?.instagram?.state === 'published') return 'Already published.';
   // next free Tue/Thu/Sat 19:00 Beirut, computed by Postgres so daylight saving is right
-  const done = await sql(env, `UPDATE marketing_posts SET status = 'scheduled', approved_hash = $3, approved_by = $4, targets = $5::jsonb, ${KEEP}, error = NULL, dry_run_at = NULL, updated_at = now(), slot = (
+  const done = await sql(env, `UPDATE marketing_posts SET status = 'scheduled', approved_hash = $3, approved_by = $4, targets = NULL, ${KEEP}, error = NULL, dry_run_at = NULL, updated_at = now(), slot = (
       SELECT s FROM (SELECT (d::date + time '19:00') AT TIME ZONE 'Asia/Beirut' AS s FROM generate_series((now() AT TIME ZONE 'Asia/Beirut')::date::timestamp, (now() AT TIME ZONE 'Asia/Beirut')::date::timestamp + interval '365 days', interval '1 day') d
         WHERE extract(isodow FROM d) IN (2, 4, 6)) c
       WHERE s > now() AND NOT EXISTS (SELECT 1 FROM marketing_posts p WHERE p.slot = s AND p.status IN ('scheduled', 'publishing', 'published')) ORDER BY s LIMIT 1)
-    WHERE id = $1 AND version = $2 AND status = 'review' RETURNING slot`, [id, row.version, await digest({ ...row, targets }), who, JSON.stringify(targets)]);
+    WHERE id = $1 AND version = $2 AND status = 'review' RETURNING slot`, [id, row.version, await digest({ ...row, targets: null }), who]);
   if (!done.length) return 'This post changed. Reload and review it again.';
   await log(env, id, 'approved', who); return '';
 }
@@ -85,16 +94,7 @@ export async function reschedule(env, id, version, at, who) {
   if (!r.length) return 'Choose a time in the future. If it is, this post changed: reload first.';
   await log(env, id, 'rescheduled', `${at} ${who}`); return '';
 }
-// Choosing platforms is an edit: it clears the approval.
-export async function setTargets(env, id, version, targets, who) {
-  const list = ['instagram', 'tiktok'].filter((t) => Array.isArray(targets) && targets.includes(t));
-  if (!list.length) return 'Choose at least one platform.';
-  const r = await sql(env, `UPDATE marketing_posts SET targets = $3::jsonb, status = CASE WHEN status = 'scheduled' THEN 'review' ELSE status END, slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, ${KEEP}, updated_at = now()
-    WHERE id = $1 AND version = $2 AND status IN ('rendering', 'review', 'scheduled') RETURNING id`, [id, version, JSON.stringify(list)]);
-  if (!r.length) return 'This post changed. Reload first.';
-  await log(env, id, 'targets', `${list.join(',')} ${who}`); return '';
-}
-// After a failed publish: back to review with the video kept. Needs a new approval; published platforms are skipped.
+// After a failed publish: back to review with the video kept. Needs a new approval.
 export async function republish(env, id, version, who) {
   const r = await sql(env, `UPDATE marketing_posts SET status = 'review', slot = NULL, approved_hash = NULL, approved_by = NULL, dry_run_at = NULL, publish_started_at = NULL, error = NULL, ${KEEP}, updated_at = now()
     WHERE id = $1 AND version = $2 AND status = 'failed' AND video_sha IS NOT NULL RETURNING id`, [id, version]);

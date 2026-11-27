@@ -4,9 +4,7 @@
   const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids.filter(Boolean)); return n; };
   const when = (s) => new Date(s).toLocaleString('en-GB', { timeZone: 'Asia/Beirut', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' Beirut';
   let editing = null, last = '';
-  const NAMES = { instagram: 'Instagram', tiktok: 'TikTok' };
   const STATE = { starting: 'starting', processing: 'processing', publishing: 'publishing', published: 'published', failed: 'failed', dry_run: 'dry run, not posted' };
-  const check = (label, checked, onchange, disabled) => el('label', { className: 'check' }, el('input', { type: 'checkbox', checked, disabled: !!disabled, onchange }), label);
   async function send(payload, answered) {
     $('msg').textContent = ''; $('msg').className = '';
     const r = await fetch('/api/marketing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -30,19 +28,8 @@
       btn('Save', () => send({ action: 'edit', id: p.id, version: p.version, post: { scenes: rows.map((r) => r.get()), caption: cap.value, hashtags: tags.value.split(/\s+/).filter(Boolean) } }), 'primary'),
       btn('Cancel', () => { editing = null; last = ''; load(); }));
   }
-  function targets(p) {
-    const editable = ['rendering', 'review', 'scheduled'].includes(p.status);
-    const box = el('div', { className: 'targets' }, el('span', { className: 'meta', textContent: 'Publish to' }));
-    for (const n of Object.keys(NAMES)) {
-      const s = p.pub?.[n];
-      box.append(check(NAMES[n], p.effective.includes(n), (e) => {
-        const next = Object.keys(NAMES).filter((x) => (x === n ? e.target.checked : p.effective.includes(x)));
-        if (p.status === 'scheduled' && !confirm('Changing platforms clears the approval. Continue?')) { e.target.checked = !e.target.checked; return; }
-        send({ action: 'targets', id: p.id, version: p.version, targets: next }).then((ok) => { if (!ok) { last = ''; load(); } });
-      }, !editable));
-      if (s) box.append(el('span', { className: 'chip ' + s.state, textContent: `${NAMES[n]}: ${STATE[s.state] || s.state}${s.error ? ' · ' + s.error : ''}` }));
-    }
-    return box;
+  function chip(s) {
+    return s ? el('div', {}, el('span', { className: 'chip ' + s.state, textContent: `Instagram: ${STATE[s.state] || s.state}${s.error ? ' · ' + s.error : ''}` })) : '';
   }
   // datetime-local value in Beirut time
   const local = (s) => new Date(s).toLocaleString('sv-SE', { timeZone: 'Asia/Beirut' }).slice(0, 16).replace(' ', 'T');
@@ -61,19 +48,18 @@
       b.setAttribute('aria-selected', String(k === tab)); b.setAttribute('aria-controls', 'list');
       return b;
     }));
-    const live = Object.fromEntries(Object.keys(NAMES).map((n) => [n, data.platforms[n].live]));
     const posts = data.posts.filter((p) => p.status === tab);
     if (tab === 'published') posts.reverse(); // newest slot first
     $('list').setAttribute('aria-labelledby', 'tab-' + tab);
-    $('list').replaceChildren(...(posts.length ? posts.map((p) => card({ ...p, live })) : [el('p', { className: 'meta', textContent: `Nothing in "${TABS[tab]}".` })]));
+    $('list').replaceChildren(...(posts.length ? posts.map((p) => card({ ...p, live: data.instagram.live })) : [el('p', { className: 'meta', textContent: `Nothing in "${TABS[tab]}".` })]));
   }
   // ── progress bar: posts being published now, plus results from the last 2 minutes ──
   const STAGES = {
-    sending: [10, () => 'Sending the request'],
-    starting: [30, (n) => (n === 'Instagram' ? 'Creating the Reel container' : 'Uploading to TikTok')],
-    processing: [60, (n) => (n === 'Instagram' ? 'Waiting for Instagram to report FINISHED (checked about every 5 minutes)' : 'TikTok is processing the video')],
-    publishing: [85, (n) => (n === 'Instagram' ? 'Publishing the Reel' : 'Publishing')],
-    published: [100, () => 'Published'], failed: [100, () => 'Failed'], dry_run: [100, () => 'Dry run: simulated, nothing posted'], simulating: [50, () => 'Simulating (Dry Run): nothing is posted'],
+    sending: [10, 'Sending the request'],
+    starting: [30, 'Creating the Reel container'],
+    processing: [60, 'Waiting for Instagram to report FINISHED (checked about every 5 minutes)'],
+    publishing: [85, 'Publishing the Reel'],
+    published: [100, 'Published'], failed: [100, 'Failed'], dry_run: [100, 'Dry run: simulated, nothing posted'], simulating: [50, 'Simulating (Dry Run): nothing is posted'],
   };
   const pending = new Map(); // "Publish now" requests still waiting for the server
   const recent = (s) => s && Date.now() - Date.parse(s.at) < 12e4;
@@ -81,34 +67,34 @@
     const rows = [];
     for (const p of data?.posts || []) {
       if (pending.has(p.id)) continue;
-      const targets = p.effective.map((n) => [n, p.pub?.[n]]);
-      const show = p.status === 'publishing' || (['published', 'failed'].includes(p.status) && targets.some(([, s]) => recent(s))) || (p.status === 'scheduled' && targets.some(([, s]) => s?.state === 'dry_run' && recent(s)));
-      if (show) for (const [n, s] of targets) rows.push({ p, name: NAMES[n], state: s?.state || 'starting', error: s?.error });
+      const s = p.pub?.instagram;
+      const show = p.status === 'publishing' || (['published', 'failed'].includes(p.status) && recent(s)) || (p.status === 'scheduled' && s?.state === 'dry_run' && recent(s));
+      if (show) rows.push({ p, state: s?.state || 'starting', error: s?.error });
     }
     for (const x of pending.values()) rows.push(x);
     const box = $('progress'); box.hidden = !rows.length;
     // rows are reused so the bar moves from its old width to the new one
     const old = new Map([...box.children].map((n) => [n.dataset.key, n]));
-    box.replaceChildren(...rows.map(({ p, name, state, error }) => {
-      const key = `${p.id}:${name}`, [pct, text] = STAGES[state] || STAGES.starting;
+    box.replaceChildren(...rows.map(({ p, state, error }) => {
+      const key = p.id, [pct, text] = STAGES[state] || STAGES.starting;
       const n = old.get(key) || el('div', {}, el('strong'), el('div', { className: 'meta' }), el('div', { className: 'bar', role: 'progressbar' }, el('span')));
       n.dataset.key = key; n.className = 'run ' + state;
       const [title, line, bar] = n.children;
       title.textContent = `${p.post.scenes[0].say} (${p.id})`;
-      line.textContent = `${name ? name + ': ' : ''}${text(name)}${error ? ' · ' + error : ''}`;
+      line.textContent = `Instagram: ${text}${error ? ' · ' + error : ''}`;
       bar.setAttribute('aria-valuenow', pct); bar.setAttribute('aria-label', `${p.id} ${line.textContent}`);
       requestAnimationFrame(() => { bar.firstChild.style.transform = `scaleX(${pct / 100})`; });
       return n;
     }));
   }
-  // platforms this post would really reach now (empty = Publish now only simulates)
-  const reach = (p) => p.effective.filter((n) => p.live[n] && p.pub?.[n]?.state !== 'published').map((n) => NAMES[n]);
+  // would this post really be sent now (false = Publish now only simulates)
+  const reach = (p) => p.live && p.pub?.instagram?.state !== 'published';
   function publishNow(p) {
     const real = reach(p);
-    return btn(real.length ? 'Publish now' : 'Publish now (dry run)', async (e) => {
-      if (real.length && !confirm(`Publish this post NOW, for real, on ${real.join(' and ')}? This cannot be undone.`)) return;
-      const b = e.currentTarget; b.disabled = true; b.textContent = real.length ? 'Publishing…' : 'Simulating…';
-      pending.set(p.id, { p, name: real.join(' and '), state: real.length ? 'sending' : 'simulating' }); progress();
+    return btn(real ? 'Publish now' : 'Publish now (dry run)', async (e) => {
+      if (real && !confirm('Publish this post NOW, for real, on Instagram? This cannot be undone.')) return;
+      const b = e.currentTarget; b.disabled = true; b.textContent = real ? 'Publishing…' : 'Simulating…';
+      pending.set(p.id, { p, state: real ? 'sending' : 'simulating' }); progress();
       const watch = setInterval(async () => { // show the server's own stage while the request runs
         const r = await fetch('/api/marketing').catch(() => null); if (!r?.ok) return;
         const now = (await r.json()).posts.find((x) => x.id === p.id);
@@ -116,14 +102,14 @@
         progress();
       }, 2000);
       let ok;
-      try { ok = await send({ action: 'publish_now', id: p.id, version: p.version, confirm: real.length ? 'PUBLISH' : '' }, () => { clearInterval(watch); pending.delete(p.id); }); }
+      try { ok = await send({ action: 'publish_now', id: p.id, version: p.version, confirm: real ? 'PUBLISH' : '' }, () => { clearInterval(watch); pending.delete(p.id); }); }
       finally { clearInterval(watch); pending.delete(p.id); progress(); }
       if (!ok) { last = ''; load(); }
     }, 'primary');
   }
   function schedule(p) {
     const real = reach(p), at = el('input', { type: 'datetime-local', value: local(p.slot) });
-    return el('div', { className: 'schedule' }, el('div', { className: 'meta', textContent: real.length ? `At this time it is really published on ${real.join(' and ')}.` : 'At this time it is only simulated: nothing is posted.' }),
+    return el('div', { className: 'schedule' }, el('div', { className: 'meta', textContent: real ? 'At this time it is really published on Instagram.' : 'At this time it is only simulated: nothing is posted.' }),
       el('label', {}, 'Publish time (Beirut)', at), btn('Save time', () => send({ action: 'reschedule', id: p.id, version: p.version, at: at.value })));
   }
   function card(p) {
@@ -132,9 +118,8 @@
     const stuck = p.status === 'failed' && !p.has_video;
     const side = el('div', {}, el('h2', { textContent: p.post.scenes[0].say }), el('div', { className: 'meta', textContent: `${state} · version ${p.version}` }), p.error && el('div', { style: 'color:var(--bad)', textContent: `Error: ${p.error}` }));
     if (editing === p.id) side.append(editor(p));
-    else side.append(el('p', { className: 'cap', textContent: p.captions.instagram }),
-      p.captions.tiktok === p.captions.instagram ? '' : el('details', {}, el('summary', { textContent: 'TikTok caption' }), el('p', { className: 'cap', textContent: p.captions.tiktok })),
-      p.post.keyword ? el('div', { className: 'meta', textContent: `Comment keyword: ${p.post.keyword} · ${p.post.info?.title || ''}` }) : '', targets(p), p.status === 'scheduled' ? schedule(p) : '', el('div', {},
+    else side.append(el('p', { className: 'cap', textContent: p.caption }),
+      p.post.keyword ? el('div', { className: 'meta', textContent: `Comment keyword: ${p.post.keyword} · ${p.post.info?.title || ''}` }) : '', chip(p.pub?.instagram), p.status === 'scheduled' ? schedule(p) : '', el('div', {},
       p.status === 'review' && btn('Approve', () => send({ action: 'approve', id: p.id, version: p.version }), 'primary'),
       p.status === 'scheduled' && publishNow(p),
       p.status === 'failed' && p.has_video && btn('Try publishing again', () => send({ action: 'republish', id: p.id, version: p.version }), 'primary'),
@@ -142,12 +127,6 @@
       open && btn(p.status === 'failed' ? 'Edit and retry' : 'Edit', () => { editing = p.id; last = ''; load(); }),
       open && btn('Decline', () => confirm('Decline this post and delete its video?') && send({ action: 'decline', id: p.id }))));
     return el('article', { className: 'card post' }, p.has_video ? el('video', { src: `/api/marketing?video=${p.id}&v=${p.version}`, controls: true, playsInline: true, preload: 'metadata' }) : el('div', { className: 'meta', textContent: p.status === 'rendering' ? (p.error ? 'No video yet: waiting for the next try' : 'The video is being made') : stuck ? 'Render failed: no video' : 'No video stored' }), side);
-  }
-  function status(name, p, live) {
-    const box = el('section', { className: 'card' }, el('h2', { textContent: NAMES[name] }),
-      el('div', { className: 'status ' + (p.connected ? 'on' : 'off'), textContent: p.connected ? `Connected: @${p.name}` : 'Not connected' }),
-      el('div', { className: 'meta', textContent: live ? 'Live: approved posts are published here.' : `Nothing is sent to ${NAMES[name]} now.` }));
-    return box;
   }
   const day = (s) => new Date(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   async function testLink() {
@@ -161,7 +140,9 @@
     } catch (e) { $('msg').textContent = 'Video link problem: ' + e.message; }
   }
   function instagram(p) {
-    const box = status('instagram', p, p.live);
+    const box = el('section', { className: 'card' }, el('h2', { textContent: 'Instagram' }),
+      el('div', { className: 'status ' + (p.connected ? 'on' : 'off'), textContent: p.connected ? `Connected: @${p.name}` : 'Not connected' }),
+      el('div', { className: 'meta', textContent: p.live ? 'Live: approved posts are published here.' : 'Nothing is sent to Instagram now.' }));
     if (p.connected) {
       const at = Date.parse(p.expires), left = Math.floor((at - Date.now()) / 864e5), fb = p.type === 'PROFESSIONAL'; // Facebook (EAA) tokens are not renewed
       const life = at ? `Token valid until ${day(p.expires)} (${left} days)${fb ? ', not renewed automatically' : ', renewed automatically'}` : p.expires === 'never' ? 'Token does not expire' : 'Token expiry unknown: use Check connection';
@@ -182,14 +163,13 @@
     const toggle = el('button', { type: 'button', className: 'switch', role: 'switch', onclick: () => (on ? askLive(d) : send({ action: 'dry_run', on: true })) }, el('span', {}));
     toggle.setAttribute('aria-checked', String(on)); toggle.setAttribute('aria-label', 'Dry Run');
     box.replaceChildren(el('div', {}, el('h2', { textContent: on ? 'Dry Run is ON' : 'Dry Run is OFF: LIVE' }),
-      el('div', { textContent: on ? 'Safe mode: approved posts are only simulated. Nothing is published.' : `Approved posts are really published to: ${Object.keys(NAMES).filter((n) => d.platforms[n].live).map((n) => NAMES[n]).join(' and ') || 'no platform is ready'}.` }),
+      el('div', { textContent: on ? 'Safe mode: approved posts are only simulated. Nothing is published.' : d.instagram.live ? 'Approved posts are really published to Instagram.' : 'Instagram is not connected: nothing can be published.' }),
       el('div', { className: 'meta', textContent: d.lastTick ? `Publisher last checked ${when(d.lastTick)}${stale ? ' (over an hour ago: check the n8n publisher)' : ''}` : 'The publisher has not checked in yet.' })),
       el('label', { className: 'toggle' }, toggle, el('strong', { textContent: on ? 'ON' : 'OFF' })));
   }
   function askLive(d) {
     const approved = d.posts.filter((p) => p.status === 'scheduled'), recent = approved.filter((p) => Date.parse(p.slot) <= Date.now() && Date.parse(p.slot) > Date.now() - 6 * 36e5).length;
-    const ready = { instagram: d.platforms.instagram.connected, tiktok: d.platforms.tiktok.connected && d.platforms.tiktok.canPublish && !!d.platforms.tiktok.options.privacy };
-    const lines = Object.keys(NAMES).map((n) => (ready[n] ? `${NAMES[n]}: WILL publish as @${d.platforms[n].name}` : `${NAMES[n]}: not ready, stays simulated`));
+    const lines = [d.instagram.connected ? `Instagram: WILL publish as @${d.instagram.name}` : 'Instagram: not connected, stays simulated'];
     lines.push(`${approved.length} approved post(s) waiting for their time.`);
     if (recent) lines.push(`${recent} of them are due now and publish within minutes.`);
     $('golive-list').replaceChildren(...lines.map((textContent) => el('li', { textContent })));
@@ -198,32 +178,6 @@
   $('golive-ok').addEventListener('change', (e) => { $('golive-yes').disabled = !e.target.checked; });
   $('golive-cancel').addEventListener('click', () => $('golive').close());
   $('golive-yes').addEventListener('click', () => { $('golive').close(); send({ action: 'dry_run', on: false, confirm: 'PUBLISH' }); });
-  function tiktok(p) {
-    const box = status('tiktok', p, p.live), o = p.options;
-    if (p.connected && !p.canPublish) box.append(el('div', { className: 'alert', textContent: 'Connected for sign-in only: posting permission (video.publish) was not granted. TikTok posts are simulated, nothing is sent to TikTok.' }));
-    else if (p.connected && !o.privacy) box.append(el('div', { className: 'alert', textContent: 'Choose a privacy level below. Until then TikTok is only simulated.' }));
-    const key = el('input', { placeholder: 'Client key', autocomplete: 'off' }), secret = el('input', { type: 'password', placeholder: 'Client secret', autocomplete: 'off' });
-    const file = el('input', { placeholder: 'File name, e.g. tiktokAbc123.txt' }), line = el('input', { placeholder: 'tiktok-developers-site-verification=…' });
-    const privacy = el('select', {}, el('option', { value: '', textContent: p.privacyChoices.length ? 'Choose who can see posts' : p.connected && !p.canPublish ? 'Needs posting permission' : 'Connect first to load choices' }), ...p.privacyChoices.map((v) => el('option', { value: v, textContent: v.replaceAll('_', ' ').toLowerCase() })));
-    privacy.value = p.privacyChoices.includes(o.privacy) ? o.privacy : '';
-    const source = el('select', {}, el('option', { value: 'url', textContent: 'TikTok pulls the video from vagent.online (needs domain verification)' }), el('option', { value: 'file', textContent: 'Upload the file directly' }));
-    source.value = o.source;
-    const flags = { comment: check('Allow comments', o.comment), duet: check('Allow duet', o.duet), stitch: check('Allow stitch', o.stitch) };
-    const on = (k) => flags[k].querySelector('input').checked;
-    box.append(el('details', {}, el('summary', { textContent: p.connected ? 'Settings' : 'Connect TikTok' }),
-      el('p', { className: 'meta', textContent: `1. In developers.tiktok.com add Login Kit and Content Posting API (Direct Post), scope user.info.basic (video.publish too, if your app offers it; Sandbox may not), redirect URI ${p.redirect}. Until TikTok audits the app, posts can only be private.` }),
-      key, secret, btn(p.app ? 'Replace app keys' : 'Save app keys', () => send({ action: 'tiktok_app', key: key.value, secret: secret.value })),
-      el('p', { className: 'meta', textContent: '2. Log in with the TikTok account.' }),
-      p.app && el('a', { href: '/api/marketing?tiktok=authorize', className: 'button', textContent: p.connected ? 'Log in again (basic)' : 'Log in with TikTok' }),
-      p.app && el('a', { href: '/api/marketing?tiktok=authorize&publish=1', className: 'button', textContent: 'Log in with posting permission' }),
-      p.app && el('p', { className: 'meta', textContent: 'Posting needs video.publish. If TikTok shows a scope error for the second button, your app does not have it yet. Either login turns Dry Run on.' }),
-      el('p', { className: 'meta', textContent: '3. Posting settings' }), privacy, source, ...Object.values(flags),
-      btn('Save settings', () => send({ action: 'tiktok_options', options: { privacy: privacy.value, source: source.value, comment: on('comment'), duet: on('duet'), stitch: on('stitch') } })),
-      p.canPublish && btn('Reload account info', () => send({ action: 'tiktok_creator' })),
-      el('p', { className: 'meta', textContent: `4. Domain verification: add the URL prefix https://vagent.online/hook/ in TikTok and paste its signature file here.${p.verify ? ' Served now: /hook/' + p.verify : ''}` }),
-      file, line, btn('Save verification file', () => send({ action: 'tiktok_verify', file: file.value, content: line.value }))));
-    return box;
-  }
   function signedOut() {
     $('app').hidden = true; $('login').hidden = false; data = null; progress(); $('tabs').replaceChildren(); $('list').replaceChildren(); $('platforms').replaceChildren(); $('mode').replaceChildren(); $('golive').close(); last = ''; editing = null;
   }
@@ -250,12 +204,10 @@
     const d = await r.json(), sig = JSON.stringify(d) + editing;
     data = d; progress();
     if (sig === last || (last && (quiet ? busy() : editing && last))) return; // do not restart videos that are playing
-    last = sig; dryRun(d); $('platforms').replaceChildren(instagram(d.platforms.instagram), tiktok(d.platforms.tiktok));
+    last = sig; dryRun(d); $('platforms').replaceChildren(instagram(d.instagram));
     document.querySelectorAll('.owner').forEach((a) => { a.style.visibility = d.role === 'owner' ? '' : 'hidden'; });
     renderList();
   }
-  const back = new URLSearchParams(location.search).get('tiktok');
-  if (back) { $('msg').textContent = back === 'connected' ? 'TikTok connected. It stays in dry run until you switch it live.' : 'TikTok: ' + back; history.replaceState(null, '', location.pathname); }
   load();
   // every 20 s, or every 5 s while something is being published
   setInterval(() => { if (!document.hidden && Date.now() - loaded > (data?.posts.some((p) => p.status === 'publishing') ? 4000 : 19000)) load(true); }, 5000);

@@ -59,7 +59,7 @@ async function mainSite({ request, env, next, data }, host, path) {
   if (session?.s === 'mk' && session.e !== env.MARKETING_EMAIL?.toLowerCase()) session = null; // account removed or changed
   if (session?.s === 'mk') { // marketing only: no office, no other API
     if (isOffice || isLogin) return Response.redirect(new URL('/marketing', request.url).toString(), 302);
-    if (isApi && path !== '/api/marketing' && path !== '/api/tiktok-callback') return json({ error: 'Not allowed.' }, 403);
+    if (isApi && path !== '/api/marketing') return json({ error: 'Not allowed.' }, 403);
     data.owner = session.e; data.role = 'marketing'; data.access_depts = [];
   }
   if (isApi && !session) return json({ error: 'Please sign in again.' }, 401);
