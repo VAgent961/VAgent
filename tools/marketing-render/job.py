@@ -3,7 +3,7 @@ Authenticates with the workflow's own OIDC token (no stored secret). Videos exis
 import hashlib, json, os, sys, tempfile, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 
-HQ = "https://vagent.online/hook/marketing"
+HQ = "https://city.vagent.online/hook/marketing"
 UA = "vagent-marketing-render"
 LOOK = "worlds-2"  # change when the look changes: HQ re-renders unpublished videos, which need approval again
 

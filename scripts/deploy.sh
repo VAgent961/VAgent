@@ -1,5 +1,6 @@
 #!/bin/zsh
 # Deploy the site to Cloudflare Pages project "vagent" in the account that owns vagent.online (Fayez's account).
+# App = city.vagent.online; vagent.online/www = blank page. functions/_middleware.js picks by Host.
 # Uses the API token in ~/agent-tools/.cf-vagent-token (Pages edit + DNS edit). Only public files + functions are uploaded.
 set -e
 export CLOUDFLARE_API_TOKEN="$(cat ~/agent-tools/.cf-vagent-token)" CLOUDFLARE_ACCOUNT_ID=602f300bfa2512c1d3cb5900af74fbd6

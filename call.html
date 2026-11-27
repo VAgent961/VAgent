@@ -22,7 +22,7 @@
     EMBEDDING IN ANOTHER WEBSITE (an <iframe>) — the iframe MUST carry allow="microphone", otherwise the browser
     silently blocks the microphone and the call button will not work:
 
-      <iframe src="https://vagent.online/call.html?id=BUSINESS_ID" allow="microphone"
+      <iframe src="https://city.vagent.online/call.html?id=BUSINESS_ID" allow="microphone"
               style="border:0;width:100%;max-width:420px;height:520px" title="Call us"></iframe>
 
     The page talks only to /api/public-business, /api/public-voice and /api/public-tts (same origin as this page),
@@ -44,7 +44,7 @@
   <script>
     (function () {
       // Embedding reminder (also see the comment above): the parent page must set allow="microphone" on the iframe.
-      // Which business? ?id=<slug> (vagent.online/call.html), the first path segment (voice.vagent.online/<slug>), or the client's own subdomain (voice1.vagent.online -> looked up by host).
+      // Which business? ?id=<slug> (city.vagent.online/call.html), the first path segment (voice.vagent.online/<slug>), or the client's own subdomain (voice1.vagent.online -> looked up by host).
       var host = location.hostname.toLowerCase(), id = new URLSearchParams(location.search).get('id') || '';
       if (!id && host === 'voice.vagent.online') id = location.pathname.split('/')[1] || '';
       var byHost = !id && /\.vagent\.online$/.test(host) && !/^(www|voice|adminvoice)\./.test(host);

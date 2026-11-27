@@ -9,7 +9,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 
 async function states() {
-  const r = await fetch('https://vagent.online/hook/marketing', { signal: AbortSignal.timeout(15000) });
+  const r = await fetch('https://city.vagent.online/hook/marketing', { signal: AbortSignal.timeout(15000) });
   if (!r.ok) throw new Error('queue: HTTP ' + r.status);
   return Object.fromEntries((await r.json()).posts.map((p) => [p.id, p.status]));
 }

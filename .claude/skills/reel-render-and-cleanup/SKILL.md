@@ -1,6 +1,6 @@
 ---
 name: reel-render-and-cleanup
-description: Render VAgent Instagram Reel drafts into the "Waiting for approval" queue on vagent.online/marketing, and delete video files of published or declined posts (server and this Mac). Use after reel-idea-generator, when asked to render or queue reels, to check a stuck render, or to free video storage.
+description: Render VAgent Instagram Reel drafts into the "Waiting for approval" queue on city.vagent.online/marketing, and delete video files of published or declined posts (server and this Mac). Use after reel-idea-generator, when asked to render or queue reels, to check a stuck render, or to free video storage.
 ---
 
 # reel-render-and-cleanup

@@ -5,7 +5,7 @@ import { sql, encrypt, decrypt } from './_lib.js';
 
 export const CHUNK = 400000;
 export const SHOTS = ['hook', 'phone', 'flow', 'browser', 'list', 'approve', 'alert', 'cta'];
-export const SITE = 'https://vagent.online';
+export const SITE = 'https://city.vagent.online';
 // Publishing columns are added on first use (also in scripts/migrate.mjs). `targets` is legacy: only old approval hashes include it.
 // Posts left over from the removed second platform are settled here: never approved for Instagram = approval cleared;
 // already on Instagram = published and the video deleted.

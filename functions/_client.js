@@ -52,7 +52,7 @@ export async function requireClient({ request, env }) {
 }
 
 // ---- validation helpers (used by the HQ accounts API too)
-export const RESERVED_SLUGS = new Set(['www', 'adminvoice', 'voice', 'api', 'admin', 'mail', 'app', 'hq', 'office', 'call', 'login', 'static', 'assets', 'ftp', 'n8n', 'hassan', 'boudy', 'fayez', 'demo']);
+export const RESERVED_SLUGS = new Set(['city', 'www', 'adminvoice', 'voice', 'api', 'admin', 'mail', 'app', 'hq', 'office', 'call', 'login', 'static', 'assets', 'ftp', 'n8n', 'hassan', 'boudy', 'fayez', 'demo']);
 export const slugOk = (s) => /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(s) && !RESERVED_SLUGS.has(s);
 export const emailOk = (e) => /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/.test(e) && e.length <= 200;
 // WhatsApp number -> digits with country code (Lebanon default: 03 123 456 -> 9613123456)

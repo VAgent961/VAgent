@@ -10,7 +10,7 @@ const { lint } = await import(ROOT + 'functions/_marketing.js');
 const R = ROOT + 'tools/marketing-render/';
 const posts = readdirSync(R + 'posts').filter((f) => f.endsWith('.json')).map((f) => ({ file: f, ...JSON.parse(readFileSync(R + 'posts/' + f)) }));
 async function queue() {
-  const r = await fetch('https://vagent.online/hook/marketing', { signal: AbortSignal.timeout(15000) });
+  const r = await fetch('https://city.vagent.online/hook/marketing', { signal: AbortSignal.timeout(15000) });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return Object.fromEntries((await r.json()).posts.map((p) => [p.id, p.status]));
 }
@@ -53,7 +53,7 @@ for (const id of args) {
     if ((states[id] || 'draft') === 'draft') { // not in the queue yet: ask HQ about past posts and the Instagram page
       try {
         const secret = readFileSync(homedir() + '/agent-tools/.vagent-webhook-secret', 'utf8').trim();
-        const r = await fetch('https://vagent.online/hook/marketing', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-VAgent-Secret': secret }, body: JSON.stringify({ action: 'check', post: p }), signal: AbortSignal.timeout(2e5) });
+        const r = await fetch('https://city.vagent.online/hook/marketing', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-VAgent-Secret': secret }, body: JSON.stringify({ action: 'check', post: p }), signal: AbortSignal.timeout(2e5) });
         const j = await r.json();
         if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
         if (j.duplicate) errors.push(j.duplicate);
