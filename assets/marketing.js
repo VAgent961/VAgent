@@ -112,6 +112,34 @@
     return el('div', { className: 'schedule' }, el('div', { className: 'meta', textContent: real ? 'At this time it is really published on Instagram.' : 'At this time it is only simulated: nothing is posted.' }),
       el('label', {}, 'Publish time (Beirut)', at), btn('Save time', () => send({ action: 'reschedule', id: p.id, version: p.version, at: at.value })));
   }
+  // Manual TikTok cross-posting: save the video and copy the caption. Nothing is sent to TikTok.
+  const kits = new Map(); // kept across redraws, so a running download keeps its button and message
+  function tiktokKit(p) {
+    const key = JSON.stringify([p.id, p.version, p.has_video, p.caption]);
+    if (kits.has(key)) return kits.get(key);
+    const note = el('div', { className: 'meta' }); note.setAttribute('role', 'status');
+    const say = (text, cls = 'meta') => { note.className = cls; note.textContent = text; };
+    const download = p.has_video && btn('Download', async () => {
+      download.disabled = true; download.textContent = 'Downloading…'; say('');
+      try {
+        const r = await fetch(`/api/marketing?video=${encodeURIComponent(p.id)}&v=${p.version}`);
+        if (r.status === 401) return signedOut();
+        if (r.status === 404) { say('This video is no longer available: it was cleaned up or is being rendered again.', 'warn'); return; }
+        if (!r.ok || r.headers.get('Content-Type') !== 'video/mp4') throw new Error();
+        const url = URL.createObjectURL(await r.blob()), name = `${String(p.id).replace(/[^\w-]+/g, '-')}.mp4`;
+        el('a', { href: url, download: name }).click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+        say(`Saved ${name} to your downloads.`);
+      } catch { say('Download failed. Check your connection and try again.', 'warn'); }
+      finally { download.disabled = false; download.textContent = 'Download'; }
+    });
+    const copy = btn('Copy caption', async () => {
+      try { await navigator.clipboard.writeText(p.caption); say('Caption and hashtags copied.'); }
+      catch { say('Could not copy. Select the caption text and copy it by hand.', 'warn'); }
+    });
+    const gone = !p.has_video && { published: 'publishing', declined: 'declining' }[p.status];
+    const node = el('div', { className: 'kit' }, gone && el('div', { className: 'meta', textContent: `Video cleaned up after ${gone}, so it can no longer be downloaded.` }), download, copy, note);
+    kits.set(key, node); return node;
+  }
   function card(p) {
     const open = ['rendering', 'review', 'scheduled', 'failed'].includes(p.status);
     const state = p.status === 'scheduled' ? `Approved · ${when(p.slot)}${p.dry_run_at ? ' · dry run done, nothing posted' : ''}` : p.status === 'review' ? 'Waiting for your approval' : p.status === 'rendering' ? (p.error ? `Last render failed (try ${p.attempts} of 3). Trying again automatically` : 'Rendering (usually within 15 to 30 minutes)') : p.status === 'failed' ? 'Failed' : TABS[p.status] || p.status;
@@ -119,7 +147,7 @@
     const side = el('div', {}, el('h2', { textContent: p.post.scenes[0].say }), el('div', { className: 'meta', textContent: `${state} · version ${p.version}` }), p.error && el('div', { style: 'color:var(--bad)', textContent: `Error: ${p.error}` }));
     if (editing === p.id) side.append(editor(p));
     else side.append(el('p', { className: 'cap', textContent: p.caption }),
-      p.post.keyword ? el('div', { className: 'meta', textContent: `Comment keyword: ${p.post.keyword} · ${p.post.info?.title || ''}` }) : '', chip(p.pub?.instagram), p.status === 'scheduled' ? schedule(p) : '', el('div', {},
+      p.post.keyword ? el('div', { className: 'meta', textContent: `Comment keyword: ${p.post.keyword} · ${p.post.info?.title || ''}` }) : '', chip(p.pub?.instagram), tiktokKit(p), p.status === 'scheduled' ? schedule(p) : '', el('div', {},
       p.status === 'review' && btn('Approve', () => send({ action: 'approve', id: p.id, version: p.version }), 'primary'),
       p.status === 'scheduled' && publishNow(p),
       p.status === 'failed' && p.has_video && btn('Try publishing again', () => send({ action: 'republish', id: p.id, version: p.version }), 'primary'),
