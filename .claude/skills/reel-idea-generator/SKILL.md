@@ -17,13 +17,14 @@ Every idea is checked against the whole queue (published and declined included) 
 `node scripts/generate-reels.mjs <n>`: HQ invents n ideas itself and queues them for rendering. Give it no topic. Then follow `reel-render-and-cleanup` step 4.
 
 ## Run (no questions needed)
-1. Read `marketing/voice.md`, `marketing/video-craft.md`, `marketing/ideas.md`.
+1. Read `marketing/voice.md`, `marketing/video-craft.md`, `marketing/ideas.md`. Script with the `short-form-video` and `explainer-video` skills, direct the world with `motion-art-direction` and `sound-design-foley` (open others from the "Quality bar" list only when needed).
 2. `node .claude/skills/reel-idea-generator/check.mjs list`: used topics, keywords, worlds, hooks.
 3. How many: the number asked for. If none was given, top the unpublished buffer up to 3. At 3 or more, stop and say so. If the queue is unreachable, make at most 1.
 4. **idea**: pick a topic not in the list (company, a built agent, or an idea we can build with what we run today). Add its row to `marketing/ideas.md`.
 5. **draft**: for each, copy the shape of one recent file in `tools/marketing-render/posts/` into `posts/<id>.json`:
    - `id` (kebab-case + `-01`), `keyword` (1-2 words, CAPITALS), `info {title, summary}`, `direction {world, concept}`
    - 6-8 `scenes`: `say` (the Kokoro `af_heart` narration, 65-90 words in total), `title`, `shot` (`hook|phone|flow|browser|list|approve|alert|cta`), `items` (max 4), `mood`; `chat` for a phone demo. Last scene: `shot: "cta"`, `end: true`, "Comment <KEYWORD>".
+   - Story: hook (open question) -> pain -> how it works in order (a `flow` of 3-4 items, then `approve`) -> payoff that answers the hook -> cta. One idea per scene; titles 2-5 words; items 1-4 words; hook has exactly 2 items.
    - First `title`: 18 characters at most.
    - First `say`: 12 words or fewer, scores 75+.
    - `caption` (asks to comment the keyword) and `hashtags`.

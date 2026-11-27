@@ -50,5 +50,11 @@ def mix(voice, rate, cues, sound):
     for j, c in enumerate(cues):
         s, gain, lead = effect(c["kind"], c.get("i", 0), sound, rate, 100 + j)
         s = s / (np.max(np.abs(s)) or 1)
-        add(out, max(0, int((c["t"] - lead) * rate)), level * gain * 1.6 * s)
+        edge = min(len(s) // 2, int(rate * 0.004))
+        if edge:  # no clicks at either end of an effect
+            ramp = np.linspace(0, 1, edge); s = s.copy(); s[:edge] *= ramp; s[-edge:] *= ramp[::-1]
+        at = max(0, int((c["t"] - lead) * rate))
+        spoken = hold[at:at + len(s)]
+        duck = 1 - 0.3 * (float(spoken.mean()) if len(spoken) else 0)  # about 3 dB lower while she is speaking
+        add(out, at, level * gain * 1.6 * duck * s)
     return out.astype(np.float32)

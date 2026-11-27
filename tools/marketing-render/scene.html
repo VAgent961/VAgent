@@ -8,8 +8,8 @@ body{width:1080px;height:1920px;overflow:hidden;background:#141413;color:#FAF9F5
 #cam{transform-origin:540px 900px}
 #girl{position:absolute;z-index:1;left:0;top:0;width:400px;height:470px;transform-origin:0 0;filter:drop-shadow(0 18px 30px rgba(0,0,0,.35))}
 #eyebrow{left:0;right:0;top:218px;display:flex;justify-content:center}
-#eyebrow span{font:700 27px Inter;letter-spacing:5px;text-transform:uppercase;color:#F2B7A2;border:2px solid rgba(217,119,87,.55);background:rgba(181,83,47,.2);border-radius:40px;padding:10px 28px}
-#title{position:absolute;left:70px;right:70px;top:282px;height:180px;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;column-gap:.24em;text-align:center;font:600 90px/1.02 Newsreader,serif;text-shadow:0 6px 30px rgba(0,0,0,.55)}
+#eyebrow span{white-space:pre;font-variant-numeric:tabular-nums;font:700 27px Inter;letter-spacing:5px;text-transform:uppercase;color:#F2B7A2;border:2px solid rgba(217,119,87,.55);background:rgba(181,83,47,.2);border-radius:40px;padding:10px 28px}
+#title{position:absolute;left:70px;right:70px;top:282px;height:180px;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;column-gap:.24em;letter-spacing:-.012em;font-kerning:normal;text-align:center;font:600 90px/1.02 Newsreader,serif;text-shadow:0 6px 30px rgba(0,0,0,.55)}
 #title b{font-weight:600;display:inline-block;overflow:hidden;padding:0 4px .1em;margin-bottom:-.08em}
 #title i{font-style:normal;display:inline-block}
 #mark{left:64px;top:84px;width:250px}
@@ -58,6 +58,9 @@ const $ = (id) => document.getElementById(id);
 const clamp = (v) => Math.max(0, Math.min(1, v));
 const out = (k) => 1 - Math.pow(1 - clamp(k), 3);
 const back = (k) => { k = clamp(k) - 1; return 1 + k * k * (2.7 * k + 1.7); };
+const fit = (n, min = 24) => { let size = parseFloat(getComputedStyle(n).fontSize); while (size > min && (n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1)) n.style.fontSize = (size -= 2) + 'px'; };
+// "Step 2 of 4" for the explaining scenes (everything between the hook and the closing card)
+const stepOf = (n) => { const middle = D.scenes.map((_, i) => i).slice(1, -1), i = middle.indexOf(n); return i < 0 || middle.length < 2 ? '' : `${i + 1}/${middle.length}  ·  `; };
 const el = (parent, cls, css = '', text = '') => { const n = document.createElement('div'); n.className = cls; n.style.cssText = css; n.textContent = text; parent.append(n); return n; };
 const LABEL = { hook: 'Listen up', phone: 'The moment', flow: 'Step by step', browser: 'On screen', list: 'At a glance', approve: 'Your call', alert: 'The problem', cta: 'Next step' };
 let dock = null, V;
@@ -77,9 +80,9 @@ function cues() {
   D.scenes.forEach((s, n) => {
     const shot = s.shot || 'phone', items = s.items || [], add = (kind, k, i = 0) => k < s.dur && list.push({ scene: n, kind, i, t: s.start + k });
     if (n) add('cut', 0); if (n) add('title', .14);
-    if (shot === 'hook') items.forEach((_, i) => add('item', .62 + i * .45, i));
+    if (shot === 'hook') items.forEach((_, i) => add('item', .32 + i * .42, i));
     if (shot === 'phone' && s.chat) add('msg', .45);
-    if (shot === 'flow' || shot === 'list') { const step = Math.max(.35, (s.dur - 1) / Math.max(1, items.length)); items.forEach((_, i) => add('item', .7 + i * step, i)); }
+    if (shot === 'flow' || shot === 'list') { const step = Math.max(.35, (s.dur - 1) / Math.max(1, items.length)); items.forEach((_, i) => add('item', .7 + i * step, i)); if (shot === 'flow') add('done', .7 + (items.length - 1) * step + .3); }
     if (shot === 'browser') [0, 1, 2, 3].slice(0, items.length || 1).forEach((i) => add('item', .42 + i * .4, i));
     if (shot === 'approve') { for (let i = 0; i < 10; i++) add('type', .35 + i * s.dur * .038, i); add('press', s.dur * .68); }
     if (shot === 'alert') { add('tap', 1.1); add('tap', 1.5, 1); add('alert', 1.75); }
@@ -92,8 +95,9 @@ function build(n) {
   const s = D.scenes[n], ui = $('ui'); ui.replaceChildren();
   const items = s.items || [], shot = s.shot || 'phone';
   if (shot === 'hook') {
-    const chips = items.map((x, i) => el(ui, 'pill', `z-index:2;left:${V.chips[i % 2][0]}px;top:${V.chips[i % 2][1]}px;width:390px;font-size:38px;background:#FAF9F5;color:#141413;box-shadow:0 20px 40px rgba(0,0,0,.4)`, x));
-    return (k) => chips.forEach((c, i) => { const a = back((k - .5 - i * .45) / .4); c.style.opacity = clamp(a); c.style.transform = `translateY(${Math.sin(k * 2 + i * 2) * 10}px) scale(${a}) rotate(${i % 2 ? 5 : -5}deg)`; });
+    const chips = items.map((x, i) => el(ui, 'pill', `z-index:2;white-space:nowrap;overflow:hidden;padding-left:18px;padding-right:18px;left:${V.chips[i % 2][0]}px;top:${V.chips[i % 2][1]}px;width:390px;font-size:38px;background:#FAF9F5;color:#141413;box-shadow:0 20px 40px rgba(0,0,0,.4)`, x));
+    chips.forEach((c) => fit(c));
+    return (k) => chips.forEach((c, i) => { const a = back((k - .2 - i * .42) / .36); c.style.opacity = clamp(a); c.style.transform = `translateY(${Math.sin(k * 2 + i * 2) * 10}px) scale(${a}) rotate(${i % 2 ? 5 : -5}deg)`; });
   }
   if (shot === 'cta') {
     const kw = $('kw'), strong = kw.querySelector('strong'); let size = 104; kw.style.display = 'flex'; strong.style.fontSize = size + 'px';
@@ -120,16 +124,17 @@ function build(n) {
   } else if (shot === 'flow' || shot === 'list') {
     if (shot === 'flow') el(card, 'a', 'left:93px;top:180px;width:6px;height:' + (items.length - 1) * 116 + 'px;background:#E4E0D5');
     const fill = shot === 'flow' ? el(card, 'a', 'left:93px;top:180px;width:6px;background:#B5532F;height:0') : null;
-    const rows = items.map((x, i) => { const r = el(card, 'row', `top:${126 + i * 116}px`); const dot = el(r, 'dot', '', String(i + 1)); el(r, '', '', x); return { r, dot }; });
+    const rows = items.map((x, i) => { const r = el(card, 'row', `top:${126 + i * 116}px`); const dot = el(r, 'dot', '', String(i + 1)); fit(el(r, '', 'flex:1;min-width:0;white-space:nowrap;overflow:hidden', x)); return { r, dot }; });
     anim = (k, dur) => {
       const step = Math.max(.35, (dur - 1) / Math.max(1, items.length));
-      rows.forEach(({ r, dot }, i) => { const a = out((k - .25 - i * .14) / .35), done = k > .7 + i * step; r.style.opacity = a; r.style.transform = `translateX(${(1 - a) * 120}px) scale(${done ? 1 + .04 * Math.sin(clamp((k - .7 - i * step) / .3) * Math.PI) : 1})`; r.classList.toggle('on', done); dot.textContent = done ? '✓' : i + 1; });
+      rows.forEach(({ r, dot }, i) => { const a = out((k - .25 - i * .14) / .35), done = k > .7 + i * step, current = !done && (i === 0 || k > .7 + (i - 1) * step); r.style.opacity = a * (done || current ? 1 : .55); r.style.boxShadow = current && k > .5 ? 'inset 0 0 0 5px #B5532F' : 'none'; dot.style.background = current && k > .5 ? '#141413' : ''; r.style.transform = `translateX(${(1 - a) * 120}px) scale(${done ? 1 + .04 * Math.sin(clamp((k - .7 - i * step) / .3) * Math.PI) : 1})`; r.classList.toggle('on', done); dot.textContent = done ? '✓' : i + 1; });
       if (fill) fill.style.height = clamp((k - .7) / (step * Math.max(1, items.length - 1))) * (items.length - 1) * 116 + 'px';
     };
   } else if (shot === 'browser') {
     el(card, 'a', 'left:40px;right:40px;top:100px;height:3px;background:#E4E0D5');
     const hero = el(card, 'a', 'left:40px;right:40px;top:130px;height:190px;border-radius:30px;background:linear-gradient(120deg,#B5532F,#E08156);color:#fff;font:600 54px Newsreader,serif;display:flex;align-items:center;justify-content:center', items[0] || '');
-    const tw = (inner() - 112) / 3, tiles = items.slice(1, 4).map((x, i) => el(card, 'a', `left:${40 + i * (tw + 16)}px;top:345px;width:${tw}px;height:215px;border-radius:28px;background:#F3F1EA;font:600 32px Inter;display:flex;align-items:flex-end;justify-content:center;padding-bottom:26px`, x));
+    const tw = (inner() - 112) / 3, tiles = items.slice(1, 4).map((x, i) => el(card, 'a', `left:${40 + i * (tw + 16)}px;top:345px;width:${tw}px;height:215px;border-radius:28px;background:#F3F1EA;font:600 32px Inter;display:flex;align-items:flex-end;justify-content:center;padding-bottom:26px;text-align:center;line-height:1.15;padding-left:10px;padding-right:10px`, x));
+    tiles.forEach((n2) => fit(n2, 22)); fit(hero, 30);
     const shapes = tiles.map((t) => el(t, 'a', `left:${(tw - 110) / 2}px;top:34px;width:110px;height:100px;border-radius:30px;background:#E3C3B4`));
     anim = (k) => { [hero, ...tiles].forEach((n2, i) => { const a = back((k - .3 - i * .4) / .45); n2.style.opacity = clamp(a); n2.style.transform = `translateY(${(1 - a) * 60}px) scale(${.8 + .2 * a})`; }); shapes.forEach((sh, i) => sh.style.transform = `translateY(${Math.sin(k * 2.4 + i) * 6}px)`); };
   } else if (shot === 'approve') {
@@ -190,7 +195,7 @@ function seek(i) {
   const s = D.scenes[n], k = t - s.start, shot = s.shot || 'phone', level = D.level[i] || 0, lastScene = n === D.scenes.length - 1;
   if (n !== built) {
     built = n; animate = build(n); buildDock(n, shot);
-    $('eyebrow').firstChild.textContent = V.labels[shot] || LABEL[shot];
+    $('eyebrow').firstChild.textContent = stepOf(n) + (V.labels[shot] || LABEL[shot]);
     if (shot !== 'cta') $('kw').style.display = 'none';
     const title = $('title'); title.replaceChildren(...s.title.split(' ').map((x) => { const b = document.createElement('b'), c = document.createElement('i'); c.textContent = x; b.append(c); return b; }));
     let size = shot === 'hook' ? 108 : 90; title.style.fontSize = size + 'px'; while (size > (shot === 'hook' ? 84 : 56) && (title.scrollHeight > 186 || title.scrollWidth > 940)) title.style.fontSize = (size -= 4) + 'px';

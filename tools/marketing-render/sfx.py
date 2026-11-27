@@ -80,6 +80,8 @@ def effect(kind, i, sound, rate, seed):
         return note("wood", hz(base - 24), rate, 0.1), 0.4, 0
     if kind == "press":
         return seq((0, 4, 7, 12), 0.055, 0.35), 0.36, 0
+    if kind == "done":  # every step of a workflow has landed: a short rising two-note resolve
+        return seq((7, 12), 0.08, 0.4), 0.3, 0
     if kind == "alert":
         return seq((-11, -17), 0.13, 0.3), 0.45, 0
     if kind == "cta":
