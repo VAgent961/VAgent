@@ -21,7 +21,7 @@ const UPGRADE = [
 let ready;
 export const schema = (env) => (ready ||= (async () => { for (const q of UPGRADE) await sql(env, q); })().catch((e) => { ready = null; throw e; }));
 // A publish that succeeded stays recorded, so a post is never sent twice.
-const KEEP = `pub = COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(pub) WHERE value->>'state' = 'published'), '{}'::jsonb)`;
+export const KEEP = `pub = COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(pub) WHERE value->>'state' = 'published'), '{}'::jsonb)`;
 export const BANNED = /whats\s?app|wa\.me|\bfree(ly)?\b|\bcosts?\b|\bpric(e|es|ed|ing)\b|[$€£]|\bpaid\b|\bcheap|\bdiscount|\bsubscri|\bfees?\b|\bafford|واتس|مجان|سعر|أسعار|كلفة|تكلفة/i;
 const str = (v, n) => typeof v === 'string' && v.trim().length > 0 && v.length <= n;
 
@@ -55,6 +55,10 @@ export async function digest(row) {
 }
 export const log = (env, id, event, detail = '') => sql(env, 'INSERT INTO marketing_events (post_id, event, detail) VALUES ($1, $2, $3)', [id, event, String(detail).slice(0, 300)]);
 export const dropMedia = (env, id) => sql(env, 'DELETE FROM marketing_media WHERE post_id = $1', [id]);
+// Safety net for a delete that was interrupted: a closed post never keeps video.
+export const sweepMedia = (env) => sql(env, "DELETE FROM marketing_media WHERE post_id IN (SELECT id FROM marketing_posts WHERE status IN ('published', 'declined'))");
+// Ids and states only (the ids are public in the repo): used by the repo skills for dedup and local cleanup.
+export const states = (env) => sql(env, 'SELECT id, status FROM marketing_posts ORDER BY id');
 const one = async (env, id) => (await sql(env, 'SELECT * FROM marketing_posts WHERE id = $1', [id]))[0];
 
 export async function setting(env, k) { return (await sql(env, 'SELECT v FROM marketing_settings WHERE k = $1', [k]))[0]?.v ?? null; }
@@ -147,9 +151,11 @@ export async function retry(env, id, version, who) {
   await dropMedia(env, id); await log(env, id, 'retry', who); return '';
 }
 export async function seed(env, posts) {
+  // one lookup for all known ids: a request has a limited number of database calls and drafts keep piling up
+  const have = new Set((await states(env)).map((r) => r.id));
   for (let p of posts) {
     if (p?.id && p.scenes && !p.direction) p = { ...p, direction: autoDirection(p) };
-    if (p?.id && await one(env, String(p.id))) continue;
+    if (p?.id && have.has(String(p.id))) continue;
     const err = lint(p) || await taken(env, p);
     if (err) { await log(env, String(p?.id), 'rejected_seed', err); continue; }
     await sql(env, 'INSERT INTO marketing_posts (id, post) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING', [p.id, JSON.stringify(clean(p))]);

@@ -2,7 +2,7 @@
 // {instagram: {state: starting|processing|publishing|published|failed|dry_run, ref, id, error, at}}
 // One Dry Run switch (on unless an owner turned it off): while on, nothing is published and posts are only simulated. An unclear result is failed, never retried by itself.
 import { sql } from './_lib.js';
-import { setting, setSetting, log, digest, dropMedia, mediaSig, SITE } from './_marketing.js';
+import { setting, setSetting, log, digest, dropMedia, mediaSig, sweepMedia, SITE, KEEP } from './_marketing.js';
 import * as ig from './_instagram.js';
 
 export const connected = async (env) => !!(await setting(env, 'ig_token'));
@@ -71,7 +71,7 @@ async function settle(env, id) {
   const [row] = await sql(env, "SELECT * FROM marketing_posts WHERE id = $1 AND status = 'publishing'", [id]);
   if (!row) return null;
   const s = row.pub.instagram;
-  if (!['published', 'failed', 'dry_run'].includes(s?.state)) return null;
+  if (!['published', 'failed'].includes(s?.state)) return null;
   if (s.state === 'failed') {
     await sql(env, "UPDATE marketing_posts SET status = 'failed', error = $2, updated_at = now() WHERE id = $1", [id, `Instagram: ${s.error}`.slice(0, 300)]);
     return 'failed';
@@ -105,7 +105,7 @@ export async function publishNow(env, id, version, confirm, who) {
     return { notice: 'Dry run: nothing was posted. The post stays approved for its time.' };
   }
   if (confirm !== 'PUBLISH') return { error: 'Dry Run is off: confirm that this post will really be published.' };
-  const [claimed] = await sql(env, "UPDATE marketing_posts SET status = 'publishing', slot = now(), updated_at = now() WHERE id = $1 AND version = $2 AND status = 'scheduled' RETURNING *", [id, version]);
+  const [claimed] = await sql(env, "UPDATE marketing_posts SET status = 'publishing', slot = now(), ${KEEP}, updated_at = now() WHERE id = $1 AND version = $2 AND status = 'scheduled' RETURNING *", [id, version]);
   if (!claimed) return gone;
   await log(env, id, 'publish_now', who);
   const result = await launch(env, claimed, live);
@@ -139,9 +139,10 @@ export async function tick(env) {
       if (ok) await simulate(env, row); else await log(env, row.id, 'blocked', 'approval does not match');
       out.push({ id: row.id, result: ok ? 'dry_run' : 'blocked' }); continue;
     }
-    const [row] = await sql(env, "UPDATE marketing_posts SET status = 'publishing', updated_at = now() WHERE id = $1 AND status = 'scheduled' RETURNING *", [due.id]);
+    const [row] = await sql(env, "UPDATE marketing_posts SET status = 'publishing', ${KEEP}, updated_at = now() WHERE id = $1 AND status = 'scheduled' RETURNING *", [due.id]);
     if (!row) continue;
     out.push({ id: row.id, result: await launch(env, row, live) });
   }
+  await sweepMedia(env);
   return { live, posts: out };
 }
