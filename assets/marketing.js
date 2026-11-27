@@ -188,7 +188,7 @@
   }
   function askLive(d) {
     const approved = d.posts.filter((p) => p.status === 'scheduled'), recent = approved.filter((p) => Date.parse(p.slot) <= Date.now() && Date.parse(p.slot) > Date.now() - 6 * 36e5).length;
-    const ready = { instagram: d.platforms.instagram.connected, tiktok: d.platforms.tiktok.connected && !!d.platforms.tiktok.options.privacy };
+    const ready = { instagram: d.platforms.instagram.connected, tiktok: d.platforms.tiktok.connected && d.platforms.tiktok.canPublish && !!d.platforms.tiktok.options.privacy };
     const lines = Object.keys(NAMES).map((n) => (ready[n] ? `${NAMES[n]}: WILL publish as @${d.platforms[n].name}` : `${NAMES[n]}: not ready, stays simulated`));
     lines.push(`${approved.length} approved post(s) waiting for their time.`);
     if (recent) lines.push(`${recent} of them are due now and publish within minutes.`);
@@ -200,23 +200,26 @@
   $('golive-yes').addEventListener('click', () => { $('golive').close(); send({ action: 'dry_run', on: false, confirm: 'PUBLISH' }); });
   function tiktok(p) {
     const box = status('tiktok', p, p.live), o = p.options;
-    if (p.connected && !o.privacy) box.append(el('div', { className: 'alert', textContent: 'Choose a privacy level below. Until then TikTok is only simulated.' }));
+    if (p.connected && !p.canPublish) box.append(el('div', { className: 'alert', textContent: 'Connected for sign-in only: posting permission (video.publish) was not granted. TikTok posts are simulated, nothing is sent to TikTok.' }));
+    else if (p.connected && !o.privacy) box.append(el('div', { className: 'alert', textContent: 'Choose a privacy level below. Until then TikTok is only simulated.' }));
     const key = el('input', { placeholder: 'Client key', autocomplete: 'off' }), secret = el('input', { type: 'password', placeholder: 'Client secret', autocomplete: 'off' });
     const file = el('input', { placeholder: 'File name, e.g. tiktokAbc123.txt' }), line = el('input', { placeholder: 'tiktok-developers-site-verification=…' });
-    const privacy = el('select', {}, el('option', { value: '', textContent: p.privacyChoices.length ? 'Choose who can see posts' : 'Connect first to load choices' }), ...p.privacyChoices.map((v) => el('option', { value: v, textContent: v.replaceAll('_', ' ').toLowerCase() })));
-    privacy.value = o.privacy;
+    const privacy = el('select', {}, el('option', { value: '', textContent: p.privacyChoices.length ? 'Choose who can see posts' : p.connected && !p.canPublish ? 'Needs posting permission' : 'Connect first to load choices' }), ...p.privacyChoices.map((v) => el('option', { value: v, textContent: v.replaceAll('_', ' ').toLowerCase() })));
+    privacy.value = p.privacyChoices.includes(o.privacy) ? o.privacy : '';
     const source = el('select', {}, el('option', { value: 'url', textContent: 'TikTok pulls the video from vagent.online (needs domain verification)' }), el('option', { value: 'file', textContent: 'Upload the file directly' }));
     source.value = o.source;
     const flags = { comment: check('Allow comments', o.comment), duet: check('Allow duet', o.duet), stitch: check('Allow stitch', o.stitch) };
     const on = (k) => flags[k].querySelector('input').checked;
     box.append(el('details', {}, el('summary', { textContent: p.connected ? 'Settings' : 'Connect TikTok' }),
-      el('p', { className: 'meta', textContent: `1. In developers.tiktok.com add Login Kit and Content Posting API (Direct Post), scopes user.info.basic and video.publish, redirect URI ${p.redirect}. Until TikTok audits the app, posts can only be private.` }),
+      el('p', { className: 'meta', textContent: `1. In developers.tiktok.com add Login Kit and Content Posting API (Direct Post), scope user.info.basic (video.publish too, if your app offers it; Sandbox may not), redirect URI ${p.redirect}. Until TikTok audits the app, posts can only be private.` }),
       key, secret, btn(p.app ? 'Replace app keys' : 'Save app keys', () => send({ action: 'tiktok_app', key: key.value, secret: secret.value })),
       el('p', { className: 'meta', textContent: '2. Log in with the TikTok account.' }),
-      p.app && el('a', { href: '/api/marketing?tiktok=authorize', className: 'button', textContent: p.connected ? 'Log in again' : 'Log in with TikTok' }),
+      p.app && el('a', { href: '/api/marketing?tiktok=authorize', className: 'button', textContent: p.connected ? 'Log in again (basic)' : 'Log in with TikTok' }),
+      p.app && el('a', { href: '/api/marketing?tiktok=authorize&publish=1', className: 'button', textContent: 'Log in with posting permission' }),
+      p.app && el('p', { className: 'meta', textContent: 'Posting needs video.publish. If TikTok shows a scope error for the second button, your app does not have it yet. Either login turns Dry Run on.' }),
       el('p', { className: 'meta', textContent: '3. Posting settings' }), privacy, source, ...Object.values(flags),
       btn('Save settings', () => send({ action: 'tiktok_options', options: { privacy: privacy.value, source: source.value, comment: on('comment'), duet: on('duet'), stitch: on('stitch') } })),
-      p.connected && btn('Reload account info', () => send({ action: 'tiktok_creator' })),
+      p.canPublish && btn('Reload account info', () => send({ action: 'tiktok_creator' })),
       el('p', { className: 'meta', textContent: `4. Domain verification: add the URL prefix https://vagent.online/hook/ in TikTok and paste its signature file here.${p.verify ? ' Served now: /hook/' + p.verify : ''}` }),
       file, line, btn('Save verification file', () => send({ action: 'tiktok_verify', file: file.value, content: line.value }))));
     return box;

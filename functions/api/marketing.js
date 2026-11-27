@@ -14,7 +14,7 @@ export async function onRequestGet({ request, env, data }) {
   const q = new URL(request.url).searchParams, id = q.get('video');
   if (id) return mk.video(env, request, id);
   if (q.get('tiktok') === 'authorize') {
-    const url = await tiktok.authorizeUrl(env);
+    const url = await tiktok.authorizeUrl(env, q.has('publish'));
     return url ? Response.redirect(url, 302) : bad('Save the TikTok app keys first.');
   }
   const posts = await sql(env, `SELECT id, post, version, status, slot, approved_by, dry_run_at, targets, pub, error, attempts, video_sha IS NOT NULL AS has_video FROM marketing_posts
@@ -27,7 +27,7 @@ export async function onRequestGet({ request, env, data }) {
   const account = await ig.user(env);
   return json({ posts, role: data.role, me: data.owner, dryRun: await pub.dryRun(env), lastTick: await mk.setting(env, 'last_tick'), platforms: {
     instagram: { connected: conn.instagram, live: live.instagram, name: account?.name || null, type: account?.type || null, expires: await mk.setting(env, 'ig_expires'), refreshed: await mk.setting(env, 'ig_refreshed'), error: await parse(env, 'ig_error') },
-    tiktok: { connected: conn.tiktok, live: live.tiktok, name: (await parse(env, 'tt_user'))?.name || null, app: !!(await tiktok.app(env)), options: await tiktok.options(env),
+    tiktok: { connected: conn.tiktok, live: live.tiktok, name: (await parse(env, 'tt_user'))?.name || null, app: !!(await tiktok.app(env)), canPublish: await tiktok.canPublish(env), options: await tiktok.options(env),
       privacyChoices: (await parse(env, 'tt_creator'))?.privacy_level_options || [], redirect: tiktok.redirectUri(), verify: (await parse(env, 'tt_verify'))?.file || null } } });
 }
 

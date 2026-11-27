@@ -12,10 +12,10 @@ const TOKEN_KEY = { instagram: 'ig_token', tiktok: 'tt_token' };
 
 export const connected = async (env) => Object.fromEntries(await Promise.all(PLATFORMS.map(async (p) => [p, !!(await setting(env, TOKEN_KEY[p]))])));
 export const dryRun = async (env) => (await setting(env, 'dry_run')) !== 'off';
-// Ready = could really publish. TikTok also needs a privacy level.
+// Ready = could really publish. TikTok also needs the video.publish permission and a privacy level.
 export async function readiness(env) {
   const c = await connected(env);
-  return { instagram: c.instagram, tiktok: c.tiktok && !!(await tiktok.options(env)).privacy };
+  return { instagram: c.instagram, tiktok: c.tiktok && (await tiktok.canPublish(env)) && !!(await tiktok.options(env)).privacy };
 }
 export async function liveFlags(env) {
   const off = !(await dryRun(env)), r = await readiness(env);

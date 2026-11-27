@@ -31,7 +31,7 @@
 
 ## Going live needs
 - Instagram: professional account, Meta app with `instagram_business_content_publish`, long-lived token (or a short-lived one plus the app secret, exchanged on connect). HQ checks account type and publish permission, and refreshes the token weekly on the publisher tick, also in Dry Run.
-- TikTok: developer app with Login Kit + Content Posting API (Direct Post), scopes `user.info.basic,video.publish`, redirect `https://vagent.online/api/tiktok-callback`; terms + privacy page URLs for review. Verify URL prefix `https://vagent.online/hook/` (paste the signature file on /marketing) or choose file upload. Until TikTok audits the app, posts are private only. The audit expects the creator to pick privacy / interaction settings per post; today they are account-wide.
+- TikTok: developer app with Login Kit + Content Posting API (Direct Post), login asks for `user.info.basic` only ("Log in with posting permission" adds `video.publish`; without it TikTok is only simulated), redirect `https://vagent.online/api/tiktok-callback`; terms + privacy page URLs for review. Verify URL prefix `https://vagent.online/hook/` (paste the signature file on /marketing) or choose file upload. Until TikTok audits the app, posts are private only. The audit expects the creator to pick privacy / interaction settings per post; today they are account-wide.
 
 ## Limits
 - GitHub may delay scheduled runs, and disables schedules after 60 days without repo activity. The repo is public (code and drafts visible; videos are not). GitHub's Actions terms tie usage to the repo's software project, so marketing renders are a grey area.

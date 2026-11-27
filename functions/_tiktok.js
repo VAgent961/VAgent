@@ -4,7 +4,15 @@ import { sql, encrypt, decrypt } from './_lib.js';
 import { setting, setSetting, log, CHUNK, SITE } from './_marketing.js';
 
 const API = 'https://open.tiktokapis.com/v2';
-export const SCOPES = 'user.info.basic,video.publish';
+// Login asks only for user.info.basic: TikTok refuses a login that requests a scope the app does not have (Sandbox
+// often lacks video.publish). The owner can ask for posting permission too; without it TikTok stays simulated.
+const BASIC = 'user.info.basic', PUBLISH = 'video.publish';
+const grants = (scope) => String(scope || '').split(/[,\s]+/).includes(PUBLISH);
+export const NO_PUBLISH = 'TikTok did not grant video.publish (posting permission). Add it in the TikTok developer app, then use "Log in with posting permission".';
+export async function canPublish(env) {
+  const saved = await setting(env, 'tt_token');
+  return !!saved && grants(JSON.parse(await decrypt(env, saved)).scope);
+}
 export const redirectUri = () => `${SITE}/api/tiktok-callback`;
 const DEFAULTS = { privacy: '', comment: true, duet: false, stitch: false, source: 'url' };
 export const options = async (env) => ({ ...DEFAULTS, ...JSON.parse((await setting(env, 'tt_options')) || '{}') });
@@ -18,11 +26,11 @@ export async function saveApp(env, key, secret, who) {
   if (!/^[A-Za-z0-9_-]{8,80}$/.test(key) || !/^[A-Za-z0-9_-]{8,120}$/.test(secret)) return 'Check the client key and secret';
   await setSetting(env, 'tt_app', await encrypt(env, JSON.stringify({ key, secret }))); await log(env, '-', 'tiktok_app_saved', who); return '';
 }
-export async function authorizeUrl(env) {
+export async function authorizeUrl(env, publish) {
   const a = await app(env); if (!a) return null;
   const state = [...crypto.getRandomValues(new Uint8Array(16))].map((x) => x.toString(16).padStart(2, '0')).join('');
   await setSetting(env, 'tt_state', JSON.stringify({ state, until: Date.now() + 600000 }));
-  return 'https://www.tiktok.com/v2/auth/authorize/?' + new URLSearchParams({ client_key: a.key, scope: SCOPES, response_type: 'code', redirect_uri: redirectUri(), state });
+  return 'https://www.tiktok.com/v2/auth/authorize/?' + new URLSearchParams({ client_key: a.key, scope: publish ? `${BASIC},${PUBLISH}` : BASIC, response_type: 'code', redirect_uri: redirectUri(), state });
 }
 async function tokenCall(env, params) {
   const a = await app(env); if (!a) throw new Error('TikTok app keys are missing');
@@ -38,11 +46,14 @@ export async function finishConnect(env, code, state, who) {
   if (!saved || !state || saved.state !== state || saved.until < Date.now()) throw new Error('Login link expired. Start again.');
   await setSetting(env, 'tt_state', 'null'); // single use
   const j = await tokenCall(env, { code, grant_type: 'authorization_code', redirect_uri: redirectUri() });
-  if (!String(j.scope).includes('video.publish')) throw new Error('The video.publish permission was not granted');
   await setSetting(env, 'dry_run', 'on'); // a new account never goes live by itself
   await store(env, j);
   let name = 'account';
-  try { const c = await creatorInfo(env); name = c.creator_username || c.creator_nickname || name; } catch (e) { await log(env, '-', 'tiktok_creator_info_failed', e.message); }
+  await setSetting(env, 'tt_creator', 'null'); // never keep another login's privacy choices
+  try {
+    if (grants(j.scope)) { const c = await creatorInfo(env); name = c.creator_username || c.creator_nickname || name; }
+    else name = (await displayName(j.access_token)) || name;
+  } catch (e) { await log(env, '-', 'tiktok_creator_info_failed', e.message); }
   await setSetting(env, 'tt_user', JSON.stringify({ name })); await log(env, '-', 'tiktok_connected', who);
 }
 // Access tokens last a day: refresh when under an hour is left. The refresh token can rotate, so both are stored.
@@ -60,7 +71,14 @@ async function call(token, path, body = {}) {
   if (!r.ok || (j.error?.code && j.error.code !== 'ok')) throw new Error(`TikTok ${j.error?.code || r.status}: ${j.error?.message || 'request failed'}`);
   return j.data || {};
 }
+async function displayName(token) { // allowed with user.info.basic
+  const r = await fetch(`${API}/user/info/?fields=display_name`, { headers: { Authorization: 'Bearer ' + token } });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || (j.error?.code && j.error.code !== 'ok')) throw new Error(`TikTok ${j.error?.code || r.status}: ${j.error?.message || 'request failed'}`);
+  return j.data?.user?.display_name;
+}
 export async function creatorInfo(env) {
+  if (!(await canPublish(env))) throw new Error(NO_PUBLISH);
   const info = await call(await accessToken(env), '/post/publish/creator_info/query/');
   await setSetting(env, 'tt_creator', JSON.stringify(info)); return info;
 }

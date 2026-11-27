@@ -45,3 +45,4 @@ dialog{width:min(440px,calc(100% - 32px));background:var(--card);color:var(--ink
 #tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--clay)}
 .count{display:inline-block;min-width:22px;margin-left:6px;padding:0 6px;border-radius:20px;background:var(--line);font-size:12px}
 @media (prefers-reduced-motion:reduce){.bar span{transition:none}}
+a.button{margin:6px 6px 0 0}
