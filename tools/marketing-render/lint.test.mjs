@@ -8,6 +8,8 @@ for (const p of posts) assert.equal(lint(p), '', p.id);
 for (const bad of ['It is free', 'Low prices', 'Message us on WhatsApp', 'Only $5']) assert.notEqual(lint({ ...posts[0], caption: `${posts[0].caption} ${bad}` }), '', bad);
 for (const missing of ['keyword', 'info', 'direction']) assert.notEqual(lint({ ...posts[0], [missing]: undefined }), '', missing);
 assert.notEqual(lint({ ...posts[0], keyword: 'THREE WHOLE WORDS' }), '');
+// the opening headline must fit two lines at 84 px
+for (const p of posts) assert.ok(p.scenes[0].title.length <= 18, `${p.id}: shorten the first title`);
 const seen = {};
 const unique = (what, value, id) => { const k = what + ':' + value; assert.ok(!seen[k], `${id} repeats the ${what} of ${seen[k]}`); seen[k] = id; };
 for (const p of posts) {

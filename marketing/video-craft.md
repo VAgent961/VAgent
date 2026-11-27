@@ -10,6 +10,7 @@ A render never stops for a missing world: `newworld.py` + `worlds/auto.mjs` gene
 Deploy the site before pushing renderer changes; the job waits until the new code answers.
 
 ## Fixed
+- First scene title: 18 characters at most (longer fails the 84 px headline check).
 - Vee: the blocky terracotta pixel pet (12x8 grid, `character.js`), no accessories. Official lockup top-left, "AI character" label.
 - Voice: Kokoro `af_heart` 1.05, not processed. Music 20 dB under speech, 12 dB in gaps; -14 LUFS plus limiter.
 - Sound effects sit on the beats from `cues()` in `scene.html`, listed in the timeline.

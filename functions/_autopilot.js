@@ -28,6 +28,7 @@ const today = async (env, date) => (await sql(env, `SELECT
   EXISTS (SELECT 1 FROM marketing_posts WHERE auto_day = $1::date AND status IN ('rendering', 'review')) AS pending,
   (SELECT max(updated_at) FROM marketing_posts WHERE (updated_at AT TIME ZONE 'Asia/Beirut')::date = $1::date AND (status = 'declined' OR (auto_day = $1::date AND status = 'failed' AND video_sha IS NULL))) AS closed`, [date]))[0] || {};
 
+export const HOOK_TITLE = 18; // longer wraps to 3 lines and fails the render's 84 px headline check
 // Error text, or '' when the idea is well formed and passes the text duplicate check.
 export function judge(p, used) {
   const err = lint(p); if (err) return err;
@@ -35,6 +36,8 @@ export function judge(p, used) {
   if (p.scenes.length < 6 || p.scenes.length > 8) return 'Use 6 to 8 scenes';
   if (n < 65 || n > 90) return `The spoken script is ${n} words; it must be 65 to 90`;
   if (p.scenes[0].say.split(/\s+/).length > 12) return 'The first spoken line must be 12 words or fewer';
+  if (p.scenes[0].title.length > HOOK_TITLE) return `The first scene's title is too long for large type: at most 3 short words, ${HOOK_TITLE} characters`;
+  if (String(p.caption).length < 120) return 'The caption is too thin: write 2 to 4 sentences before the comment request';
   if (p.scenes.at(-1).shot !== 'cta' || p.scenes.some((x) => !SHOTS.includes(x.shot))) return `Every scene needs a shot from ${SHOTS.join(', ')}; the last is cta`;
   return repeats(p, used);
 }
@@ -71,7 +74,7 @@ const SYSTEM = `You write one 9:16 Instagram Reel for VAgent (vagent.online, @v_
 Rules: plain calm English. Never mention WhatsApp, free, cost, price, discounts, subscriptions or money signs. No client names, no invented numbers or results. Invent a fresh everyday problem that none of the already used videos covers, and show it as "an agent we can build". Describe only what such an agent could really do; never promise more sales or results. Nothing goes out until a person approves.
 JSON shape:
 {"keyword":"1 or 2 words in CAPITALS","info":{"title":"max 80 chars","summary":"1-2 sentences"},"concept":"the visual world of this video, one sentence","scenes":[{"say":"spoken line","title":"on-screen headline, max 40 chars","shot":"hook|phone|flow|browser|list|approve|alert|cta","mood":"talk|think","items":["up to 4 short on-screen lines"]}],"caption":"...","hashtags":["#VAgent"]}
-Exactly 7 scenes. The "say" lines total 70 to 85 words. Scene 1: shot hook, a say of at most 10 words that is concrete, addresses "you" and puts something at stake. Scene 7: shot cta, its say asks to comment the keyword, title "Comment <KEYWORD>". The caption starts with the first line and says "Comment <KEYWORD>".`;
+Exactly 7 scenes. The "say" lines total 70 to 85 words. Scene 1: shot hook, a title of at most 3 short words (18 characters), a say of at most 10 words that is concrete, addresses "you" and puts something at stake. Scene 7: shot cta, its say asks to comment the keyword, title "Comment <KEYWORD>". The caption is 2 to 4 sentences, starts with the first line and says "Comment <KEYWORD>".`;
 
 export async function write(env, used, id) {
   const list = used.slice(-60).map(brief).join('\n').slice(-9000), until = Date.now() + 18e4, rejected = [];

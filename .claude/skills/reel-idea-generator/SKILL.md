@@ -24,6 +24,7 @@ Every idea is checked against the whole queue (published and declined included) 
 5. **draft**: for each, copy the shape of one recent file in `tools/marketing-render/posts/` into `posts/<id>.json`:
    - `id` (kebab-case + `-01`), `keyword` (1-2 words, CAPITALS), `info {title, summary}`, `direction {world, concept}`
    - 6-8 `scenes`: `say` (the Kokoro `af_heart` narration, 65-90 words in total), `title`, `shot` (`hook|phone|flow|browser|list|approve|alert|cta`), `items` (max 4), `mood`; `chat` for a phone demo. Last scene: `shot: "cta"`, `end: true`, "Comment <KEYWORD>".
+   - First `title`: 18 characters at most.
    - First `say`: 12 words or fewer, scores 75+.
    - `caption` (asks to comment the keyword) and `hashtags`.
 6. Own world, never reused: `worlds/<world>.mjs` (logo, css, labels, card, chips, pet, dock, cta, camera, enter, word, cut, back, front; scene drawn with pixelfx) and `worlds/<world>.json` (`tail`, `sound`: new tempo, instrument, transition sound; add a synth to `sfx.py` if needed). Start from the closest existing world but write every function and the layout anew. Do not use `newworld.py` for drafts: the test rejects repeated parts.
