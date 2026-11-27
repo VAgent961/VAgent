@@ -69,6 +69,11 @@ const today = async (extra) => { await fresh(); notDue = true; Object.assign(row
 await today(); await pub.tick(env, at('16:00')); assert.equal(sent.length, 0); // not configured
 Object.assign(env, { TELEGRAM_BOT_TOKEN: 't', TELEGRAM_CHAT_ID: '1' });
 await pub.setDryRun(env, true, '', 'o'); await today(); await pub.tick(env, at('16:00')); assert.equal(sent.length, 0);
+// only the exact value "on" enables Dry Run messages, and a silent tick does not use up the day's reminder
+for (const v of ['', 'off', 'false', '0']) { env.TELEGRAM_NOTIFY_DRY_RUN = v; await pub.tick(env, at('16:00')); }
+assert.equal(sent.length, 0); assert.equal(settings.tg_reminded, undefined);
+delete env.TELEGRAM_NOTIFY_DRY_RUN; await pub.setDryRun(env, false, 'PUBLISH', 'o'); await pub.tick(env, at('16:05')); assert.equal(sent.length, 1); assert.match(sent[0], /LIVE/);
+await pub.setDryRun(env, true, '', 'o'); await today();
 env.TELEGRAM_NOTIFY_DRY_RUN = 'on'; await pub.tick(env, at('15:55')); await pub.tick(env, at('19:00')); assert.equal(sent.length, 0);
 await pub.tick(env, at('16:00')); await pub.tick(env, at('16:05')); assert.equal(sent.length, 1); assert.match(sent[0], /DRY RUN/);
 await pub.setDryRun(env, false, 'PUBLISH', 'o'); await today(); telegramDown = true; await pub.tick(env, at('16:00')); assert.equal(sent.length, 0); assert.equal(row.status, 'scheduled');
