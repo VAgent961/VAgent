@@ -37,6 +37,7 @@ export function judge(p, used) {
   if (n < 65 || n > 90) return `The spoken script is ${n} words; it must be 65 to 90`;
   if (p.scenes[0].say.split(/\s+/).length > 12) return 'The first spoken line must be 12 words or fewer';
   if (p.scenes[0].title.length > HOOK_TITLE) return `The first scene's title is too long for large type: at most 3 short words, ${HOOK_TITLE} characters`;
+  if (p.scenes.some((x) => ['flow', 'list', 'browser', 'alert'].includes(x.shot) && !x.items?.length)) return 'Every flow, list, browser and alert scene needs items, or its card is empty';
   if (String(p.caption).length < 120) return 'The caption is too thin: write 2 to 4 sentences before the comment request';
   if (p.scenes.at(-1).shot !== 'cta' || p.scenes.some((x) => !SHOTS.includes(x.shot))) return `Every scene needs a shot from ${SHOTS.join(', ')}; the last is cta`;
   return repeats(p, used);
@@ -73,7 +74,7 @@ export async function sameTopic(env, p, used) {
 const SYSTEM = `You write one 9:16 Instagram Reel for VAgent (vagent.online, @v_agent961), which builds AI agents for owners of shops, cafes and small businesses in Lebanon. The presenter is a terracotta pixel-art pet. Reply with JSON only, minified on one line (a long reply gets cut off). Keep items to 2 or 3 short ones.
 Rules: plain calm English. Never mention WhatsApp, free, cost, price, discounts, subscriptions or money signs. No client names, no invented numbers or results. Invent a fresh everyday problem that none of the already used videos covers, and show it as "an agent we can build". Describe only what such an agent could really do; never promise more sales or results. Nothing goes out until a person approves.
 JSON shape:
-{"keyword":"1 or 2 words in CAPITALS","info":{"title":"max 80 chars","summary":"1-2 sentences"},"concept":"the visual world of this video, one sentence","scenes":[{"say":"spoken line","title":"on-screen headline, max 40 chars","shot":"hook|phone|flow|browser|list|approve|alert|cta","mood":"talk|think","items":["up to 4 short on-screen lines"]}],"caption":"...","hashtags":["#VAgent"]}
+{"keyword":"1 or 2 words in CAPITALS","info":{"title":"max 80 chars","summary":"1-2 sentences"},"concept":"the visual world of this video, one sentence","scenes":[{"say":"spoken line","title":"on-screen headline, max 40 chars","shot":"hook|flow|browser|list|approve|alert|cta","mood":"talk|think","items":["up to 4 short on-screen lines"]}],"caption":"...","hashtags":["#VAgent"]}
 Exactly 7 scenes. The "say" lines total 70 to 85 words. Scene 1: shot hook, a title of at most 3 short words (18 characters), a say of at most 10 words that is concrete, addresses "you" and puts something at stake. Scene 7: shot cta, its say asks to comment the keyword, title "Comment <KEYWORD>". The caption is 2 to 4 sentences, starts with the first line and says "Comment <KEYWORD>".`;
 
 export async function write(env, used, id) {
@@ -83,7 +84,7 @@ export async function write(env, used, id) {
     const ask = `Already used (choose a clearly different problem, keyword and opening line):\n${list}${why ? `\n\nRejected just now:\n${rejected.join('\n')}\nYour last answer was rejected: ${why}. Write a corrected or entirely different one.` : ''}`;
     const j = parseJSON(await think(env, SYSTEM, ask));
     if (!j || !Array.isArray(j.scenes)) { why = 'the reply was not complete JSON: answer minified and shorter'; continue; }
-    const scenes = j.scenes.map((s, n) => ({ say: s.say, title: s.title, shot: s.shot, mood: s.mood === 'think' ? 'think' : 'talk', ...(Array.isArray(s.items) && s.items.length ? { items: s.items.slice(0, 4) } : {}), ...(n === j.scenes.length - 1 ? { end: true } : {}) }));
+    const scenes = j.scenes.map((s, n) => ({ say: s.say, title: s.title, shot: s.shot === 'phone' ? 'list' : s.shot, mood: s.mood === 'think' ? 'think' : 'talk', ...(Array.isArray(s.items) && s.items.length ? { items: s.items.slice(0, 4) } : {}), ...(n === j.scenes.length - 1 ? { end: true } : {}) }));
     const post = { id, keyword: j.keyword, info: j.info, direction: { world: `auto-${id}`, concept: String(j.concept || scenes[0]?.title || id).slice(0, 200) }, scenes, caption: j.caption, hashtags: j.hashtags };
     why = judge(post, used) || await sameTopic(env, post, used);
     if (!why) return post;
