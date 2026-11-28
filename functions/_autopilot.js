@@ -6,6 +6,7 @@ import { think, parseJSON } from './_brain.js';
 import { lint, log, repeats, setting, SHOTS } from './_marketing.js';
 import { langFor, langOf, AR } from './_lang.js';
 import * as ig from './_instagram.js';
+import { STORY, sceneError, stage, tags } from './_scenario.js';
 
 export const PREP = '06:00', CUTOFF = '19:00', PACE = 2 * 36e5; // 06:00 leaves two hours for a slow render queue
 export function clock(now = new Date()) {
@@ -35,7 +36,7 @@ export function judge(p, used, lang = langOf(p)) {
   if (!p.topic) return 'Add "topic": {"key": "english-slug-of-the-idea", "summary": "one English sentence"}';
   const ar = lang === AR, [lo, hi] = ar ? [45, 70] : [65, 90];
   const n = p.scenes.map((x) => x.say).join(' ').split(/\s+/).length;
-  if (p.scenes.length < 6 || p.scenes.length > 8) return 'Use 6 to 8 scenes';
+  const story = sceneError(p); if (story) return story;
   if (n < lo || n > hi) return `The spoken script is ${n} words; it must be ${lo} to ${hi}`;
   if (p.scenes[0].say.split(/\s+/).length > 12) return 'The first spoken line must be 12 words or fewer';
   if (p.scenes[0].title.length > HOOK_TITLE) return `The first scene's title is too long for large type: at most 3 short words, ${HOOK_TITLE} characters`;
@@ -100,9 +101,10 @@ export async function sameTopic(env, p, used) {
 const SYSTEM = `You write one 9:16 Instagram Reel for VAgent (vagent.online, @v_agent961), which builds AI agents for owners of shops, cafes and small businesses in Lebanon. The presenter is a terracotta pixel-art pet. Reply with JSON only, minified on one line (a long reply gets cut off). Keep items to 2 or 3 short ones.
 Rules: plain calm English. Never mention WhatsApp, free, cost, price, discounts, subscriptions or money signs. No client names, no invented numbers or results. Invent a fresh everyday problem that none of the already used videos covers, and show it as "an agent we can build". Describe only what such an agent could really do; never promise more sales or results. Nothing goes out until a person approves.
 JSON shape:
-{"keyword":"1 or 2 words in CAPITALS","info":{"title":"max 80 chars","summary":"1-2 sentences"},"concept":"the visual world of this video, one sentence","scenes":[{"say":"spoken line","title":"on-screen headline, max 40 chars","shot":"hook|flow|browser|list|approve|alert|cta","mood":"talk|think","items":["up to 4 short on-screen lines"]}],"caption":"...","hashtags":["#VAgent"]}
-Story, one idea per scene: 1 the hook opens a question and does not answer it; 2 the concrete moment where it hurts (alert or list); 3 to 5 how the agent works, in order (what it reads, what it prepares, what you approve), with at least one flow scene of 3 or 4 items and one approve scene; 6 what your day looks like after, answering the hook; 7 the ask. Short spoken sentences with everyday words, one per scene where possible, each linking to the next. Scenes 3 to 5 say one step each, in the order the screen shows it, joined with plain words like first, then, last; a flow scene's line names its items in that order. The line is read aloud by a voice engine: no symbols, emoji, web addresses or unexplained abbreviations. A title is 2 to 5 words and adds to the spoken line instead of repeating it. Items are 1 to 4 words each (hook: exactly 2); an approve scene's first item is the drafted message, under 80 characters.
-Exactly 7 scenes. The "say" lines total 70 to 85 words. Scene 1: shot hook, a title of at most 3 short words (18 characters), a say of at most 10 words that is concrete, addresses "you" and puts something at stake. Scene 7: shot cta, its say asks to comment the keyword, title "Comment <KEYWORD>". The caption is 2 to 4 sentences, starts with the first line and says "Comment <KEYWORD>".`;
+{"keyword":"1 or 2 words in CAPITALS","info":{"title":"max 80 chars","summary":"1-2 sentences"},"concept":"the visual world of this video, one sentence","scenes":[{"say":"spoken line","title":"on-screen headline, max 40 chars","shot":"hook|flow|browser|list|approve|alert|cta","mood":"talk|think","items":["up to 4 short on-screen lines"],"chat":["you|agent","scenes 2, 3, 6 only"]}],"caption":"...","hashtags":["#VAgent"]}
+${STORY}
+Short spoken sentences with everyday words, one or two per scene. The line is read aloud by a voice engine: no symbols, emoji, web addresses or unexplained abbreviations. A title is 2 to 5 words and adds to the spoken line instead of repeating it. Items are 1 to 4 words each (hook: exactly 2); an approve scene's first item is the drafted message, under 80 characters.
+The "say" lines total 70 to 85 words. Scene 1: a title of at most 3 short words (18 characters), a say of at most 10 words. Scene 7: title "Comment <KEYWORD>". The caption is 2 to 4 sentences, starts with the first line and says "Comment <KEYWORD>".`;
 
 const slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 // Added to the English rules above on Lebanese Arabic days.
@@ -113,7 +115,8 @@ THIS VIDEO IS IN LEBANESE ARABIC (Beirut spoken dialect, Arabic script). These o
 - In "say" only, add a few harakat (shadda, kasra, fatha, damma) ONLY on words a voice could misread (e.g. خلّيني، هَلّق، بيحضّر، مِش). Never put harakat on "اكتب" or on the keyword, and none in titles, items or the caption.
 - Short spoken sentences with ، . ؟ ! punctuation. No symbols, emoji, web addresses or abbreviations in "say". In "say" write tech words in Arabic letters as pronounced; the only Latin words allowed there are AI, agent, online, Google, email, website, app, dashboard, link, order, Instagram, message, system, and only a few. Use Western digits.
 - Never mention واتساب, مجاني, ببلاش, سعر, كلفة, خصم, اشتراك or money.
-- The 7 "say" lines total 50 to 62 words (this replaces the 70 to 85 above). Scene 1 title: at most 3 short words, 18 characters.
+- The customer is a Lebanese owner; the helper talks to them as إنت / إنتي, and every chat bubble is Lebanese too.
+The 7 "say" lines total 50 to 62 words (this replaces the 70 to 85 above). Scene 1 title: at most 3 short words, 18 characters.
 - "keyword": 1 Arabic word (2 at most), no diacritics. The caption ends with a line "اكتب <KEYWORD> بالتعليقات" (more words may follow). The last scene: say "اكتب <KEYWORD> بالتعليقات ..." and title "اكتب <KEYWORD>".
 - Hashtags: mix Arabic and English, e.g. #لبنان #Lebanon.
 - "topic" and "concept" stay in English.
@@ -127,10 +130,11 @@ export async function write(env, used, id, lang = 'en') {
   let why = '';
   for (let i = 0; i < 5 && Date.now() < until; i++) {
     const ask = `Topics already taken, in English or Arabic: ${keys}\n\nAlready used (choose a clearly different problem, keyword and opening line):\n${list}${why ? `\n\nRejected just now:\n${rejected.join('\n')}\nYour last answer was rejected: ${why}. Write a corrected or entirely different one.` : ''}`;
-    const j = parseJSON(await think(env, SYSTEM + TOPIC + (lang === AR ? LEBANESE : ''), ask));
+    let j;
+    try { j = parseJSON(await think(env, SYSTEM + TOPIC + (lang === AR ? LEBANESE : ''), ask)); } catch (e) { why = e.message; continue; } // a slow or busy answer costs one try
     if (!j || !Array.isArray(j.scenes)) { why = 'the reply was not complete JSON: answer minified and shorter'; continue; }
-    const scenes = j.scenes.map((s, n) => ({ say: s.say, title: s.title, shot: s.shot === 'phone' ? 'list' : s.shot, mood: s.mood === 'think' ? 'think' : 'talk', ...(Array.isArray(s.items) && s.items.length ? { items: s.items.slice(0, 4) } : {}), ...(n === j.scenes.length - 1 ? { end: true } : {}) }));
-    const post = { id, lang, topic: j.topic && { key: slug(j.topic.key), summary: String(j.topic.summary || '').slice(0, 300) }, keyword: j.keyword, info: j.info, direction: { world: `auto-${id}`, concept: String(j.concept || scenes[0]?.title || id).slice(0, 200) }, scenes, caption: j.caption, hashtags: j.hashtags };
+    const scenes = stage(j.scenes).map((s, n) => ({ say: s.say, title: s.title, shot: s.shot, ...(Array.isArray(s.chat) ? { chat: [s.chat[0], s.chat[1]] } : {}), mood: s.mood === 'think' ? 'think' : 'talk', ...(Array.isArray(s.items) && s.items.length ? { items: s.items.slice(0, 4) } : {}), ...(n === j.scenes.length - 1 ? { end: true } : {}) }));
+    const post = { id, lang, topic: j.topic && { key: slug(j.topic.key), summary: String(j.topic.summary || '').slice(0, 300) }, keyword: j.keyword, info: j.info, direction: { world: `auto-${id}`, concept: String(j.concept || scenes[0]?.title || id).slice(0, 200) }, scenes, caption: j.caption, hashtags: tags(j.hashtags) };
     why = judge(post, used, lang) || await sameTopic(env, post, used);
     if (!why) return post;
     if (post.info?.title) rejected.push(`- ${post.keyword} | ${post.info.title}`);

@@ -23,8 +23,8 @@ Every idea is checked against the whole queue (published and declined included) 
 4. **idea**: pick a topic not in the list (company, a built agent, or an idea we can build with what we run today). Add its row to `marketing/ideas.md`.
 5. **draft**: for each, copy the shape of one recent file in `tools/marketing-render/posts/` into `posts/<id>.json`:
    - `id` (kebab-case + `-01`), `keyword` (1-2 words, CAPITALS), `info {title, summary}`, `direction {world, concept}`
-   - 6-8 `scenes`: `say` (the Kokoro `af_heart` narration, 65-90 words in total), `title`, `shot` (`hook|phone|flow|browser|list|approve|alert|cta`), `items` (max 4), `mood`; `chat` for a phone demo. Last scene: `shot: "cta"`, `end: true`, "Comment <KEYWORD>".
-   - Story: hook (open question) -> pain -> how it works in order (a `flow` of 3-4 items, then `approve`) -> payoff that answers the hook -> cta. One idea per scene; titles 2-5 words; items 1-4 words; hook has exactly 2 items.
+   - 7 `scenes`: `say` (the Kokoro `af_heart` narration, 65-90 words in total), `title`, `shot` (`hook|phone|flow|browser|list|approve|alert|cta`), `items` (max 4), `mood`; `chat` for a phone demo. Last scene: `shot: "cta"`, `end: true`, "Comment <KEYWORD>".
+   - Story: the mini-scene in `functions/_scenario.js` (read `STORY`): the pet talks to one lost customer; 7 scenes `hook, phone, phone, flow, approve, phone, cta`; `chat` on scenes 2 (`you`), 3 (`agent`), 6 (`you`), under 40 characters (60 max). Titles 2-5 words; items 1-4 words; hook has exactly 2 items. Sharpen with the `hook-writer`, `short-form-video-script`, `ugc-ad-scripts`, `ad-hook-analyzer` and `storytelling` skills (content rules here win over theirs).
    - First `title`: 18 characters at most.
    - First `say`: 12 words or fewer, scores 75+.
    - `caption` (asks to comment the keyword) and `hashtags`.

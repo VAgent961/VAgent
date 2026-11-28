@@ -19,7 +19,9 @@ assert.equal(run('2026-12-01T11:00', { approved: true, closed }), 'approved');
 assert.equal(run('2026-12-01T19:00', { closed }), 'cutoff');
 const dir = new URL('../tools/marketing-render/posts/', import.meta.url);
 const posts = readdirSync(dir).map((f) => JSON.parse(readFileSync(new URL(f, dir))));
-assert.match(judge({ ...posts[0], topic: { key: "an-idea", summary: "An idea." } }, [{ ...posts[0], id: "earlier" }]), /already used/);
+const { BEATS, CHAT_BY } = await import('../functions/_scenario.js'), base = posts[0];
+const staged = { ...base, topic: { key: 'an-idea', summary: 'An idea.' }, scenes: BEATS.map((shot, i) => ({ ...base.scenes[i === 6 ? base.scenes.length - 1 : i % (base.scenes.length - 1)], shot, say: i === 6 ? base.scenes.at(-1).say : 'You are buried in notes again, here is one calm step.', title: i === 6 ? base.scenes.at(-1).title : 'Lost again?', items: ['One note', 'Two notes'], chat: CHAT_BY[i] ? [CHAT_BY[i], 'I lose track'] : undefined })) };
+assert.match(judge(staged, [{ ...base, id: 'earlier' }]), /already used/);
 
 // every day the tick looks for due posts; after the cutoff it drops a late automatic render
 const env = { DATABASE_URL: 'postgres://u:p@h.example/db' }; let seen = [];
@@ -49,9 +51,9 @@ console.log('blocked page ok');
 // Lebanese Arabic: lint, dialect check, and one idea never twice across the two languages
 const { lint } = await import('../functions/_marketing.js');
 const says = ['شو بيصير إذا زبون سألك بالليل وما حدا رد؟', 'الرسالة بتضل ناطرة، والزبون عم يفتش على محل غيرك هلق.', 'هيدا الـ agent بيقرا السؤال أول ما يوصل وبيفهم شو المطلوب.', 'بعدين بيحضّر جواب واضح من المعلومات يلي إنت عطيتو ياها.', 'إنت بتشوف الجواب وبتوافق عليه قبل ما ينبعت لأي حدا.', 'هيك بيضل المحل عم يرد بطريقة مرتبة حتى لما تكون مشغول كتير.', 'اكتب رد بالتعليقات ومنبعتلك كيف فيك تجربو.'];
-const shots = ['hook', 'alert', 'flow', 'list', 'approve', 'list', 'cta'];
+const shots = ['hook', 'phone', 'phone', 'flow', 'approve', 'phone', 'cta'], chats = { 1: ['you', 'ضعت بين الرسايل'], 2: ['agent', 'خلّيني فرجيك'], 5: ['you', 'هيك أريح بكتير'] };
 const arabic = { id: 'ar1', lang: AR, topic: { key: 'night-customer-replies', summary: 'Customer questions at night go unanswered; an agent drafts replies for approval.' }, keyword: 'رد', info: { title: 'رد بالليل', summary: 'مساعد بيحضّر الردود.' }, direction: { world: 'auto-ar1', concept: 'A shop at night' },
-  scenes: says.map((say, i) => ({ say, title: i === 6 ? 'اكتب رد' : 'مين بيرد؟', shot: shots[i], items: ['بيقرا السؤال'] })), caption: 'زبون سأل بالليل وما حدا رد؟ هيدا مساعد بيحضّر الجواب وإنت بتوافق عليه قبل ما ينبعت، حتى تضل مرتاح.\n\nاكتب رد بالتعليقات', hashtags: ['#لبنان'] };
+  scenes: says.map((say, i) => ({ say, title: i === 6 ? 'اكتب رد' : 'مين بيرد؟', shot: shots[i], items: ['بيقرا السؤال'], ...(chats[i] && { chat: chats[i] }) })), caption: 'زبون سأل بالليل وما حدا رد؟ هيدا مساعد بيحضّر الجواب وإنت بتوافق عليه قبل ما ينبعت، حتى تضل مرتاح.\n\nاكتب رد بالتعليقات', hashtags: ['#لبنان'] };
 assert.equal(judge(arabic, [], AR), ''); assert.match(judge(arabic, [], 'en'), /English/);
 assert.match(judge({ ...arabic, scenes: arabic.scenes.map((x, i) => (i === 1 ? { ...x, say: 'سوف تبقى الرسالة بدون جواب حتى الصباح للأسف.' } : x)) }, [], AR), /textbook/);
 assert.match(lint({ ...arabic, topic: undefined }), /topic/); assert.match(lint({ ...arabic, caption: 'بلا طلب' }), /caption must ask/);
@@ -60,3 +62,11 @@ const english = { ...posts[0], id: 'en1', keyword: 'NIGHT', topic: { key: 'night
 assert.match(repeats(arabic, [english]), /topic repeats/); assert.match(repeats({ ...english, id: 'en2', keyword: 'OWL' }, [arabic]), /./);
 assert.match(repeats(arabic, [{ ...posts[0], id: 'old', info: { title: 'Night replies', summary: 'Customer questions at night go unanswered; an agent drafts replies for approval.' } }]), /topic repeats/);
 console.log('arabic ok');
+// the scene: pet and lost customer, fixed beats, short chat bubbles
+const edit = (n, o) => judge({ ...arabic, scenes: arabic.scenes.map((x, i) => (i === n ? { ...x, ...o } : x)) }, [], AR);
+assert.match(edit(1, { chat: undefined }), /Scene 2 needs/); assert.match(edit(5, { chat: ['agent', 'تمام'] }), /Scene 6 needs/);
+assert.match(edit(2, { chat: ['agent', 'ا'.repeat(61)] }), /Scene 3 needs/); assert.match(edit(3, { shot: 'list' }), /shots in order/);
+const { stage, tags } = await import('../functions/_scenario.js');
+assert.deepEqual(stage(BEATS.map(() => ({ shot: 'list', chat: 'تمام' }))).map((x) => [x.shot, x.chat?.[0]]), BEATS.map((b, i) => [b, CHAT_BY[i]]));
+assert.deepEqual(tags(['#Small Business', 'لبنان', '#', '#لبنان']), ['#Small_Business', '#لبنان']);
+console.log('scene ok');

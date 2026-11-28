@@ -151,7 +151,9 @@ function build(n) {
   if (phone) {
     const history = D.scenes.slice(0, n + 1).filter((x) => x.chat).slice(-3);
     let y = 130;
-    const msgs = history.map((x) => { const m = el(card, 'msg ' + x.chat[0], `top:${y}px`, x.chat[1]); y += m.offsetHeight + 26; return m; });
+    const msgs = history.map((x) => el(card, 'msg ' + x.chat[0], '', x.chat[1]));
+    while (msgs.length > 1 && msgs.reduce((h, m) => h + m.offsetHeight + 26, 130) > 590) msgs.shift().remove(); // the oldest leaves a full card
+    msgs.forEach((m) => { m.style.top = y + 'px'; y += m.offsetHeight + 26; });
     const typing = el(card, 'msg agent', `top:${y}px`, '');
     const dots = [0, 1, 2].map(() => { const d = document.createElement('i'); d.style.cssText = 'display:inline-block;width:18px;height:18px;margin:0 6px;border-radius:50%;background:#8A8478'; typing.append(d); return d; });
     anim = (k) => {
@@ -247,7 +249,7 @@ function seek(i) {
   const spot = (x) => V.pet[x === 'hook' ? 'hook' : x === 'cta' ? 'cta' : 'mid'], mood = { hook: ['explain', 'wow'], phone: ['point', 'happy'], flow: ['point', 'happy'], browser: ['explain', 'happy'], list: ['think', 'think'], approve: ['point', 'happy'], alert: ['think', 'worried'], cta: ['wave', 'joy'] };
   const before = (D.scenes[n - 1] || s).shot || 'phone', g = spot(shot), prev = spot(before), m = out(k / .5), arc = Math.hypot(g[0] - prev[0], g[1] - prev[1]) > 40 ? Math.sin(clamp(k / .5) * Math.PI) * -60 : 0;
   $('girl').style.transform = `translate(${prev[0] + (g[0] - prev[0]) * m}px,${prev[1] + (g[1] - prev[1]) * m + arc}px) scale(${prev[2] + (g[2] - prev[2]) * m})`;
-  const talking = k < s.voice, face = shot === 'approve' && k > s.dur * .68 ? 'joy' : shot === 'hook' && k > 1.4 ? 'worried' : mood[shot][1];
+  const talking = k < s.voice, face = shot === 'approve' && k > s.dur * .68 ? 'joy' : n === 1 && s.chat?.[0] === 'you' ? 'worried' : shot === 'hook' && k > 1.4 ? 'worried' : mood[shot][1];
   draw({ t, pose: mood[shot][0], from: mood[before][0], k: clamp(k / .45), face, level: talking ? level : 0, vis: viseme(s, t), since: first ? 9 : k });
   if (dock) {
     const a = back((k - .25) / .45); dock.box.style.opacity = clamp((k - .25) / .2) * (1 - leave); dock.box.style.transform = `translateX(${(1 - a) * 140}px)`;
