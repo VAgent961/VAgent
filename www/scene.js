@@ -3,7 +3,7 @@
 import * as T from './vendor/three.bundle.min.js';
 
 const N = 144, TAU = Math.PI * 2;
-const INK = '#2A2825', CREAM = '#F6F2E8', SAND = '#D9D1BF', CLAY = '#B5532F', PEACH = '#E39873', STONE = '#9C958A', GREEN = '#3F8F6B';
+const INK = '#575047', CREAM = '#F6F2E8', SAND = '#D9D1BF', CLAY = '#B5532F', PEACH = '#E39873', STONE = '#9C958A', GREEN = '#3F8F6B';
 const rand = (i, s = 0) => { const x = Math.sin((i + 1) * 127.1 + s * 311.7) * 43758.5453; return x - Math.floor(x); };
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const ease = (t) => t * t * (3 - 2 * t);
@@ -37,8 +37,8 @@ function formation(k, i) {
     const x = i % 12, y = Math.floor(i / 12);
     // swatch columns on top, type bars in the middle, components below
     let col = CREAM, w = 0.66, h = 0.66, d = 0.22;
-    if (y >= 9) { col = [INK, INK, '#57534B', '#57534B', STONE, STONE, SAND, SAND, PEACH, PEACH, CLAY, CLAY][x]; w = h = 0.7; }
-    else if (y >= 5) { const len = [11, 7, 9, 5][8 - y]; col = x < len ? (y === 8 ? INK : '#6E695F') : SAND; w = x < len ? 0.72 : 0.12; h = x < len ? (y === 8 ? 0.5 : 0.24) : 0.12; d = 0.14; }
+    if (y >= 9) { col = [INK, INK, '#7A7367', '#7A7367', STONE, STONE, SAND, SAND, PEACH, PEACH, CLAY, CLAY][x]; w = h = 0.7; }
+    else if (y >= 5) { const len = [11, 7, 9, 5][8 - y]; col = x < len ? (y === 8 ? INK : '#8A8377') : SAND; w = x < len ? 0.72 : 0.12; h = x < len ? (y === 8 ? 0.5 : 0.24) : 0.12; d = 0.14; }
     else { const card = Math.floor(x / 4), btn = y === 1 && x % 4 > 0 && x % 4 < 3; col = btn ? CLAY : y === 4 ? [INK, CLAY, INK][card] : [SAND, STONE, SAND][card]; w = x % 4 === 3 ? 0.55 : 0.74; h = y === 4 ? 0.4 : 0.7; d = btn ? 0.55 : 0.18; }
     p.set((x - 5.5) * 0.7, (y - 5.5) * 0.7, y === 1 && x % 4 > 0 && x % 4 < 3 ? 0.25 : 0).applyQuaternion(FACE);
     q.copy(FACE); s.set(w, h, d); c = col;
