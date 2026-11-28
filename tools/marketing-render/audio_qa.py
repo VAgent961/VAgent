@@ -14,8 +14,10 @@ PAUSE_MAX = 0.75    # seconds of silence inside a line
 JOIN_MAX = 1.0      # seconds of silence between two lines
 _model = None
 
-def decode(path, rate=SR):
-    raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", str(path), "-vn", "-f", "f32le", "-ac", "1", "-ar", str(rate), "-"],
+def decode(path, rate=SR, stereo=False):
+    # stereo files are averaged: ffmpeg's float "-ac 1" adds the channels 3 dB hot, which reads as clipping
+    mono = ["-af", "pan=mono|c0=0.5*c0+0.5*c1"] if stereo else ["-ac", "1"]
+    raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", str(path), "-vn", "-f", "f32le", *mono, "-ar", str(rate), "-"],
                          capture_output=True, check=True).stdout
     return np.frombuffer(raw, dtype=np.float32)
 
@@ -98,7 +100,10 @@ def mix_defects(clean, final, rate=SR):
         out.append(f"A/V drift: voice offset {facts['lag_ms']} ms")
     shift = int(late[0] * rate)
     aligned = final[shift:] if shift >= 0 else np.pad(final, (-shift, 0))
-    facts["snr_db"] = round(snr(clean, aligned, rate), 1)
+    # the master's high-pass only turns the phase of the voice: give the reference the same one
+    ref = np.frombuffer(subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "f32le", "-ac", "1", "-ar", str(rate), "-i", "-", "-af", "highpass=f=55", "-f", "f32le", "-"],
+                                       input=np.asarray(clean, dtype=np.float32).tobytes(), capture_output=True, check=True).stdout, dtype=np.float32)
+    facts["snr_db"] = round(snr(ref, aligned, rate), 1)
     if facts["snr_db"] < SNR_MIN:
         out.append(f"voice buried or distorted: {facts['snr_db']} dB, needs {SNR_MIN}")
     dead = [g for g in gaps(final, rate, 0.001) if g[1] - g[0] > 0.3 and g[1] < length - 1.5]
@@ -128,7 +133,7 @@ def check(mp4, voice, rate, spans, lines):
         return ["missing audio or video stream"], {}
     if abs(av["audio"][0] - av["video"][0]) > 0.05 or abs(av["audio"][1] - av["video"][1]) > 0.12:
         out.append(f"A/V drift: video {av['video']} audio {av['audio']}")
-    final = decode(mp4)
+    final = decode(mp4, stereo=True)
     clean = resample(voice, rate, SR)
     mixed, facts = mix_defects(clean, final)
     out += mixed + voice_defects(clean, SR, spans)

@@ -35,13 +35,13 @@ def bed(n, rate, s):
 def rms(x):
     return float(np.sqrt(np.mean(np.square(x)))) if len(x) else 0.0
 
-def mix(voice, rate, cues, sound):
+def mix(voice, rate, cues, sound, under=1.0):
     """Voice is left untouched. Music sits 20 dB under it while she talks and rises to 12 dB under in the gaps."""
     n = len(voice)
     music = smooth(bed(n, rate, sound), rate, 5 / rate)  # gentle low-pass keeps the bed out of the way of speech
     talk = np.abs(voice) > 0.015
     level = rms(voice[talk]) or 0.1
-    music *= level / (rms(music) or 1)
+    music *= under * level / (rms(music) or 1)
     hold = np.clip(smooth(talk.astype(float), rate, 0.35) * 6, 0, 1)  # ducking: look ahead, hold short pauses
     env = smooth(hold, rate, 0.3)
     low, high = 10 ** (-20 / 20), 10 ** (-12 / 20)
@@ -56,5 +56,5 @@ def mix(voice, rate, cues, sound):
         at = max(0, int((c["t"] - lead) * rate))
         spoken = hold[at:at + len(s)]
         duck = 1 - 0.3 * (float(spoken.mean()) if len(spoken) else 0)  # about 3 dB lower while she is speaking
-        add(out, at, level * gain * 1.6 * duck * s)
+        add(out, at, under * level * gain * 1.6 * duck * s)
     return out.astype(np.float32)

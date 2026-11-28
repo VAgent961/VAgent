@@ -212,7 +212,7 @@ def render_video(post, out, tmp):
             wav = Path(tmp) / "mix.wav"
             with wave.open(str(wav), "wb") as w:
                 w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate)
-                w.writeframes((np.clip(mix(voice, rate, cues, look["sound"]), -1, 1) * 32767).astype("<i2").tobytes())
+                w.writeframes((np.clip(mix(voice, rate, cues, look["sound"], 1.0 if lang == "en" else 0.5), -1, 1) * 32767).astype("<i2").tobytes())
             plan = Path(tmp) / "timeline.json"
             plan.write_text(json.dumps(timeline(scenes, t, page, cues, post, world)))
             pre = director("check_timeline.py", plan)
