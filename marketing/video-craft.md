@@ -20,7 +20,7 @@ Deploy the site before pushing renderer changes; the job waits until the new cod
 - Built into the engine: "i/N" step counter on the middle scenes, current workflow step spotlighted, `done` chime when a flow completes, long labels shrink to fit, first hook chip at 0.2 s.
 - First scene title: 18 characters at most (longer fails the 84 px headline check).
 - Vee: the blocky terracotta pixel pet (12x8 grid, `character.js`), no accessories. Official lockup top-left, "AI character" label.
-- Voice: Kokoro `af_heart` 1.05, not processed (silence trimmed, 8 ms edge fades). Music 20 dB under speech, 12 dB in gaps; -14 LUFS plus limiter (55 Hz high-pass); effects 3 dB lower under speech.
+- Voice: Kokoro `af_heart` 1.05, not processed (silence trimmed, 8 ms edge fades; Arabic `ar-LB-RamiNeural` keeps 80/220 ms around speech, 15 ms fades). Music 20 dB under speech, 12 dB in gaps; -14 LUFS plus limiter (55 Hz high-pass); effects 3 dB lower under speech.
 - Sound effects sit on the beats from `cues()` in `scene.html`, listed in the timeline.
 - Captions: fixed box y 1448-1638, up to 4 words, timed by local openai/whisper `base.en`.
 - Never move text being read; first frame reads as a cover; flashes are a QA fail.

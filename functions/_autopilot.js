@@ -48,12 +48,19 @@ export function judge(p, used, lang = langOf(p)) {
 // Spoken Lebanese, in Arabic script: no textbook (MSA) forms, and the everyday words that mark the dialect.
 const MSA = /(?<![\p{L}])(سوف|لماذا|ماذا|الذي|التي|الذين|ليس|ليست|أريد|تريد|يمكنك|يمكنكم|الآن|هكذا|لذلك|حيث|إنّ|لقد|قمنا|يقوم|تقوم)(?![\p{L}])/u;
 const LEB = /(?<![\p{L}])(و?(شو|رح|هيدا|هيدي|هول|فيك|بدك|بدّك|عم|هلق|هلأ|هلّق|منشان|ليش|كتير|مش|إنت|إنتَ|كيف|لهيك|يلي|اللي|بيّ?ك|ما في))(?![\p{L}])/gu;
+// Latin words the voice knows how to say (tools/marketing-render/voice_ar.py SAY): change both together.
+const SAID_LATIN = new Set('ai agent agents online google email website app dashboard link order instagram vagent message system'.split(' '));
+const bare = (s) => s.replace(/[\u064B-\u0652\u0670]/g, '');
 function notLebanese(p) {
-  const text = [...p.scenes.flatMap((s) => [s.say, s.title, ...(s.items || []), s.chat?.[1] || '']), p.caption].join(' ');
+  const lines = p.scenes.map((s) => s.say).join(' ');
+  if (/[\p{Extended_Pictographic}#@&%$*+=/\\<>|_~^]|www\.|\.(com|online|net)\b/u.test(lines)) return 'The spoken lines are read aloud: no symbols, emoji or web addresses';
+  const odd = (lines.match(/[A-Za-z]+/g) || []).find((w) => !SAID_LATIN.has(w.toLowerCase()));
+  if (odd) return `Write "${odd}" in Arabic letters in the spoken line, the way people say it`;
+  const text = bare([...p.scenes.flatMap((s) => [s.say, s.title, ...(s.items || []), s.chat?.[1] || '']), p.caption].join(' '));
   const ar = (text.match(/\p{Script=Arabic}/gu) || []).length, latin = (text.match(/[a-z]/gi) || []).length;
   if (ar < latin * 4) return 'Write every line, title, item and the caption in Arabic script; Latin only for a few tech names';
   const msa = text.match(MSA); if (msa) return `"${msa[0]}" is textbook Arabic: write it the way people speak in Beirut`;
-  return (p.scenes.map((s) => s.say).join(' ').match(LEB) || []).length < 4 ? 'This does not sound Lebanese: use everyday words like شو, رح, هيدا, فيك, بدك, عم, هلق' : '';
+  return (bare(lines).match(LEB) || []).length < 4 ? 'This does not sound Lebanese: use everyday words like شو, رح, هيدا, فيك, بدك, عم, هلق' : '';
 }
 
 // Everything that already exists: the whole queue (published and declined too) and every post on the Instagram page.
@@ -102,13 +109,15 @@ const slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').re
 const LEBANESE = `
 THIS VIDEO IS IN LEBANESE ARABIC (Beirut spoken dialect, Arabic script). These override the language rules above.
 - "say", "title", "items", "chat", "caption", "keyword" and "info" are Lebanese Arabic. Talk like a friendly shop-tech person in Beirut: شو, ليش, هلق, رح, عم, فيك, بدك, هيدا, هيدي, مش, ما في, كتير, منشان, يلي. Never textbook Arabic (no سوف, لماذا, الذي, التي, ليس, يمكنك, الآن, أريد).
-- Short spoken sentences with ، . ؟ punctuation. Keep a tech word in Latin letters only where people really say it in English (AI, online, Google); at most a few. Use Western digits.
+- "say" is heard, not read: write it exactly as a lively young person from Beirut would say it out loud to a friend, e.g. "كيف فينا...", "خلّيني فرجيك...", "هيدا الشي بيوفّر عليك...", "شو رأيك؟". Use spoken verb forms (بيقرا، منحضّر، رح تشوف، ما بقى), never case endings or MSA sentence structure.
+- In "say" only, add a few harakat (shadda, kasra, fatha, damma) ONLY on words a voice could misread (e.g. خلّيني، هَلّق، بيحضّر، مِش). Never put harakat on "اكتب" or on the keyword, and none in titles, items or the caption.
+- Short spoken sentences with ، . ؟ ! punctuation. No symbols, emoji, web addresses or abbreviations in "say". In "say" write tech words in Arabic letters as pronounced; the only Latin words allowed there are AI, agent, online, Google, email, website, app, dashboard, link, order, Instagram, message, system, and only a few. Use Western digits.
 - Never mention واتساب, مجاني, ببلاش, سعر, كلفة, خصم, اشتراك or money.
 - The 7 "say" lines total 50 to 62 words (this replaces the 70 to 85 above). Scene 1 title: at most 3 short words, 18 characters.
 - "keyword": 1 Arabic word (2 at most), no diacritics. The caption ends with a line "اكتب <KEYWORD> بالتعليقات" (more words may follow). The last scene: say "اكتب <KEYWORD> بالتعليقات ..." and title "اكتب <KEYWORD>".
 - Hashtags: mix Arabic and English, e.g. #لبنان #Lebanon.
 - "topic" and "concept" stay in English.
-Example of the voice: "شو بيصير إذا زبون سألك بالليل وما حدا رد؟" / "الـ agent بيقرا السؤال، بيحضّر الجواب، وإنت بتوافق."`;
+Example of the voice: "شو بيصير إذا زبون سألك بالليل وما حدا رد؟" / "خلّيني فرجيك: الـ agent بيقرا السؤال، بيحضّر الجواب، وإنت بس بتوافق."`;
 const TOPIC = `
 Also return "topic": {"key":"short-english-slug-of-the-business-problem","summary":"one English sentence: the problem and the job the agent does"}. The idea must be new in BOTH languages.`;
 

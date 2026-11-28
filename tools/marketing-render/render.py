@@ -14,19 +14,24 @@ MODELS = Path(os.environ.get("MODELS", "/models"))
 def uri(p):
     return "data:image/svg+xml;base64," + base64.b64encode(p.read_bytes()).decode()
 
-def lead(audio, rate):
-    """Seconds that tighten() cuts from the start of a clip."""
-    loud = np.flatnonzero(np.abs(audio) > 0.01)
-    return max(0, loud[0] - int(rate * 0.05)) / rate if len(loud) else 0.0
+# trim settings: (silence level, kept before, kept after, edge fade). Arabic keeps more room: soft consonants and breaths
+TRIM = {"en": (0.01, 0.05, 0.12, 0.008), "ar-LB": (0.003, 0.08, 0.22, 0.015)}
 
-def tighten(audio, rate):
-    """Cut the dead air Kokoro leaves around a line (keeping a short breath), and fade the edges so joins never click.
+def lead(audio, rate, lang="en"):
+    """Seconds that tighten() cuts from the start of a clip."""
+    level, before = TRIM[lang][:2]
+    loud = np.flatnonzero(np.abs(audio) > level)
+    return max(0, loud[0] - int(rate * before)) / rate if len(loud) else 0.0
+
+def tighten(audio, rate, lang="en"):
+    """Cut the dead air the voice leaves around a line (keeping a short breath), and fade the edges so joins never click.
     The voice itself is not processed."""
-    loud = np.flatnonzero(np.abs(audio) > 0.01)
+    level, before, after, fade = TRIM[lang]
+    loud = np.flatnonzero(np.abs(audio) > level)
     if not len(loud):
         return audio
-    audio = np.array(audio[max(0, loud[0] - int(rate * 0.05)):loud[-1] + int(rate * 0.12)])
-    edge = min(len(audio) // 2, int(rate * 0.008))
+    audio = np.array(audio[max(0, loud[0] - int(rate * before)):loud[-1] + int(rate * after)])
+    edge = min(len(audio) // 2, int(rate * fade))
     ramp = np.linspace(0, 1, edge, dtype=audio.dtype)
     audio[:edge] *= ramp; audio[len(audio) - edge:] *= ramp[::-1]
     return audio
@@ -127,7 +132,7 @@ def master(wav):
     log = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(wav), "-af", "loudnorm=I=-14:TP=-1.5:print_format=json", "-f", "null", "-"],
                          capture_output=True, text=True, check=True).stderr
     gain = -14 - float(json.loads(log[log.rindex("{"):log.rindex("}") + 1])["input_i"])
-    chain = lambda g: f"highpass=f=55,volume={g:.2f}dB,alimiter=limit=0.79:attack=4:release=60:level=false"
+    chain = lambda g: f"aresample=48000:filter_size=128:cutoff=0.97,highpass=f=55,volume={g:.2f}dB,alimiter=limit=0.79:attack=4:release=60:level=false"
     # second pass: make up whatever the limiter took away
     log = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(wav), "-af", chain(gain) + ",loudnorm=I=-14:TP=-1.5:print_format=json", "-f", "null", "-"],
                          capture_output=True, text=True, check=True).stderr
@@ -152,26 +157,28 @@ def direction(post):
     return name, json.loads(files[1].read_text())
 
 def render_video(post, out, tmp):
-    from kokoro_onnx import Kokoro
     from playwright.sync_api import sync_playwright
     world, look = direction(post)
     lang = "ar-LB" if post.get("lang") == "ar-LB" else "en"
     loaded = []
     def kokoro():
         if not loaded:
+            from kokoro_onnx import Kokoro
             loaded.append(Kokoro(str(MODELS / "kokoro-v1.0.onnx"), str(MODELS / "voices-v1.0.bin")))
         return loaded[0]
     parts, scenes, t, rate, heard = [], [], 0.0, 24000, []
-    voice_name, spoken = voice_ar.speak([s["say"] for s in post["scenes"]], kokoro) if lang == "ar-LB" else ("af_heart", [])
+    voice_name, spoken = voice_ar.speak([s["say"] for s in post["scenes"]]) if lang == "ar-LB" else ("af_heart", [])
     for n, sc in enumerate(post["scenes"]):
         if spoken:
             audio, marks = spoken[n]
         else:
             audio, rate = kokoro().create(sc["say"], voice="af_heart", speed=1.05, lang="en-us")
-        cut = lead(audio, rate)
-        audio = tighten(audio, rate)
+        cut = lead(audio, rate, lang)
+        audio = tighten(audio, rate, lang)
         tail = 1.4 if n == len(post["scenes"]) - 1 else look["tail"]
         clip = np.concatenate([audio, np.zeros(int(rate * tail), dtype=audio.dtype)])
+        if lang != "en":
+            sc = {**sc, "say": voice_ar.shown(sc["say"])}
         words, groups = captions(sc["say"], t, audio, rate)
         if lang == "en":
             heard.append(align(words, audio, rate, t))

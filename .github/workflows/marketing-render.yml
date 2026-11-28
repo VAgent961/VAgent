@@ -1,4 +1,4 @@
-# Renders queued marketing videos (Kokoro-82M English voice, edge-tts Lebanese voice, Chromium, ffmpeg) and uploads them to HQ for approval.
+# Renders queued marketing videos (Kokoro-82M English voice, edge-tts ar-LB voice, Chromium, ffmpeg) and uploads them to HQ for approval.
 # No secrets and no artifacts: the runner and its files disappear after each run.
 name: marketing-render
 on:
