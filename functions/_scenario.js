@@ -46,5 +46,7 @@ export function stage(scenes) {
     return { ...rest, shot: BEATS[i], ...(CHAT_BY[i] && text ? { chat: [CHAT_BY[i], text] } : {}) };
   });
 }
+// A space before every hashtag that is glued to the text or tag before it.
+export const spaced = (text) => String(text).replace(/(?<=[\p{L}\p{M}\p{N}_.!?؟،])(?=#[\p{L}\p{N}_])/gu, ' ');
 // Hashtags the lint accepts: one word each, spaces and dashes become underscores.
-export const tags = (list) => [...new Set((Array.isArray(list) ? list : []).map((h) => '#' + String(h).trim().replace(/[\s-]+/g, '_').replace(/[^\p{L}\p{N}_]/gu, '').slice(0, 50)).filter((h) => h.length > 1))].slice(0, 12);
+export const tags = (list) => [...new Set((Array.isArray(list) ? list : []).flatMap((h) => String(h).split(/(?=#)/)).map((h) => '#' + String(h).trim().replace(/[\s-]+/g, '_').replace(/[^\p{L}\p{N}_]/gu, '').slice(0, 50)).filter((h) => h.length > 1))].slice(0, 12);

@@ -69,4 +69,6 @@ assert.match(edit(2, { chat: ['agent', 'ا'.repeat(61)] }), /Scene 3 needs/); as
 const { stage, tags } = await import('../functions/_scenario.js');
 assert.deepEqual(stage(BEATS.map(() => ({ shot: 'list', chat: 'تمام' }))).map((x) => [x.shot, x.chat?.[0]]), BEATS.map((b, i) => [b, CHAT_BY[i]]));
 assert.deepEqual(tags(['#Small Business', 'لبنان', '#', '#لبنان']), ['#Small_Business', '#لبنان']);
+assert.deepEqual(tags(['#لبنان#خياطة#Lebanon']), ['#لبنان', '#خياطة', '#Lebanon']);
+assert.equal(pub.captionFor({ caption: 'هلق.#لبنان#خياطة', hashtags: ['#Lebanon', '#VAgent'] }), 'هلق. #لبنان #خياطة\n\n#Lebanon #VAgent');
 console.log('scene ok');

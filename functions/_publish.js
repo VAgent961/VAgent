@@ -1,6 +1,7 @@
 // Publisher: one approved post -> Instagram (@v_agent961). Its state is kept in marketing_posts.pub:
 // {instagram: {state: starting|processing|publishing|published|failed|dry_run, ref, id, error, at}}
 // One Dry Run switch (on unless an owner turned it off): while on, nothing is published and posts are only simulated. An unclear result is failed, never retried by itself.
+import { spaced } from './_scenario.js';
 import { sql } from './_lib.js';
 import { setting, setSetting, log, digest, dropMedia, mediaSig, sweepMedia, SITE, KEEP } from './_marketing.js';
 import * as ig from './_instagram.js';
@@ -26,7 +27,7 @@ export async function connectInstagram(env, token, secret, who) {
 // The "Comment KEYWORD" line is never cut.
 export function captionFor(post) {
   const tags = post.hashtags.slice(0, 30).join(' ');
-  const parts = post.caption.split('\n\n').map((x) => x.trim()).filter(Boolean);
+  const parts = spaced(post.caption).split('\n\n').map((x) => x.trim()).filter(Boolean);
   const join = (p) => [p.join('\n\n'), tags].filter(Boolean).join('\n\n');
   const keep = (x) => post.keyword && asksFor(post.keyword, x);
   const limit = 2200;

@@ -142,7 +142,7 @@
   }
   function card(p) {
     const open = ['rendering', 'review', 'scheduled', 'failed'].includes(p.status);
-    const state = p.status === 'scheduled' ? `Approved · ${when(p.slot)}${p.dry_run_at ? ' · dry run done, nothing posted' : ''}` : p.status === 'review' ? 'Waiting for your approval' : p.status === 'rendering' ? (p.error ? `Last render failed (try ${p.attempts} of 3). Trying again automatically` : 'Rendering (usually within 15 to 30 minutes)') : p.status === 'failed' ? 'Failed' : TABS[p.status] || p.status;
+    const state = p.status === 'scheduled' ? `Approved · ${when(p.slot)}${p.dry_run_at ? ' · dry run done, nothing posted' : ''}` : p.status === 'review' ? 'Waiting for your approval' : p.status === 'rendering' ? (p.error ? `Last render failed (try ${p.attempts} of 3). Trying once more automatically; the same error again stops it` : 'Rendering (usually within 15 to 30 minutes)') : p.status === 'failed' ? 'Failed' : TABS[p.status] || p.status;
     const stuck = p.status === 'failed' && !p.has_video;
     const side = el('div', {}, el('h2', { textContent: p.post.scenes[0].say, dir: 'auto' }), el('div', { className: 'meta', textContent: `${p.post.lang === 'ar-LB' ? 'Lebanese Arabic' : 'English'} · ${state} · version ${p.version}` }), p.error && el('div', { style: 'color:var(--bad)', textContent: `Error: ${p.error}` }));
     if (editing === p.id) side.append(editor(p));

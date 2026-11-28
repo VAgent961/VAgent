@@ -226,8 +226,9 @@ export async function complete(env, id, version, sha, size) {
   if (!r.length) return 'Post changed';
   await log(env, id, 'rendered'); return '';
 }
+// Three tries at most; the very same error twice in a row will not fix itself, so it stops there and shows in the Failed tab.
 export async function renderFailed(env, id, version, why) {
-  const r = await sql(env, "UPDATE marketing_posts SET attempts = attempts + 1, status = CASE WHEN attempts >= 2 THEN 'failed' ELSE status END, error = $3, updated_at = now() WHERE id = $1 AND version = $2 AND status = 'rendering' RETURNING id", [id, version, String(why).slice(0, 300)]);
+  const r = await sql(env, "UPDATE marketing_posts SET attempts = attempts + 1, status = CASE WHEN attempts >= 2 OR error = $3 THEN 'failed' ELSE status END, error = $3, updated_at = now() WHERE id = $1 AND version = $2 AND status = 'rendering' RETURNING id", [id, version, String(why).slice(0, 300)]);
   if (r.length) { await dropMedia(env, id); await log(env, id, 'render_failed', why); }
 }
 
