@@ -10,7 +10,10 @@ globalThis.fetch = async (url, o = {}) => {
   const u = new URL(url);
   if (u.host === 'api.example') {
     const { query: q, params: p = [] } = JSON.parse(o.body); let rows = []; queries.push(q);
-    if (/FROM marketing_settings/.test(q)) rows = p[0] in settings ? [{ v: settings[p[0]] }] : [];
+    if (/NOT EXISTS \(SELECT 1 FROM marketing_settings/.test(q)) rows = row?.status === 'review' && row.video_sha && !(`tg_review:${row.id}` in settings) ? [row] : [];
+    else if (/ON CONFLICT \(k\) DO NOTHING/.test(q)) { if (!(p[0] in settings)) { settings[p[0]] = p[1]; rows = [{}]; } }
+    else if (/DELETE FROM marketing_settings WHERE k = \$1/.test(q)) delete settings[p[0]];
+    else if (/FROM marketing_settings/.test(q)) rows = p[0] in settings ? [{ v: settings[p[0]] }] : [];
     else if (/INTO marketing_settings/.test(q) && !/ WHERE /.test(q)) settings[p[0]] = p[1];
     else if (/jsonb_set\(pub, ARRAY/.test(q)) row.pub[p[1]] = JSON.parse(p[2]);
     else if (/'\{instagram,state\}'/.test(q)) { row.pub.instagram.state = 'publishing'; rows = [row]; }
@@ -66,7 +69,7 @@ await assert.rejects(ig.connect(env, 'abc', '', 'o'), /EAA/);
 await assert.rejects(ig.graph('IGx', 'me', {}, 'GET', 'https://graph.facebook.com/v23.0'), /graph\.facebook\.com could not read/);
 // Telegram reminder: 16:00-19:00 Beirut before publishing, once per video, retried after a failure, nothing after publishing
 const at = (h) => new Date(`2026-12-01T${h}:00+02:00`);
-const today = async (extra) => { await fresh(); notDue = true; Object.assign(row, { slot: at('19:00').toISOString() }, extra); delete settings.tg_reminded; sent.length = 0; };
+const today = async (extra) => { await fresh(); notDue = true; Object.assign(row, { slot: at('19:00').toISOString() }, extra); delete settings.tg_reminded; settings['tg_review:p'] = settings['tg_review:r2'] = 'sent'; sent.length = 0; };
 await today(); await pub.tick(env, at('16:00')); assert.equal(sent.length, 0); // not configured
 Object.assign(env, { TELEGRAM_BOT_TOKEN: 't', TELEGRAM_CHAT_ID: '1' });
 await pub.setDryRun(env, true, '', 'o'); await today(); await pub.tick(env, at('16:00')); assert.equal(sent.length, 0);
@@ -87,4 +90,13 @@ await pub.setDryRun(env, false, 'PUBLISH', 'o'); await today({ post: { ...post, 
 await pub.tick(env, at('19:00')); await pub.tick(env, at('19:05')); await pub.tick(env, at('19:10'));
 assert.equal(row.status, 'published'); assert.equal(sent.length, 1); assert.match(sent[0], /Published on Instagram[\s\S]*Lebanese Arabic/);
 assert.ok(!queries.some((q) => q.includes('${')), 'a query still holds an unfilled template');
+// waiting-for-approval alert: live only, once per post id, retried after a failure, again for a replacement
+const waiting = async (id) => { await today({ id, status: 'review', slot: null, post: { ...post, lang: 'ar-LB', keyword: 'KEY', info: { title: 'Night replies' } } }); delete settings[`tg_review:${id}`]; };
+await pub.setDryRun(env, true, '', 'o'); await waiting('p'); await pub.tick(env, at('08:00')); assert.equal(sent.length, 0); assert.equal(settings['tg_review:p'], undefined);
+env.TELEGRAM_NOTIFY_DRY_RUN = 'on'; await pub.tick(env, at('08:00')); assert.equal(sent.length, 0); delete env.TELEGRAM_NOTIFY_DRY_RUN;
+await pub.setDryRun(env, false, 'PUBLISH', 'o'); telegramDown = true; await pub.tick(env, at('08:00')); assert.equal(settings['tg_review:p'], undefined);
+telegramDown = false; for (const t of ['08:05', '08:10', '08:15']) await pub.tick(env, at(t));
+assert.equal(sent.length, 1); assert.match(sent[0], /waiting for your approval[\s\S]*Night replies \(p\)[\s\S]*Lebanese Arabic[\s\S]*KEY[\s\S]*https:\/\/city\.vagent\.online\/marketing$/);
+row.video_sha = 'rendered-again'; await pub.tick(env, at('08:20')); assert.equal(sent.length, 1);
+await waiting('r2'); await pub.tick(env, at('11:00')); await pub.tick(env, at('11:05')); assert.equal(sent.length, 1); assert.match(sent[0], /\(r2\)/);
 console.log('instagram ok');

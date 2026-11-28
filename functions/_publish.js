@@ -5,7 +5,7 @@ import { sql } from './_lib.js';
 import { setting, setSetting, log, digest, dropMedia, mediaSig, sweepMedia, SITE, KEEP } from './_marketing.js';
 import * as ig from './_instagram.js';
 import { asksFor } from './_lang.js';
-import { remindTikTok, confirmPublished } from './_telegram.js';
+import { remindTikTok, confirmPublished, notifyWaiting } from './_telegram.js';
 import { autopilot } from './_autopilot.js';
 
 export const connected = async (env) => !!(await setting(env, 'ig_token'));
@@ -148,6 +148,8 @@ export async function tick(env, now = new Date()) {
     if (!row) continue;
     out.push({ id: row.id, result: await launch(env, row, live) });
   }
+  // a rendered reel waiting for approval is announced (before step 4, which can take minutes)
+  await notifyWaiting(env, live);
   // 4) write or replace today's reel when the schedule asks for it
   const auto = await autopilot(env, now);
   // 5) from 16:00: remind the owner to post today's video on TikTok while it still exists
