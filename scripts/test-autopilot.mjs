@@ -1,13 +1,15 @@
 // node scripts/test-autopilot.mjs : Beirut days and hours, 2 h pacing, cutoff, idle days (mock database)
 import assert from 'node:assert';
 import { readFileSync, readdirSync } from 'node:fs';
-const { clock, decide, judge } = await import('../functions/_autopilot.js'), pub = await import('../functions/_publish.js');
+const { clock, decide, judge } = await import('../functions/_autopilot.js'), { langFor, AR, asksFor } = await import('../functions/_lang.js'), pub = await import('../functions/_publish.js');
 const at = (s) => new Date(s + '+02:00'); // Beirut winter time
 const run = (s, state = {}) => decide(clock(at(s)), state, at(s));
+// every day of the week works; the language alternates by calendar day from Sat 28 Nov 2026
 assert.equal(run('2026-12-01T05:59'), 'early');
-assert.equal(run('2026-12-01T06:00'), 'generate');
-for (const d of ['11-29', '11-30', '12-02', '12-04']) assert.equal(run(`2026-${d}T08:00`), 'idle', d);
-for (const d of ['12-01', '12-03', '12-05']) assert.equal(run(`2026-${d}T08:00`), 'generate', d);
+for (const d of ['11-28', '11-29', '11-30', '12-01', '12-02', '12-03', '12-04']) assert.equal(run(`2026-${d}T06:00`), 'generate', d);
+assert.deepEqual(['11-27', '11-28', '11-29', '11-30', '12-01', '12-31'].map((d) => langFor(`2026-${d}`)), ['en', AR, 'en', AR, 'en', 'en']);
+assert.equal(langFor('2027-01-01'), AR); assert.equal(langFor('2027-03-28') === langFor('2027-03-29'), false); // over the clock change
+assert.equal(clock(new Date('2026-11-28T22:30:00Z')).lang, 'en'); // already Sunday in Beirut
 assert.equal(clock(new Date('2026-07-07T03:00:00Z')).time, '06:00'); // summer time
 const closed = at('2026-12-01T09:00').toISOString();
 assert.equal(run('2026-12-01T10:59', { closed }), 'pacing');
@@ -17,15 +19,12 @@ assert.equal(run('2026-12-01T11:00', { approved: true, closed }), 'approved');
 assert.equal(run('2026-12-01T19:00', { closed }), 'cutoff');
 const dir = new URL('../tools/marketing-render/posts/', import.meta.url);
 const posts = readdirSync(dir).map((f) => JSON.parse(readFileSync(new URL(f, dir))));
-assert.match(judge(posts[0], [{ ...posts[0], id: "earlier" }]), /already used/);
+assert.match(judge({ ...posts[0], topic: { key: "an-idea", summary: "An idea." } }, [{ ...posts[0], id: "earlier" }]), /already used/);
 
-// the tick on an idle day touches only in-flight publishes; on an active day it also looks for due posts
+// every day the tick looks for due posts; after the cutoff it drops a late automatic render
 const env = { DATABASE_URL: 'postgres://u:p@h.example/db' }; let seen = [];
 globalThis.fetch = async (url, o) => { seen.push(JSON.parse(o.body).query); return new Response('{"rows":[]}'); };
-assert.equal((await pub.tick(env, at('2026-11-30T19:00'))).idle, true);
-assert.ok(!seen.some((q) => /slot <= now|slot_missed|auto_day|ig_token_|status = 'scheduled'/.test(q)));
-seen = []; assert.equal((await pub.tick(env, at('2026-12-01T19:30'))).autopilot, 'cutoff');
-assert.ok(seen.some((q) => /slot <= now/.test(q)) && seen.some((q) => /auto_day <=/.test(q)));
+for (const d of ['11-30', '12-01']) { seen = []; assert.equal((await pub.tick(env, at(`2026-${d}T19:30`))).autopilot, 'cutoff'); assert.ok(seen.some((q) => /slot <= now/.test(q)) && seen.some((q) => /auto_day <=/.test(q))); }
 console.log('autopilot ok');
 // duplicates: queue posts and Instagram page captions
 const { repeats } = await import('../functions/_marketing.js');
@@ -47,3 +46,17 @@ assert.deepEqual(await history(igEnv, true), []);
 await assert.rejects(history(igEnv), /API access blocked/);
 meta = 'Other refusal'; await assert.rejects(history(igEnv, true), /Other refusal/);
 console.log('blocked page ok');
+// Lebanese Arabic: lint, dialect check, and one idea never twice across the two languages
+const { lint } = await import('../functions/_marketing.js');
+const says = ['شو بيصير إذا زبون سألك بالليل وما حدا رد؟', 'الرسالة بتضل ناطرة، والزبون عم يفتش على محل غيرك هلق.', 'هيدا الـ agent بيقرا السؤال أول ما يوصل وبيفهم شو المطلوب.', 'بعدين بيحضّر جواب واضح من المعلومات يلي إنت عطيتو ياها.', 'إنت بتشوف الجواب وبتوافق عليه قبل ما ينبعت لأي حدا.', 'هيك بيضل المحل عم يرد بطريقة مرتبة حتى لما تكون مشغول كتير.', 'اكتب رد بالتعليقات ومنبعتلك كيف فيك تجربو.'];
+const shots = ['hook', 'alert', 'flow', 'list', 'approve', 'list', 'cta'];
+const arabic = { id: 'ar1', lang: AR, topic: { key: 'night-customer-replies', summary: 'Customer questions at night go unanswered; an agent drafts replies for approval.' }, keyword: 'رد', info: { title: 'رد بالليل', summary: 'مساعد بيحضّر الردود.' }, direction: { world: 'auto-ar1', concept: 'A shop at night' },
+  scenes: says.map((say, i) => ({ say, title: i === 6 ? 'اكتب رد' : 'مين بيرد؟', shot: shots[i], items: ['بيقرا السؤال'] })), caption: 'زبون سأل بالليل وما حدا رد؟ هيدا مساعد بيحضّر الجواب وإنت بتوافق عليه قبل ما ينبعت، حتى تضل مرتاح.\n\nاكتب رد بالتعليقات', hashtags: ['#لبنان'] };
+assert.equal(judge(arabic, [], AR), ''); assert.match(judge(arabic, [], 'en'), /English/);
+assert.match(judge({ ...arabic, scenes: arabic.scenes.map((x, i) => (i === 1 ? { ...x, say: 'سوف تبقى الرسالة بدون جواب حتى الصباح للأسف.' } : x)) }, [], AR), /textbook/);
+assert.match(lint({ ...arabic, topic: undefined }), /topic/); assert.match(lint({ ...arabic, caption: 'بلا طلب' }), /caption must ask/);
+assert.equal(asksFor('رد', 'اكتب ردود بالتعليقات'), false);
+const english = { ...posts[0], id: 'en1', keyword: 'NIGHT', topic: { key: 'night-customer-replies', summary: 'x' } };
+assert.match(repeats(arabic, [english]), /topic repeats/); assert.match(repeats({ ...english, id: 'en2', keyword: 'OWL' }, [arabic]), /./);
+assert.match(repeats(arabic, [{ ...posts[0], id: 'old', info: { title: 'Night replies', summary: 'Customer questions at night go unanswered; an agent drafts replies for approval.' } }]), /topic repeats/);
+console.log('arabic ok');

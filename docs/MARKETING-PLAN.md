@@ -2,10 +2,11 @@
 
 ## Rules (owner decisions)
 - Zero paid video, voice, music or publishing services. Music is generated in code (`music.py`), so there is no track licence to follow.
-- 25-35 s per video; opening line scores 75+ in `ig-reel/hookscore.py`. Voice stays Kokoro `af_heart`, speed 1.05.
-- Autopilot (`functions/_autopilot.js`): Tue/Thu/Sat from 06:00 Beirut one new reel, waiting for approval by 08:00; declined or failed to render = a new one 2 h later, until a post holds today's slot or 19:00. Sun/Mon/Wed/Fri: no ideas, no scheduled publishing; only owner actions run. The publisher tick still runs to finish an in-flight "Publish now"; the render timer renders only what a person queued.
-- No repeats: each idea is checked against all queue posts and the Instagram page (text and meaning) before it is queued.
-- Tue, Thu, Sat 19:00 `Asia/Beirut`. Owner approval in HQ; any edit clears it.
+- 25-35 s per video; opening line scores 75+ in `ig-reel/hookscore.py`. English voice stays Kokoro `af_heart`, speed 1.05.
+- Autopilot (`functions/_autopilot.js`): every day from 06:00 Beirut one new reel, waiting for approval by 08:00; declined or failed to render = a new one 2 h later, until a post holds today's slot or 19:00.
+- Languages (`functions/_lang.js`) alternate by calendar day: 28 Nov 2026 = Lebanese Arabic (`ar-LB`), next day English, and so on; a skipped day does not shift it. An approved post only takes a 19:00 slot on a day of its language. "Publish now" is the owner's override.
+- No repeats in either language: every new post records `topic {key, summary}` in English; it is checked against all queue posts (published, waiting, declined) and the Instagram page (text and meaning) before it is queued.
+- Daily 19:00 `Asia/Beirut`. Owner approval in HQ; any edit clears it.
 - Video is deleted on publish or decline. Nothing renders on a Mac.
 - Topics: the company, agents already built, ideas we can build at zero paid cost. No WhatsApp. Posts never mention free, cost or pricing (`lint` in `functions/_marketing.js` blocks it on seed, edit and approve).
 - Only drafts are automated; claims about built agents need an owner's check at review (say "ready", never invent clients or numbers; demo data only).
@@ -21,7 +22,7 @@
 - Why not our server: its n8n has command execution disabled and has no SSH credential. To move later, run `job.py` there with another sign-in method.
 - Storage: video chunks in `marketing_media`, private behind the owner session; Instagram gets a signed link valid 1 hour.
 - Publisher: n8n `V-Agent | Marketing Publisher` (Z4m9GTCAxMeHCkGm, every 5 min) -> `/hook/marketing` tick: create REELS container -> poll until FINISHED -> publish once -> delete video. Unclear result = failed, never auto-retried. A slot missed by 6 h goes back to review.
-- TikTok (by hand): Tue/Thu/Sat 16:00-19:00 Beirut the tick sends one Telegram reminder (`functions/_telegram.js`) for today's video, to download from /marketing before publishing deletes it.
+- TikTok (by hand): daily 16:00-19:00 Beirut the tick sends one Telegram reminder (`functions/_telegram.js`, when Dry Run is off) for today's video, to download from /marketing before publishing deletes it. A real publish sends a Telegram confirmation.
 - Dry run is the default: logs "would publish", keeps the video, publishes nothing. Going live = connect a token on /marketing, then turn Dry Run off. Posts whose slot passed more than 6 h earlier need approval again.
 
 ## Publishing (Instagram only, @v_agent961)
@@ -39,4 +40,4 @@
 - GitHub may delay scheduled runs, and disables schedules after 60 days without repo activity. The repo is public (code and drafts visible; videos are not). GitHub's Actions terms tie usage to the repo's software project, so marketing renders are a grey area.
 - Instagram tokens: `EAA…` (Meta Unified Login) goes to graph.facebook.com, resolves the Page-linked account (prefers @v_agent961) and is not auto-renewed; `IG…` (Instagram Login) goes to graph.instagram.com and is renewed weekly. Test: `node scripts/test-instagram.mjs`.
 - The live Instagram calls are tested with a mock only.
-- English voice only. The public call page keeps its own character.
+- Voices: Arabic = `edge-tts` `ar-LB-LaylaNeural` (free Microsoft endpoint, no guarantee); if it fails, `ar-LB-RamiNeural`, then Kokoro as a rough last resort. English = Kokoro. The public call page keeps its own character.

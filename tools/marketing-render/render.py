@@ -1,9 +1,10 @@
-"""post dict -> 1080x1920 H.264 MP4. Kokoro-82M voice, HTML scene in headless Chromium, ffmpeg."""
+"""post dict -> 1080x1920 H.264 MP4. English: Kokoro-82M voice; Lebanese Arabic: edge-tts (voice_ar.py), RTL scene. HTML scene in headless Chromium, ffmpeg."""
 import base64, difflib, json, os, re, subprocess, sys, wave
 from pathlib import Path
 import numpy as np
 from music import mix
 import newworld
+import voice_ar
 
 FPS = 30
 ROOT = Path(__file__).resolve().parent
@@ -12,6 +13,11 @@ MODELS = Path(os.environ.get("MODELS", "/models"))
 
 def uri(p):
     return "data:image/svg+xml;base64," + base64.b64encode(p.read_bytes()).decode()
+
+def lead(audio, rate):
+    """Seconds that tighten() cuts from the start of a clip."""
+    loud = np.flatnonzero(np.abs(audio) > 0.01)
+    return max(0, loud[0] - int(rate * 0.05)) / rate if len(loud) else 0.0
 
 def tighten(audio, rate):
     """Cut the dead air Kokoro leaves around a line (keeping a short breath), and fade the edges so joins never click.
@@ -32,7 +38,7 @@ def captions(text, start, audio, rate):
     a, b = (loud[0] / rate, loud[-1] / rate) if len(loud) else (0.0, len(audio) / rate)
     words = text.split()
     gaps = [(loud[i] / rate, loud[i + 1] / rate) for i in np.flatnonzero(np.diff(loud) > rate * 0.12)]
-    ends = [i for i, w in enumerate(words[:-1]) if w[-1] in ".?!,;:"]
+    ends = [i for i, w in enumerate(words[:-1]) if w[-1] in ".?!,;:،؛؟"]
     spans = [(a, b, 0, len(words) - 1)]
     if ends and len(gaps) >= len(ends):  # the longest pauses are the punctuation breaks
         cut = sorted(sorted(gaps, key=lambda g: g[0] - g[1])[:len(ends)])
@@ -47,7 +53,7 @@ def captions(text, start, audio, rate):
     groups, first = [], 0
     for i, w in enumerate(words):
         full = i + 1 < len(words) and len(" ".join(words[first:i + 2])) > 22
-        if w[-1] in ".?!," or i - first == 3 or full or i == len(words) - 1:
+        if w[-1] in ".?!,،؛؟" or i - first == 3 or full or i == len(words) - 1:
             groups.append([first, i]); first = i + 1
     return timed, groups
 
@@ -65,7 +71,11 @@ def align(words, audio, rate, start):
     pcm = np.interp(np.arange(0, len(audio), rate / 16000), np.arange(len(audio)), audio).astype(np.float32)
     heard = [w for s in _whisper.transcribe(pcm, language="en", word_timestamps=True, fp16=False, temperature=0,
                                             condition_on_previous_text=False)["segments"] for w in s.get("words", [])]
-    key = lambda s: re.sub(r"[^a-z0-9]", "", s.lower())
+    return snap(words, heard, start)
+
+def snap(words, heard, start):
+    """Put the estimated words on heard timings ({word, start, end}, seconds into the clip). Returns the share matched."""
+    key = lambda s: re.sub(r"[\W_\u064B-\u0652]", "", s.lower())
     blocks = difflib.SequenceMatcher(None, [key(w["w"]) for w in words], [key(h["word"]) for h in heard], autojunk=False).get_matching_blocks()
     found = {a + i: heard[b + i] for a, b, n in blocks for i in range(n)}
     share = len(found) / len(words)
@@ -109,7 +119,7 @@ def serve(route):
     f = (ROOT / route.request.url.split("scene.local/", 1)[1]).resolve()
     if ROOT not in f.parents or not f.is_file():
         return route.abort()
-    kind = {".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript"}.get(f.suffix, "application/octet-stream")
+    kind = {".ttf": "font/ttf", ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript"}.get(f.suffix, "application/octet-stream")
     route.fulfill(body=f.read_bytes(), content_type=kind)
 
 def master(wav):
@@ -145,15 +155,28 @@ def render_video(post, out, tmp):
     from kokoro_onnx import Kokoro
     from playwright.sync_api import sync_playwright
     world, look = direction(post)
-    tts = Kokoro(str(MODELS / "kokoro-v1.0.onnx"), str(MODELS / "voices-v1.0.bin"))
+    lang = "ar-LB" if post.get("lang") == "ar-LB" else "en"
+    loaded = []
+    def kokoro():
+        if not loaded:
+            loaded.append(Kokoro(str(MODELS / "kokoro-v1.0.onnx"), str(MODELS / "voices-v1.0.bin")))
+        return loaded[0]
     parts, scenes, t, rate, heard = [], [], 0.0, 24000, []
+    voice_name, spoken = voice_ar.speak([s["say"] for s in post["scenes"]], kokoro) if lang == "ar-LB" else ("af_heart", [])
     for n, sc in enumerate(post["scenes"]):
-        audio, rate = tts.create(sc["say"], voice="af_heart", speed=1.05, lang="en-us")
+        if spoken:
+            audio, marks = spoken[n]
+        else:
+            audio, rate = kokoro().create(sc["say"], voice="af_heart", speed=1.05, lang="en-us")
+        cut = lead(audio, rate)
         audio = tighten(audio, rate)
         tail = 1.4 if n == len(post["scenes"]) - 1 else look["tail"]
         clip = np.concatenate([audio, np.zeros(int(rate * tail), dtype=audio.dtype)])
         words, groups = captions(sc["say"], t, audio, rate)
-        heard.append(align(words, audio, rate, t))
+        if lang == "en":
+            heard.append(align(words, audio, rate, t))
+        else:
+            heard.append(snap(words, [{**m, "start": max(0, m["start"] - cut), "end": max(0, m["end"] - cut)} for m in marks], t))
         scenes.append({**sc, "start": t, "voice": len(audio) / rate, "dur": len(clip) / rate, "words": words, "groups": groups})
         t += len(clip) / rate; parts.append(clip)
     voice = np.concatenate(parts)
@@ -165,7 +188,7 @@ def render_video(post, out, tmp):
     peak = float(np.percentile(level, 95)) or 1
     level = [min(1.0, v / peak) for v in level]
     level = [(0.2 * level[max(0, i - 1)] + 0.6 * v + 0.2 * level[min(len(level) - 1, i + 1)]) for i, v in enumerate(level)]
-    data = {"fps": FPS, "total": t, "scenes": scenes, "level": level,
+    data = {"lang": lang, "fps": FPS, "total": t, "scenes": scenes, "level": level,
             "world": world, "keyword": post["keyword"], "logos": {f: uri(ASSETS / "brand" / f) for f in ("lockup.svg", "lockup-dark.svg")}}
     rate_cap = min(3600, int(14e6 * 8 / t / 1000) - 224)  # stay under the HQ upload limit
     enc = None
@@ -208,7 +231,7 @@ def render_video(post, out, tmp):
             raise RuntimeError("QA could not run: " + qa.stderr[-250:])
         checks = json.loads(report.read_text())["checks"]
         bad = [f"{c['level']} {c['check']}: {c['detail']}" for c in checks if c["level"] != "PASS"]
-        note(f"QA {post['id']}", "\n".join([f"world {world}; {len(cues)} sound effects; {len(checks) - len(bad)} of {len(checks)} checks passed; captions matched by whisper {np.mean(heard):.0%}; length {t:.1f}s", *bad,
+        note(f"QA {post['id']}", "\n".join([f"world {world}; {len(cues)} sound effects; {len(checks) - len(bad)} of {len(checks)} checks passed; voice {voice_name}; captions matched to word timings {np.mean(heard):.0%}; length {t:.1f}s", *bad,
                                              *[x.strip() for x in pre.stdout.splitlines() if "WARN" in x][:5]]))
         if qa.returncode:  # a failed check never reaches review
             raise RuntimeError("QA: " + " | ".join(x for x in bad if x.startswith("FAIL"))[:280])

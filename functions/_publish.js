@@ -4,8 +4,9 @@
 import { sql } from './_lib.js';
 import { setting, setSetting, log, digest, dropMedia, mediaSig, sweepMedia, SITE, KEEP } from './_marketing.js';
 import * as ig from './_instagram.js';
-import { remindTikTok } from './_telegram.js';
-import { autopilot, clock } from './_autopilot.js';
+import { asksFor } from './_lang.js';
+import { remindTikTok, confirmPublished } from './_telegram.js';
+import { autopilot } from './_autopilot.js';
 
 export const connected = async (env) => !!(await setting(env, 'ig_token'));
 export const dryRun = async (env) => (await setting(env, 'dry_run')) !== 'off';
@@ -27,7 +28,7 @@ export function captionFor(post) {
   const tags = post.hashtags.slice(0, 30).join(' ');
   const parts = post.caption.split('\n\n').map((x) => x.trim()).filter(Boolean);
   const join = (p) => [p.join('\n\n'), tags].filter(Boolean).join('\n\n');
-  const keep = (x) => post.keyword && x.toLowerCase().includes('comment') && x.toUpperCase().includes(post.keyword);
+  const keep = (x) => post.keyword && asksFor(post.keyword, x);
   const limit = 2200;
   while (join(parts).length > limit) {
     const i = parts.findLastIndex((x, n) => n > 0 && !keep(x));
@@ -78,8 +79,10 @@ async function settle(env, id) {
     await sql(env, "UPDATE marketing_posts SET status = 'failed', error = $2, updated_at = now() WHERE id = $1", [id, `Instagram: ${s.error}`.slice(0, 300)]);
     return 'failed';
   }
-  await sql(env, "UPDATE marketing_posts SET status = 'published', video_sha = NULL, error = NULL, updated_at = now() WHERE id = $1", [id]);
+  const closed = await sql(env, "UPDATE marketing_posts SET status = 'published', video_sha = NULL, error = NULL, updated_at = now() WHERE id = $1 AND status = 'publishing' RETURNING id", [id]);
+  if (!closed.length) return null; // an overlapping tick closed it: it sends the confirmation
   await dropMedia(env, id); await log(env, id, 'published', `instagram:${s.state}`);
+  await confirmPublished(env, row);
   return 'published';
 }
 
@@ -107,7 +110,7 @@ export async function publishNow(env, id, version, confirm, who) {
     return { notice: 'Dry run: nothing was posted. The post stays approved for its time.' };
   }
   if (confirm !== 'PUBLISH') return { error: 'Dry Run is off: confirm that this post will really be published.' };
-  const [claimed] = await sql(env, "UPDATE marketing_posts SET status = 'publishing', slot = now(), ${KEEP}, updated_at = now() WHERE id = $1 AND version = $2 AND status = 'scheduled' RETURNING *", [id, version]);
+  const [claimed] = await sql(env, `UPDATE marketing_posts SET status = 'publishing', slot = now(), ${KEEP}, updated_at = now() WHERE id = $1 AND version = $2 AND status = 'scheduled' RETURNING *`, [id, version]);
   if (!claimed) return gone;
   await log(env, id, 'publish_now', who);
   const result = await launch(env, claimed, live);
@@ -115,12 +118,11 @@ export async function publishNow(env, id, version, confirm, who) {
   return { notice: result === 'published' ? 'Published.' : 'Publishing started. It goes live once the video is processed, usually within 5 to 10 minutes.' };
 }
 
-// Called every few minutes by n8n. Outside Tue/Thu/Sat (Beirut) it only finishes a publish already in flight
-// (started by "Publish now", or processing past midnight).
+// Called every few minutes by n8n, every day.
 export async function tick(env, now = new Date()) {
   await setSetting(env, 'last_tick', now.toISOString());
-  const out = [], live = await isLive(env), { active } = clock(now);
-  if (active) await ig.maintain(env);
+  const out = [], live = await isLive(env);
+  await ig.maintain(env);
   // 1) in flight: poll Instagram
   for (const row of await sql(env, "SELECT * FROM marketing_posts WHERE status = 'publishing'")) {
     const s = row.pub.instagram, age = Date.now() - Date.parse(s?.at || row.updated_at);
@@ -129,7 +131,6 @@ export async function tick(env, now = new Date()) {
     } else if ((!s || ['starting', 'publishing'].includes(s.state)) && age > 6e5) await failOn(env, row.id, 'Unclear result: check Instagram before retrying');
     const end = await settle(env, row.id); if (end) out.push({ id: row.id, result: end });
   }
-  if (!active) { await sweepMedia(env); return { live, idle: true, posts: out }; }
   // 2) a live slot that passed more than 6 hours ago is not published late: back to review
   if (live) for (const row of await sql(env, "SELECT id FROM marketing_posts WHERE status = 'scheduled' AND slot < now() - interval '6 hours'")) {
     if ((await sql(env, "UPDATE marketing_posts SET status = 'review', slot = NULL, approved_hash = NULL, dry_run_at = NULL, error = 'Slot missed: approve again', updated_at = now() WHERE id = $1 AND status = 'scheduled' RETURNING id", [row.id])).length) await log(env, row.id, 'slot_missed');
@@ -143,11 +144,11 @@ export async function tick(env, now = new Date()) {
       if (ok) await simulate(env, row); else await log(env, row.id, 'blocked', 'approval does not match');
       out.push({ id: row.id, result: ok ? 'dry_run' : 'blocked' }); continue;
     }
-    const [row] = await sql(env, "UPDATE marketing_posts SET status = 'publishing', ${KEEP}, updated_at = now() WHERE id = $1 AND status = 'scheduled' RETURNING *", [due.id]);
+    const [row] = await sql(env, `UPDATE marketing_posts SET status = 'publishing', ${KEEP}, updated_at = now() WHERE id = $1 AND status = 'scheduled' RETURNING *`, [due.id]);
     if (!row) continue;
     out.push({ id: row.id, result: await launch(env, row, live) });
   }
-  // 4) tomorrow's content is today's job: write or replace the reel when the schedule asks for it
+  // 4) write or replace today's reel when the schedule asks for it
   const auto = await autopilot(env, now);
   // 5) from 16:00: remind the owner to post today's video on TikTok while it still exists
   await remindTikTok(env, now, live, captionFor);

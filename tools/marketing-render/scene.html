@@ -43,7 +43,25 @@ body{width:1080px;height:1920px;overflow:hidden;background:#141413;color:#FAF9F5
 #kw{position:absolute;z-index:2;left:190px;width:700px;height:215px;display:none;flex-direction:column;align-items:center;justify-content:center;font-family:Inter,sans-serif}
 #kw small{font-size:40px;font-weight:600;letter-spacing:6px;text-transform:uppercase;opacity:.85}#kw strong{font-size:104px;line-height:1.1;font-weight:800;white-space:nowrap}
 #cap span.cur{background:#B5532F}
-</style><style id="world"></style>
+.run{display:contents}
+/* Lebanese Arabic: right to left, Arabic webfonts, no letter spacing (it breaks the joins), room for dots and tails */
+@font-face{font-family:'VA Display';src:url(fonts/Alexandria.ttf);font-weight:100 900}
+@font-face{font-family:'VA Text';src:url(fonts/IBMPlexSansArabic-Medium.ttf);font-weight:100 500}
+@font-face{font-family:'VA Text';src:url(fonts/IBMPlexSansArabic-SemiBold.ttf);font-weight:600}
+@font-face{font-family:'VA Text';src:url(fonts/IBMPlexSansArabic-Bold.ttf);font-weight:700 900}
+</style><style id="world"></style><style>
+html[lang=ar] *{letter-spacing:0!important;text-transform:none!important;font-family:'VA Text',Inter,sans-serif!important}
+html[lang=ar] #title,html[lang=ar] #title *,html[lang=ar] .head,html[lang=ar] #kw strong{font-family:'VA Display','VA Text',sans-serif!important}
+html[lang=ar] #title{direction:rtl;line-height:1.3!important;font-weight:700}
+html[lang=ar] #title b{padding:.28em 6px .22em;margin:-.28em 0 -.18em;font-weight:700}
+html[lang=ar] #cap,html[lang=ar] #eyebrow,html[lang=ar] .card,html[lang=ar] .pill,html[lang=ar] #kw{direction:rtl}
+html[lang=ar] #cap span{line-height:1.45}
+html[lang=ar] .head{left:auto;right:40px;top:16px}html[lang=ar] .demo{right:auto;left:34px}
+html[lang=ar] .dock{direction:rtl}html[lang=ar] .dock b{left:auto;right:36px;direction:ltr}html[lang=ar] .dock small{right:auto;left:36px;direction:ltr}
+html[lang=ar] .run.ltr{display:flex;direction:ltr;gap:inherit;column-gap:.24em}
+html[lang=ar] #cap .run.ltr{column-gap:8px}
+html[lang=ar] #ai{direction:rtl}
+</style>
 <canvas class="fx" id="fx-back"></canvas>
 <div class="full" id="shade"></div>
 <div class="full" id="cam"><div class="full" id="ui"></div><div class="full" id="dockwrap"></div><div id="girl"></div><img id="lockup"><div id="kw"><small>Comment</small><strong></strong></div></div>
@@ -62,17 +80,37 @@ const fit = (n, min = 24) => { let size = parseFloat(getComputedStyle(n).fontSiz
 // "Step 2 of 4" for the explaining scenes (everything between the hook and the closing card)
 const stepOf = (n) => { const middle = D.scenes.map((_, i) => i).slice(1, -1), i = middle.indexOf(n); return i < 0 || middle.length < 2 ? '' : `${i + 1}/${middle.length}  ·  `; };
 const el = (parent, cls, css = '', text = '') => { const n = document.createElement('div'); n.className = cls; n.style.cssText = css; n.textContent = text; parent.append(n); return n; };
+let AR = false;
+const WORDS_AR = { Chat: 'محادثة', Workflow: 'خطوات الشغل', Website: 'الموقع', Shortlist: 'اللائحة', Draft: 'مسودة', Check: 'انتبه', Demo: 'تجربة', Approve: 'موافق', Edit: 'تعديل', 'Approved ✓': 'تمّت الموافقة ✓', 'Order now': 'اطلب هلق' };
+const tr = (text) => (AR && WORDS_AR[text]) || text;
+const LABEL_AR = { hook: 'اسمع', phone: 'اللحظة', flow: 'خطوة خطوة', browser: 'عالشاشة', list: 'بلمحة', approve: 'القرار إلك', alert: 'المشكلة', cta: 'الخطوة الجايي' };
+// Words as separate elements; in Arabic, neighbouring Latin words stay together so they read left to right.
+function runs(box, words, make) {
+  let run = null;
+  words.forEach((w, i) => {
+    const latin = AR && /[A-Za-z]/.test(w) && !/\p{Script=Arabic}/u.test(w);
+    if (!latin) { run = null; box.append(make(w, i)); return; }
+    if (!run) { run = document.createElement('div'); run.className = 'run ltr'; box.append(run); }
+    run.append(make(w, i));
+  });
+}
 const LABEL = { hook: 'Listen up', phone: 'The moment', flow: 'Step by step', browser: 'On screen', list: 'At a glance', approve: 'Your call', alert: 'The problem', cta: 'Next step' };
 let dock = null, V;
 async function setup(d) {
-  D = d; await window.loadWorld(d.world); V = window.WORLD;
+  D = d; AR = d.lang === 'ar-LB'; await window.loadWorld(d.world); V = window.WORLD;
+  if (AR) {
+    document.documentElement.lang = 'ar';
+    $('ai').textContent = 'شخصية AI'; $('kw').querySelector('small').textContent = 'اكتب بالتعليقات';
+    await Promise.all(['700 90px "VA Display"', '800 60px "VA Text"', '600 38px "VA Text"', '500 38px "VA Text"'].map((f) => document.fonts.load(f, 'مرحبا')));
+  }
   $('world').textContent = V.css;
   $('mark').src = $('lockup').src = d.logos[V.logo]; draw = makePet($('girl'));
   $('lockup').style.top = V.cta.lockup + 'px'; $('kw').style.top = V.cta.kw + 'px';
   $('kw').querySelector('strong').textContent = d.keyword;
   await Promise.all([$('mark').decode(), $('lockup').decode(), document.fonts.ready]);
   await Promise.all(['600 90px Newsreader', '800 60px Inter', '500 38px Inter'].map((f) => document.fonts.load(f)));
-  D.scenes.forEach((x) => { const seg = el($('bar'), '', `flex:${x.dur}`); seg.append(document.createElement('i')); });
+  $('bar').style.direction = AR ? 'rtl' : 'ltr';
+  D.scenes.forEach((x) => { const seg = el($('bar'), '', `flex:${x.dur}`), fill = document.createElement('i'); if (AR) fill.style.transformOrigin = '100% 50%'; seg.append(fill); });
 }
 // the visual beats of every scene, matching the animations below: sound effects are placed on these
 function cues() {
@@ -107,8 +145,8 @@ function build(n) {
   const [cx, cy, cw] = V.card, g2 = el(ui, 'ghost', `left:${cx + 40}px;top:${cy - 27}px;width:${cw - 80}px;height:600px`), g1 = el(ui, 'ghost', `left:${cx}px;top:${cy - 5}px;width:${cw}px;height:600px;opacity:.28`);
   const phone = shot === 'phone';
   const card = el(ui, 'card', `left:${cx}px;top:${cy}px;width:${cw}px;height:600px`), inner = () => card.clientWidth;
-  el(card, 'head', '', { phone: 'Chat', flow: 'Workflow', browser: 'Website', list: 'Shortlist', approve: 'Draft', alert: 'Check' }[shot]);
-  el(card, 'demo', '', 'Demo');
+  el(card, 'head', '', tr({ phone: 'Chat', flow: 'Workflow', browser: 'Website', list: 'Shortlist', approve: 'Draft', alert: 'Check' }[shot]));
+  el(card, 'demo', '', tr('Demo'));
   let anim = () => {};
   if (phone) {
     const history = D.scenes.slice(0, n + 1).filter((x) => x.chat).slice(-3);
@@ -122,8 +160,8 @@ function build(n) {
       dots.forEach((d, i) => d.style.transform = `translateY(${Math.sin(k * 9 - i) * 7}px)`);
     };
   } else if (shot === 'flow' || shot === 'list') {
-    if (shot === 'flow') el(card, 'a', 'left:93px;top:180px;width:6px;height:' + (items.length - 1) * 116 + 'px;background:#E4E0D5');
-    const fill = shot === 'flow' ? el(card, 'a', 'left:93px;top:180px;width:6px;background:#B5532F;height:0') : null;
+    if (shot === 'flow') el(card, 'a', (AR ? 'right' : 'left') + ':93px;top:180px;width:6px;height:' + (items.length - 1) * 116 + 'px;background:#E4E0D5');
+    const fill = shot === 'flow' ? el(card, 'a', (AR ? 'right' : 'left') + ':93px;top:180px;width:6px;background:#B5532F;height:0') : null;
     const rows = items.map((x, i) => { const r = el(card, 'row', `top:${126 + i * 116}px`); const dot = el(r, 'dot', '', String(i + 1)); fit(el(r, '', 'flex:1;min-width:0;white-space:nowrap;overflow:hidden', x)); return { r, dot }; });
     anim = (k, dur) => {
       const step = Math.max(.35, (dur - 1) / Math.max(1, items.length));
@@ -140,17 +178,17 @@ function build(n) {
   } else if (shot === 'approve') {
     const text = el(card, 'a', 'left:50px;right:50px;top:125px;font:500 44px/1.4 Inter', '');
     const bars = [inner() - 120, inner() - 270].map((w, i) => el(card, 'line', `left:50px;top:${320 + i * 50}px;width:${w}px`));
-    const half = (inner() - 130) / 2, yes = el(card, 'pill', `left:50px;top:445px;width:${half}px;font-size:40px`, 'Approve');
-    el(card, 'pill', `left:${80 + half}px;top:445px;width:${half}px;font-size:40px;background:#E4E0D5;color:#141413`, 'Edit');
+    const half = (inner() - 130) / 2, yes = el(card, 'pill', `left:50px;top:445px;width:${half}px;font-size:40px`, tr('Approve'));
+    el(card, 'pill', `left:${80 + half}px;top:445px;width:${half}px;font-size:40px;background:#E4E0D5;color:#141413`, tr('Edit'));
     const cur = el(card, 'a', 'width:54px;height:54px;border-radius:50%;background:rgba(20,20,19,.35);border:6px solid #fff');
     anim = (k, dur) => {
       const full = items[0] || '', press = dur * .68; text.textContent = full.slice(0, Math.floor(clamp((k - .3) / (dur * .4)) * full.length));
       bars.forEach((b, i) => b.style.transform = `scaleX(${out((k - .5 - i * .2) / .6)})`);
       const m = out((k - press + .7) / .7); cur.style.left = inner() * .86 - (inner() * .86 - 50 - half * .55) * m + 'px'; cur.style.top = 580 - 100 * m + 'px';
-      const hit = k > press; yes.textContent = hit ? 'Approved ✓' : 'Approve'; yes.style.background = hit ? '#2F7D4F' : '#B5532F'; yes.style.transform = `scale(${1 - .09 * Math.sin(clamp((k - press) / .3) * Math.PI)})`;
+      const hit = k > press; yes.textContent = tr(hit ? 'Approved ✓' : 'Approve'); yes.style.background = hit ? '#2F7D4F' : '#B5532F'; yes.style.transform = `scale(${1 - .09 * Math.sin(clamp((k - press) / .3) * Math.PI)})`;
     };
   } else if (shot === 'alert') {
-    const btn = el(card, 'pill', 'left:230px;top:150px;width:420px;background:#E4E0D5;color:#141413', 'Order now');
+    const btn = el(card, 'pill', 'left:230px;top:150px;width:420px;background:#E4E0D5;color:#141413', tr('Order now'));
     const cur = el(card, 'a', 'width:54px;height:54px;border-radius:50%;background:rgba(20,20,19,.35);border:6px solid #fff');
     const warn = el(card, 'a', 'left:50px;right:50px;top:330px;border-radius:32px;background:#FBE4DC;border:4px solid #B5532F;padding:34px 40px;font:600 40px/1.35 Inter', items[0] || '');
     anim = (k) => {
@@ -178,15 +216,15 @@ function buildDock(n, shot) {
 function viseme(s, t) {
   let j = -1; for (let i = 0; i < s.words.length; i++) if (t >= s.words[i].t) j = i;
   if (j < 0) return 'x';
-  const w = s.words[j], L = w.w.toLowerCase().replace(/[^a-z0-9]/g, ''); if (!L) return 'x';
+  const w = s.words[j], L = w.w.toLowerCase().replace(AR ? /[^a-z0-9\u0621-\u064A]/g : /[^a-z0-9]/g, ''); if (!L) return 'x';
   const c = L[Math.min(L.length - 1, Math.floor(clamp((t - w.t) / Math.max(.08, w.end - w.t)) * L.length))];
-  return 'a' === c ? 'a' : 'eiy'.includes(c) ? 'e' : c === 'o' ? 'o' : 'uwq'.includes(c) ? 'u' : 'mbp'.includes(c) ? 'm' : 'fv'.includes(c) ? 'f' : 'x';
+  return 'aاأآىة'.includes(c) ? 'a' : 'eiyيإئ'.includes(c) ? 'e' : c === 'o' ? 'o' : 'uwqوؤ'.includes(c) ? 'u' : 'mbpمب'.includes(c) ? 'm' : 'fvف'.includes(c) ? 'f' : 'x';
 }
 let animate;
 // for the QA timeline: where the headline sits on a frame, and its font size
 function headline(i) {
   seek(i);
-  const r = [...$('title').children].map((b) => b.getBoundingClientRect()), x = Math.min(...r.map((a) => a.left)) - 12, y = Math.min(...r.map((a) => a.top)) - 8;
+  const r = [...$('title').querySelectorAll('b')].map((b) => b.getBoundingClientRect()), x = Math.min(...r.map((a) => a.left)) - 12, y = Math.min(...r.map((a) => a.top)) - 8;
   return { box: [Math.floor(x), Math.floor(y), Math.ceil(Math.max(...r.map((a) => a.right)) + 12 - x), Math.ceil(Math.max(...r.map((a) => a.bottom)) + 8 - y)], px: parseFloat($('title').style.fontSize) };
 }
 function seek(i) {
@@ -195,9 +233,9 @@ function seek(i) {
   const s = D.scenes[n], k = t - s.start, shot = s.shot || 'phone', level = D.level[i] || 0, lastScene = n === D.scenes.length - 1;
   if (n !== built) {
     built = n; animate = build(n); buildDock(n, shot);
-    $('eyebrow').firstChild.textContent = stepOf(n) + (V.labels[shot] || LABEL[shot]);
+    $('eyebrow').firstChild.textContent = stepOf(n) + (AR ? LABEL_AR[shot] : V.labels[shot] || LABEL[shot]);
     if (shot !== 'cta') $('kw').style.display = 'none';
-    const title = $('title'); title.replaceChildren(...s.title.split(' ').map((x) => { const b = document.createElement('b'), c = document.createElement('i'); c.textContent = x; b.append(c); return b; }));
+    const title = $('title'); title.replaceChildren(); runs(title, s.title.split(' '), (x) => { const b = document.createElement('b'), c = document.createElement('i'); c.textContent = x; b.append(c); return b; });
     let size = shot === 'hook' ? 108 : 90; title.style.fontSize = size + 'px'; while (size > (shot === 'hook' ? 84 : 56) && (title.scrollHeight > 186 || title.scrollWidth > 940)) title.style.fontSize = (size -= 4) + 'px';
   }
   animate(k, s.dur);
@@ -217,16 +255,16 @@ function seek(i) {
   }
   const lk = $('lockup'); lk.style.display = shot === 'cta' ? 'block' : 'none'; lk.style.opacity = out((k - .2) / .4);
   // headline: words rise out of a mask one after another (the opening frame is already readable)
-  [...$('title').children].forEach((b, j) => { const a = first ? 1 : out((k - .08 - j * .07) / .38); b.firstChild.style.transform = V.word(a, j); });
+  [...$('title').querySelectorAll('b')].forEach((b, j) => { const a = first ? 1 : out((k - .08 - j * .07) / .38); b.firstChild.style.transform = V.word(a, j); });
   $('title').style.opacity = 1 - leave; $('title').style.transform = `translateY(${-leave * 30}px)`;
   const eb = first ? 1 : out(k / .35); $('eyebrow').style.opacity = eb * (1 - leave); $('eyebrow').style.transform = `translateY(${(1 - eb) * -24}px)`;
   // captions: short groups in a fixed box, the spoken word is highlighted without moving its neighbours
   const w = s.words, now = Math.max(0, w.findLastIndex((x) => t >= x.t)), group = s.groups.find((r) => now >= r[0] && now <= r[1]), cap = $('cap');
   const key = n + ':' + group[0];
-  if (cap.dataset.k !== key) { cap.dataset.k = key; cap.replaceChildren(...w.slice(group[0], group[1] + 1).map((x) => { const e = document.createElement('span'); e.textContent = x.w; return e; })); }
+  if (cap.dataset.k !== key) { cap.dataset.k = key; cap.replaceChildren(); runs(cap, w.slice(group[0], group[1] + 1).map((x) => x.w), (x) => { const e = document.createElement('span'); e.textContent = x; return e; }); }
   const pop = back((t - Math.max(s.start, w[group[0]].t - .05)) / .22);
   cap.style.transform = `translateY(${(1 - pop) * 18}px) scale(${.94 + .06 * pop})`; cap.style.opacity = 1 - leave;
-  [...cap.children].forEach((e, j) => { const idx = group[0] + j, since = t - w[idx].t, cur = idx === now && since >= 0; e.style.opacity = since >= 0 ? 1 : .55; e.classList.toggle('cur', cur); e.style.transform = `scale(${cur ? 1 + .05 * Math.sin(clamp(since / .22) * Math.PI) : 1})`; });
+  [...cap.querySelectorAll('span')].forEach((e, j) => { const idx = group[0] + j, since = t - w[idx].t, cur = idx === now && since >= 0; e.style.opacity = since >= 0 ? 1 : .55; e.classList.toggle('cur', cur); e.style.transform = `scale(${cur ? 1 + .05 * Math.sin(clamp(since / .22) * Math.PI) : 1})`; });
   // the world's own transition, at its own rhythm
   let cut = null; D.scenes.forEach((c, j) => { const half = V.cut.dur / 2; if (j && j % V.cut.every === 0 && Math.abs(t - c.start) < half) cut = { p: (t - c.start + half) / V.cut.dur, side: j % 4 < 2 ? 1 : -1 }; });
   const size = prev[2] + (g[2] - prev[2]) * m;

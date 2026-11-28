@@ -18,12 +18,12 @@
 
   function editor(p) {
     const rows = p.post.scenes.map((s, i) => {
-      const say = el('textarea', { value: s.say, rows: 2 }), title = el('input', { value: s.title }), chat = s.chat && el('input', { value: s.chat[1] });
-      const items = s.items && el('textarea', { value: s.items.join('\n'), rows: s.items.length });
+      const say = el('textarea', { dir: 'auto', value: s.say, rows: 2 }), title = el('input', { dir: 'auto', value: s.title }), chat = s.chat && el('input', { dir: 'auto', value: s.chat[1] });
+      const items = s.items && el('textarea', { dir: 'auto', value: s.items.join('\n'), rows: s.items.length });
       return { get: () => ({ ...s, say: say.value, title: title.value, ...(chat ? { chat: [s.chat[0], chat.value] } : {}), ...(items ? { items: items.value.split('\n').map((x) => x.trim()).filter(Boolean) } : {}) }),
         node: el('fieldset', {}, el('legend', { textContent: 'Scene ' + (i + 1) }), el('label', {}, 'Spoken', say), el('label', {}, 'Title', title), chat && el('label', {}, 'Demo message', chat), items && el('label', {}, 'On-screen lines (one per line)', items)) };
     });
-    const cap = el('textarea', { value: p.post.caption, rows: 4 }), tags = el('input', { value: p.post.hashtags.join(' ') });
+    const cap = el('textarea', { dir: 'auto', value: p.post.caption, rows: 4 }), tags = el('input', { dir: 'auto', value: p.post.hashtags.join(' ') });
     return el('div', {}, el('label', {}, 'Caption', cap), el('label', {}, 'Hashtags', tags), ...rows.map((r) => r.node),
       btn('Save', () => send({ action: 'edit', id: p.id, version: p.version, post: { scenes: rows.map((r) => r.get()), caption: cap.value, hashtags: tags.value.split(/\s+/).filter(Boolean) } }), 'primary'),
       btn('Cancel', () => { editing = null; last = ''; load(); }));
@@ -144,10 +144,10 @@
     const open = ['rendering', 'review', 'scheduled', 'failed'].includes(p.status);
     const state = p.status === 'scheduled' ? `Approved · ${when(p.slot)}${p.dry_run_at ? ' · dry run done, nothing posted' : ''}` : p.status === 'review' ? 'Waiting for your approval' : p.status === 'rendering' ? (p.error ? `Last render failed (try ${p.attempts} of 3). Trying again automatically` : 'Rendering (usually within 15 to 30 minutes)') : p.status === 'failed' ? 'Failed' : TABS[p.status] || p.status;
     const stuck = p.status === 'failed' && !p.has_video;
-    const side = el('div', {}, el('h2', { textContent: p.post.scenes[0].say }), el('div', { className: 'meta', textContent: `${state} · version ${p.version}` }), p.error && el('div', { style: 'color:var(--bad)', textContent: `Error: ${p.error}` }));
+    const side = el('div', {}, el('h2', { textContent: p.post.scenes[0].say, dir: 'auto' }), el('div', { className: 'meta', textContent: `${p.post.lang === 'ar-LB' ? 'Lebanese Arabic' : 'English'} · ${state} · version ${p.version}` }), p.error && el('div', { style: 'color:var(--bad)', textContent: `Error: ${p.error}` }));
     if (editing === p.id) side.append(editor(p));
-    else side.append(el('p', { className: 'cap', textContent: p.caption }),
-      p.post.keyword ? el('div', { className: 'meta', textContent: `Comment keyword: ${p.post.keyword} · ${p.post.info?.title || ''}` }) : '', chip(p.pub?.instagram), tiktokKit(p), p.status === 'scheduled' ? schedule(p) : '', el('div', {},
+    else side.append(el('p', { className: 'cap', textContent: p.caption, dir: 'auto' }),
+      p.post.keyword ? el('div', { className: 'meta', textContent: `Comment keyword: ${p.post.keyword} · ${p.post.info?.title || ''}`, dir: 'auto' }) : '', chip(p.pub?.instagram), tiktokKit(p), p.status === 'scheduled' ? schedule(p) : '', el('div', {},
       p.status === 'review' && btn('Approve', () => send({ action: 'approve', id: p.id, version: p.version }), 'primary'),
       p.status === 'scheduled' && publishNow(p),
       p.status === 'failed' && p.has_video && btn('Try publishing again', () => send({ action: 'republish', id: p.id, version: p.version }), 'primary'),

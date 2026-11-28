@@ -1,7 +1,7 @@
 import { json, bad, body } from '../_lib.js';
 import * as mk from '../_marketing.js';
 import { tick } from '../_publish.js';
-import { clock, generate, history, sameTopic } from '../_autopilot.js';
+import { generate, history, sameTopic } from '../_autopilot.js';
 
 // POST /hook/marketing
 //  - n8n publisher: header X-VAgent-Secret, {action:"tick"}
@@ -21,7 +21,7 @@ export async function onRequestPost({ request, env }) {
     await mk.schema(env);
     if (b.action === 'tick') return json(await tick(env));
     try {
-      // manual, any day: one new idea into the render queue (never approves or publishes)
+      // manual: one new idea in today's language into the render queue (never approves or publishes)
       if (b.action === 'generate') { const r = await generate(env); return r.post ? json({ id: r.post.id, title: r.post.info.title, first: r.post.scenes[0].say, keyword: r.post.keyword }) : bad(r.skipped, 409); }
       // is this draft new? checked against the whole queue and the Instagram page
       const err = mk.lint(b.post); if (err) return bad(err);
@@ -37,8 +37,8 @@ export async function onRequestPost({ request, env }) {
     return err ? bad(err, 409) : json({ ok: true });
   }
   const b = await body(request);
-  if (b.action === 'seed') { const posts = Array.isArray(b.posts) ? b.posts.slice(0, 1000) : []; // a timer run on an idle day changes nothing; a push or manual run does
-    if (!b.timer || clock().active) { await mk.seed(env, posts); await mk.relook(env, b.look, posts); } return json({ ok: true, sync: 2 }); }
+  if (b.action === 'seed') { const posts = Array.isArray(b.posts) ? b.posts.slice(0, 1000) : [];
+    await mk.seed(env, posts); await mk.relook(env, b.look, posts); return json({ ok: true, sync: 2 }); }
   if (b.action === 'queue') return json({ posts: await mk.queue(env), chunk: mk.CHUNK });
   if (b.action === 'complete') { const err = await mk.complete(env, b.id, b.version, String(b.sha), b.size); return err ? bad(err, 409) : json({ ok: true }); }
   if (b.action === 'fail') { await mk.renderFailed(env, b.id, b.version, b.why); return json({ ok: true }); }

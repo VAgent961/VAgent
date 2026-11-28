@@ -5,16 +5,17 @@ const ig = await import(R + '_instagram.js'), pub = await import(R + '_publish.j
 const env = { SESSION_SECRET: 's', DATABASE_URL: 'postgres://u:p@h.example/db', ENC_KEY: Buffer.alloc(32, 1).toString('base64') };
 const settings = {}, calls = [], sent = []; let notDue = false, row, pages, telegramDown = false;
 const ID = '17841460984287876', reply = (j, status = 200) => new Response(JSON.stringify(j), { status });
+const queries = [];
 globalThis.fetch = async (url, o = {}) => {
   const u = new URL(url);
   if (u.host === 'api.example') {
-    const { query: q, params: p = [] } = JSON.parse(o.body); let rows = [];
+    const { query: q, params: p = [] } = JSON.parse(o.body); let rows = []; queries.push(q);
     if (/FROM marketing_settings/.test(q)) rows = p[0] in settings ? [{ v: settings[p[0]] }] : [];
     else if (/INTO marketing_settings/.test(q) && !/ WHERE /.test(q)) settings[p[0]] = p[1];
     else if (/jsonb_set\(pub, ARRAY/.test(q)) row.pub[p[1]] = JSON.parse(p[2]);
     else if (/'\{instagram,state\}'/.test(q)) { row.pub.instagram.state = 'publishing'; rows = [row]; }
     else if (/SET status = 'publishing'/.test(q)) { row.status = 'publishing'; rows = [row]; }
-    else if (/SET status = 'published'/.test(q)) { row.status = 'published'; row.video_sha = null; }
+    else if (/SET status = 'published'/.test(q)) { if (row.status === 'publishing') rows = [row]; row.status = 'published'; row.video_sha = null; }
     else if (/ON CONFLICT \(k\) DO UPDATE SET v = \$2 WHERE/.test(q)) { if (settings[p[0]] !== p[1]) { settings[p[0]] = p[1]; rows = [{}]; } }
     else if (/video_sha IS NOT NULL AND \(\(status = 'scheduled'/.test(q)) rows = row.video_sha && ['scheduled', 'review'].includes(row.status) ? [row] : [];
     else if (/SET dry_run_at/.test(q)) rows = [row];
@@ -80,5 +81,10 @@ await pub.setDryRun(env, false, 'PUBLISH', 'o'); await today(); telegramDown = t
 telegramDown = false; await pub.tick(env, at('16:05')); await pub.tick(env, at('16:10')); assert.equal(sent.length, 1);
 assert.match(sent[0], /LIVE[\s\S]*TikTok before 19:00[\s\S]*Hi[\s\S]*\/marketing$/);
 await today({ status: 'review', slot: null }); await pub.tick(env, at('16:00')); assert.match(sent[0], /not approved yet/);
-await today(); notDue = false; await pub.publishNow(env, 'p', 1, 'PUBLISH', 'o'); await pub.tick(env, TUE); assert.equal(row.status, 'published'); assert.equal(row.video_sha, null); assert.equal(sent.length, 0);
+await today(); notDue = false; await pub.publishNow(env, 'p', 1, 'PUBLISH', 'o'); await pub.tick(env, TUE); assert.equal(row.status, 'published'); assert.equal(row.video_sha, null); assert.equal(sent.length, 1); assert.match(sent[0], /Published/);
+// the confirmation after a real publish: once, with the language; none in Dry Run
+await pub.setDryRun(env, false, 'PUBLISH', 'o'); await today({ post: { ...post, lang: 'ar-LB' } }); row.approved_hash = await digest(row); notDue = false;
+await pub.tick(env, at('19:00')); await pub.tick(env, at('19:05')); await pub.tick(env, at('19:10'));
+assert.equal(row.status, 'published'); assert.equal(sent.length, 1); assert.match(sent[0], /Published on Instagram[\s\S]*Lebanese Arabic/);
+assert.ok(!queries.some((q) => q.includes('${')), 'a query still holds an unfilled template');
 console.log('instagram ok');

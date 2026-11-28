@@ -2,6 +2,7 @@
 // "scheduled" is the approved state. Publishing to Instagram lives in _publish.js.
 // Video lives in marketing_media (base64 chunks) and is deleted on publish, decline and re-render.
 import { sql, encrypt, decrypt } from './_lib.js';
+import { AR, EPOCH, langOf, asksFor, ASK_LINE, LANG_NAME } from './_lang.js';
 
 export const CHUNK = 400000;
 export const SHOTS = ['hook', 'phone', 'flow', 'browser', 'list', 'approve', 'alert', 'cta'];
@@ -23,7 +24,7 @@ let ready;
 export const schema = (env) => (ready ||= (async () => { for (const q of UPGRADE) await sql(env, q); })().catch((e) => { ready = null; throw e; }));
 // A publish that succeeded stays recorded, so a post is never sent twice.
 export const KEEP = `pub = COALESCE((SELECT jsonb_object_agg(key, value) FROM jsonb_each(pub) WHERE value->>'state' = 'published'), '{}'::jsonb)`;
-export const BANNED = /whats\s?app|wa\.me|\bfree(ly)?\b|\bcosts?\b|\bpric(e|es|ed|ing)\b|[$€£]|\bpaid\b|\bcheap|\bdiscount|\bsubscri|\bfees?\b|\bafford|واتس|مجان|سعر|أسعار|كلفة|تكلفة/i;
+export const BANNED = /whats\s?app|wa\.me|\bfree(ly)?\b|\bcosts?\b|\bpric(e|es|ed|ing)\b|[$€£]|\bpaid\b|\bcheap|\bdiscount|\bsubscri|\bfees?\b|\bafford|واتس|مجان|ببلاش|سعر|أسعار|اسعار|كلفة|تكلفة|خصم|اشتراك|دولار/i;
 const str = (v, n) => typeof v === 'string' && v.trim().length > 0 && v.length <= n;
 
 // Returns an error text, or '' when the post is fine.
@@ -38,17 +39,20 @@ export function lint(p) {
   }
   // every video: its own direction, and a 1-2 word comment keyword with the info an auto-reply will send
   const key = p.keyword;
-  if (typeof key !== 'string' || key.length > 24 || !/^[\p{Lu}\p{N}]+( [\p{Lu}\p{N}]+)?$/u.test(key)) return 'Add a comment keyword of 1 or 2 words, in capitals';
+  if (p.lang !== undefined && !['en', AR].includes(p.lang)) return 'Unknown language';
+  if (p.topic !== undefined && !(p.topic && /^[a-z0-9][a-z0-9-]{2,59}$/.test(p.topic.key || '') && str(p.topic.summary, 300) && /^[\x20-\x7e’“”–—]+$/.test(p.topic.summary))) return 'The topic needs an English slug and an English summary';
+  if (p.lang === AR && !p.topic) return 'A Lebanese Arabic post needs its English topic';
+  const word = '(?:[\\p{Lu}\\p{N}]|(?=\\p{L})\\p{Script=Arabic}|[\\u064B-\\u0652])+';
+  if (typeof key !== 'string' || key.length > 24 || !new RegExp(`^${word}( ${word})?$`, 'u').test(key)) return 'Add a comment keyword of 1 or 2 words, in capitals';
   if (!p.info || !str(p.info.title, 80) || !str(p.info.summary, 600)) return 'Add the keyword info (title and summary)';
   if (!p.direction || !/^[a-z0-9][a-z0-9-]{1,40}$/.test(p.direction.world || '') || !str(p.direction.concept, 200)) return 'Add a direction (own world and concept) for this video';
-  const asks = new RegExp(`comment\\b[^\\n]{0,24}\\b${key}\\b`, 'iu');
-  if (!asks.test(String(p.caption))) return `The caption must ask people to comment ${key}`;
-  if (!asks.test(`${p.scenes.at(-1).say}\n${p.scenes.at(-1).title}`)) return `The last scene must ask people to comment ${key}`;
+  if (!asksFor(key, p.caption)) return `The caption must ask people to comment ${key}`;
+  if (!asksFor(key, `${p.scenes.at(-1).say}\n${p.scenes.at(-1).title}`)) return `The last scene must ask people to comment ${key}`;
   if (!str(p.caption, 1800) || !Array.isArray(p.hashtags) || p.hashtags.length > 30 || !p.hashtags.every((h) => /^#[\p{L}\p{N}_]{1,50}$/u.test(h))) return 'Check the caption and hashtags';
   const hit = JSON.stringify({ s: p.scenes, c: p.caption, h: p.hashtags, k: p.keyword, i: p.info, d: p.direction }).match(BANNED);
   return hit ? `Content rule: "${hit[0]}" is not allowed in a post` : '';
 }
-const clean = (p) => ({ id: p.id, keyword: p.keyword, info: p.info && { title: p.info.title, summary: p.info.summary }, direction: p.direction && { world: p.direction.world, concept: p.direction.concept }, scenes: p.scenes.map((s) => ({ say: s.say, title: s.title, mood: s.mood === 'think' ? 'think' : 'talk', ...(s.chat ? { chat: [s.chat[0], s.chat[1]] } : {}), ...(s.end ? { end: true } : {}), ...(s.shot ? { shot: s.shot } : {}), ...(s.items?.length ? { items: [...s.items] } : {}) })), caption: p.caption, hashtags: p.hashtags });
+const clean = (p) => ({ id: p.id, ...(p.lang && { lang: p.lang }), ...(p.topic && { topic: { key: p.topic.key, summary: p.topic.summary } }), keyword: p.keyword, info: p.info && { title: p.info.title, summary: p.info.summary }, direction: p.direction && { world: p.direction.world, concept: p.direction.concept }, scenes: p.scenes.map((s) => ({ say: s.say, title: s.title, mood: s.mood === 'think' ? 'think' : 'talk', ...(s.chat ? { chat: [s.chat[0], s.chat[1]] } : {}), ...(s.end ? { end: true } : {}), ...(s.shot ? { shot: s.shot } : {}), ...(s.items?.length ? { items: [...s.items] } : {}) })), caption: p.caption, hashtags: p.hashtags });
 
 export async function digest(row) {
   const raw = new TextEncoder().encode(JSON.stringify([row.id, row.version, row.post, row.video_sha, ...(row.targets ? [row.targets] : [])]));
@@ -71,12 +75,12 @@ export async function approve(env, id, version, who) {
   if (!row || row.status !== 'review' || Number(row.version) !== Number(version)) return 'This post changed. Reload and review it again.';
   const err = lint(row.post); if (err) return err;
   if (row.pub?.instagram?.state === 'published') return 'Already published.';
-  // next free Tue/Thu/Sat 19:00 Beirut, computed by Postgres so daylight saving is right
+  // next free 19:00 Beirut on a day of this post's language, computed by Postgres so daylight saving is right
   const done = await sql(env, `UPDATE marketing_posts SET status = 'scheduled', approved_hash = $3, approved_by = $4, targets = NULL, ${KEEP}, error = NULL, dry_run_at = NULL, updated_at = now(), slot = (
       SELECT s FROM (SELECT (d::date + time '19:00') AT TIME ZONE 'Asia/Beirut' AS s FROM generate_series((now() AT TIME ZONE 'Asia/Beirut')::date::timestamp, (now() AT TIME ZONE 'Asia/Beirut')::date::timestamp + interval '365 days', interval '1 day') d
-        WHERE extract(isodow FROM d) IN (2, 4, 6)) c
+        WHERE ((d::date - date '${EPOCH}') % 2 = 0) = $5::boolean) c
       WHERE s > now() AND NOT EXISTS (SELECT 1 FROM marketing_posts p WHERE p.slot = s AND p.status IN ('scheduled', 'publishing', 'published')) ORDER BY s LIMIT 1)
-    WHERE id = $1 AND version = $2 AND status = 'review' RETURNING slot`, [id, row.version, await digest({ ...row, targets: null }), who]);
+    WHERE id = $1 AND version = $2 AND status = 'review' RETURNING slot`, [id, row.version, await digest({ ...row, targets: null }), who, langOf(row.post) === AR]);
   if (!done.length) return 'This post changed. Reload and review it again.';
   await log(env, id, 'approved', who); return '';
 }
@@ -87,17 +91,18 @@ export async function decline(env, id, who) {
 }
 // Moving an approved post in time keeps the approval (the content is unchanged). `at` is Beirut local time, YYYY-MM-DDTHH:mm.
 export async function reschedule(env, id, version, at, who) {
+  const cur = await one(env, id);
   if (!/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3]):[0-5]\d$/.test(at || '')) return 'Choose a date and time.';
   let r;
   try {
     r = await sql(env, `UPDATE marketing_posts SET slot = $3::timestamp AT TIME ZONE 'Asia/Beirut', dry_run_at = NULL, ${KEEP}, updated_at = now()
-      WHERE id = $1 AND version = $2 AND status = 'scheduled' AND $3::timestamp AT TIME ZONE 'Asia/Beirut' > now() AND extract(isodow FROM $3::timestamp) IN (2, 4, 6) RETURNING id`, [id, version, at]);
+      WHERE id = $1 AND version = $2 AND status = 'scheduled' AND $3::timestamp AT TIME ZONE 'Asia/Beirut' > now() AND (($3::timestamp::date - date '${EPOCH}') % 2 = 0) = $4::boolean RETURNING id`, [id, version, at, langOf(cur?.post) === AR]);
   } catch (e) {
     if (e.message.includes('marketing_slot')) return 'Another post already has that time.';
     if (/out of range/.test(e.message)) return 'That date does not exist.';
     throw e;
   }
-  if (!r.length) return 'Choose a future Tuesday, Thursday or Saturday. If it is one, this post changed: reload first.';
+  if (!r.length) return `Choose a future ${LANG_NAME[langOf(cur?.post)]} day (the languages alternate daily). If it is one, this post changed: reload first.`;
   await log(env, id, 'rescheduled', `${at} ${who}`); return '';
 }
 // After a failed publish: back to review with the video kept. Needs a new approval.
@@ -125,11 +130,11 @@ export async function edit(env, id, version, input, who) {
 }
 
 // ── duplicates (text check). `used` holds earlier posts, and page posts as {page: true, caption}. ──
-const STOP = new Set('a an the and or of to in on is it you your we our for with that this who are be can no not never one get just here want comment words word agent agents vagent send details'.split(' '));
-const words = (s) => new Set(String(s || '').toLowerCase().match(/[a-z]{3,}/g)?.filter((w) => !STOP.has(w)).map((w) => w.replace(/s$/, '')) || []);
+const STOP = new Set('a an the and or of to in on is it you your we our for with that this who are be can no not never one get just here want comment words word agent agents vagent send details اكتب علق بالتعليقات تعليق على هيدا هيدي منشان كتير انت إنت'.split(' '));
+const words = (s) => new Set(String(s || '').toLowerCase().match(/[a-z]{3,}|[\u0621-\u0652]{3,}/g)?.filter((w) => !STOP.has(w)).map((w) => w.replace(/s$/, '')) || []);
 export const alike = (a, b) => { const x = words(a), y = words(b), both = [...x].filter((w) => y.has(w)).length; return both / (x.size + y.size - both || 1); };
 const said = (p) => (p.scenes || []).map((s) => s.say).join(' ');
-const body = (c) => String(c || '').split('\n').filter((l) => !/^\s*(#|comment\b)/i.test(l)).join('\n');
+const body = (c) => String(c || '').split('\n').filter((l) => !ASK_LINE.test(l)).join('\n');
 // Why the post repeats an earlier one, or ''.
 export function repeats(p, used) {
   const first = p.scenes[0].say;
@@ -137,11 +142,13 @@ export function repeats(p, used) {
     if (o.id && o.id === p.id) continue;
     const name = `"${o.info?.title || body(o.caption).split('\n')[0].slice(0, 80)}"`;
     if (o.page) {
-      if (new RegExp(`comment\\b[^\\n]{0,24}\\b${p.keyword}\\b`, 'iu').test(o.caption)) return `The keyword ${p.keyword} is already used on the Instagram page`;
+      if (asksFor(p.keyword, o.caption)) return `The keyword ${p.keyword} is already used on the Instagram page`;
       if (alike(first, body(o.caption).split('\n')[0]) >= .4 || alike(body(p.caption), body(o.caption)) >= .3) return `It repeats the page post ${name}`;
       continue;
     }
     if (o.keyword === p.keyword) return `The keyword ${p.keyword} is already used`;
+    // the idea itself, compared in English so it is never reused in the other language
+    if (p.topic && (o.topic?.key === p.topic.key || alike(p.topic.key, o.topic?.key || o.info?.title) >= .6 || alike(p.topic.summary, o.topic?.summary || `${o.info?.title || ''} ${o.info?.summary || ''}`) >= .35)) return `The topic repeats ${name}`;
     if (alike(first, o.scenes?.[0]?.say) >= .4) return `The first line is too close to the one in ${name}`;
     if (alike(p.info.title, o.info?.title) >= .5 || alike(`${p.info.title} ${p.info.summary}`, `${o.info?.title || ''} ${o.info?.summary || ''}`) >= .35) return `The topic repeats ${name}`;
     if (alike(said(p), said(o)) >= .3) return `The script repeats ${name}`;
