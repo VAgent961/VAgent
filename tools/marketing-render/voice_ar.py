@@ -26,6 +26,23 @@ def spoken(text):
     text = re.sub(r"[^\w\sً-ْٰ.,!?:;،؛؟%']|_|ـ", " ", text)
     return " ".join(text.split())
 
+PAUSE = 0.55  # longest silence kept inside a line (audio_qa rejects over 0.75 s)
+
+def squeeze(audio, words, rate=RATE):
+    """Shorten over-long breaks inside a line and move the word timings with them."""
+    hop = rate // 100
+    quiet = np.array([np.abs(audio[i:i + hop]).max() < 0.003 for i in range(0, len(audio) - hop + 1, hop)], dtype=np.int8)
+    edges = np.flatnonzero(np.diff(np.concatenate([[0], quiet, [0]])))
+    keep, cuts = np.ones(len(audio), bool), []
+    for a, b in zip(edges[::2] * hop, edges[1::2] * hop):
+        extra = (b - a) - int(PAUSE * rate)
+        if a and b < len(quiet) * hop and extra > 0:  # never the lead-in or the tail
+            start = a + int(PAUSE * rate) // 2
+            keep[start:start + extra] = False
+            cuts.append((start / rate, extra / rate))
+    moved = lambda t: t - sum(min(max(t - at, 0), n) for at, n in cuts)
+    return audio[keep], [{**w, "start": moved(w["start"]), "end": moved(w["end"])} for w in words]
+
 async def stream(text, voice, speed, pitch=PITCH):
     import edge_tts
     mp3, words = bytearray(), []
@@ -45,7 +62,7 @@ def edge(text, voice, speed=SPEED):
             audio = np.frombuffer(pcm, dtype=np.float32)
             if len(audio) < RATE // 2 or np.abs(audio).max() < 0.05 or not words:
                 raise RuntimeError("empty or silent audio")
-            return audio, words
+            return squeeze(audio, words)
         except Exception as e:
             if attempt == TRIES - 1:
                 raise
