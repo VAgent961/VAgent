@@ -1,11 +1,11 @@
-// node scripts/generate-reels.mjs [n=1] [--page-optional: go on if Meta blocks the page check] : HQ invents n new, non-duplicate reels and queues them for rendering. No topics given.
+// node scripts/generate-reels.mjs [n=1] [--page-optional: go on if Meta blocks the page check] [--lang=en|ar-LB: not today's language] : HQ invents n new, non-duplicate reels and queues them for rendering. No topics given.
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 const secret = readFileSync(homedir() + '/agent-tools/.vagent-webhook-secret', 'utf8').trim();
 const want = Math.min(5, Number(process.argv[2]) || 1);
 let done = 0;
 for (let tries = 0; done < want && tries < want + 4; tries++) {
-  const r = await fetch('https://city.vagent.online/hook/marketing', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-VAgent-Secret': secret }, body: JSON.stringify({ action: 'generate', pageOptional: process.argv.includes('--page-optional') }), signal: AbortSignal.timeout(29e4) }).catch((e) => e);
+  const r = await fetch('https://city.vagent.online/hook/marketing', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-VAgent-Secret': secret }, body: JSON.stringify({ action: 'generate', pageOptional: process.argv.includes('--page-optional'), lang: process.argv.find((a) => a.startsWith('--lang='))?.slice(7) }), signal: AbortSignal.timeout(29e4) }).catch((e) => e);
   const j = r.json ? await r.json().catch(() => ({ error: 'HTTP ' + r.status })) : { error: r.message };
   if (j.id) { done++; console.log('queued', j.id, '|', j.keyword, '|', j.title, '|', j.first); }
   else { console.log('not queued:', j.error); await new Promise((ok) => setTimeout(ok, 30000)); }

@@ -143,14 +143,14 @@ export async function write(env, used, id, lang = 'en') {
 }
 
 // Writes one new idea and queues it for rendering. `day` marks a scheduled one; `still` re-checks the schedule afterwards.
-export async function generate(env, now = new Date(), day = null, still = async () => '', pageOptional = !!day) {
+export async function generate(env, now = new Date(), day = null, still = async () => '', pageOptional = !!day, lang = '') {
   // one writer at a time; a failed attempt is tried again after 15 minutes
   const lock = await sql(env, "INSERT INTO marketing_settings (k, v) VALUES ('autopilot_lock', $1) ON CONFLICT (k) DO UPDATE SET v = $1 WHERE marketing_settings.v < $2 RETURNING k", [now.toISOString(), new Date(now - 9e5).toISOString()]);
   if (!lock.length) return { skipped: 'busy' };
   const free = () => sql(env, "DELETE FROM marketing_settings WHERE k = 'autopilot_lock'");
   try {
     const c = clock(now), id = `reel-${c.date.replaceAll('-', '')}-${c.time.replace(':', '')}${String(now.getUTCSeconds()).padStart(2, '0')}`;
-    const post = await write(env, await history(env, pageOptional), id, c.lang);
+    const post = await write(env, await history(env, pageOptional), id, lang || c.lang);
     const skipped = await still();
     if (!skipped) {
       await sql(env, 'INSERT INTO marketing_posts (id, post, auto_day) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING', [post.id, JSON.stringify(post), day]);

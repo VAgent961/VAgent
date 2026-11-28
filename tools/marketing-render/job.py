@@ -1,4 +1,4 @@
-"""Runs in GitHub Actions. `check`: send repo drafts to HQ and count the queue. `render`: render and upload each.
+"""Runs in GitHub Actions (every 15 minutes, and at once on a push that touches this folder). `check`: send repo drafts to HQ and count the queue. `render`: render and upload each.
 Authenticates with the workflow's own OIDC token (no stored secret). Videos exist only in a temp folder."""
 import hashlib, json, os, sys, tempfile, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
