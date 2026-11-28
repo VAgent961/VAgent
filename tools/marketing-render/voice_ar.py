@@ -1,17 +1,18 @@
-"""Levantine Arabic voice (Syrian first, Lebanese only as a last resort): Microsoft's neural voices through edge-tts (no key, no charge), with real word timings.
+"""Lebanese Arabic reel voice, locked to ar-SY-AmanyNeural (picked by the owner): Microsoft's neural voices through edge-tts (no key, no charge), with real word timings.
 Arabic is only ever read by an Arabic neural voice: if none answers, the render fails (Kokoro does not speak Arabic)."""
 import asyncio, re, subprocess, time
 import numpy as np
 
 RATE = 24000  # what the voices are made at; the master resamples once, to 48 kHz
-VOICES = ("ar-SY-AmanyNeural", "ar-SY-LaithNeural", "ar-LB-LaylaNeural", "ar-LB-RamiNeural")  # primary, backup, last resorts
+VOICES = ("ar-SY-AmanyNeural",)  # locked: no other speaker, the render fails instead
+SPEED, PITCH = "+5%", "+2Hz"  # the approved take, 05_edge_SY_Amany
 TRIES = 4
 GOOD, FLOOR = 0.85, 0.70  # transcribed share of a line: accept at once / the least that may be used
 # Tech words kept in Latin letters on screen, spelled the way Beirut says them for the voice.
 # functions/_autopilot.js allows exactly these in an Arabic spoken line (SAID_LATIN): change both together.
 SAY = {"ai": "إِي آي", "agent": "إيجِنت", "agents": "إيجِنتس", "online": "أونلاين", "google": "غوغِل", "email": "إيميل",
        "website": "وِبسايت", "app": "آبّ", "dashboard": "داشبورد", "link": "لينك", "order": "أوردر", "instagram": "إنستغرام",
-       "vagent": "ڤي إيجِنت", "message": "مَسِج", "system": "سيستِم"}
+       "vagent": "ڤي إيجِنت", "claude": "كْلود", "message": "مَسِج", "system": "سيستِم"}
 HARAKAT = re.compile("[ً-ْٰ]")
 
 def shown(text):
@@ -25,17 +26,17 @@ def spoken(text):
     text = re.sub(r"[^\w\sً-ْٰ.,!?:;،؛؟%']|_|ـ", " ", text)
     return " ".join(text.split())
 
-async def stream(text, voice, speed):
+async def stream(text, voice, speed, pitch=PITCH):
     import edge_tts
     mp3, words = bytearray(), []
-    async for c in edge_tts.Communicate(text, voice, rate=speed, pitch="+2Hz", boundary="WordBoundary").stream():
+    async for c in edge_tts.Communicate(text, voice, rate=speed, pitch=pitch, boundary="WordBoundary").stream():
         if c["type"] == "audio":
             mp3 += c["data"]
         elif c["type"] == "WordBoundary":  # times are in 100 ns units
             words.append({"word": c["text"], "start": c["offset"] / 1e7, "end": (c["offset"] + c["duration"]) / 1e7})
     return bytes(mp3), words
 
-def edge(text, voice, speed="+5%"):
+def edge(text, voice, speed=SPEED):
     for attempt in range(TRIES):
         try:
             mp3, words = asyncio.run(asyncio.wait_for(stream(text, voice, speed), 40))
@@ -52,7 +53,7 @@ def edge(text, voice, speed="+5%"):
             time.sleep(2 ** (attempt + 1))
 
 # ways to read one line, tried in order until the transcriber hears it well: (keep harakat, speed)
-TAKES = ((True, "+5%"), (False, "+5%"), (True, "-4%"), (False, "-4%"))
+TAKES = ((True, SPEED), (False, SPEED), (True, "-4%"), (False, "-4%"))
 
 def line(text, voice, judge):
     """The first take that sounds right, else the best one: (score, (audio, words))."""

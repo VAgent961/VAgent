@@ -6,7 +6,7 @@ import { think, parseJSON } from './_brain.js';
 import { lint, log, repeats, setting, SHOTS } from './_marketing.js';
 import { langFor, langOf, AR } from './_lang.js';
 import * as ig from './_instagram.js';
-import { STORY, sceneError, stage, tags } from './_scenario.js';
+import { STORY, SEEDS, sceneError, stage, tags } from './_scenario.js';
 
 export const PREP = '06:00', CUTOFF = '19:00', PACE = 2 * 36e5; // 06:00 leaves two hours for a slow render queue
 export function clock(now = new Date()) {
@@ -38,7 +38,6 @@ export function judge(p, used, lang = langOf(p)) {
   const n = p.scenes.map((x) => x.say).join(' ').split(/\s+/).length;
   const story = sceneError(p); if (story) return story;
   if (n < lo || n > hi) return `The spoken script is ${n} words; it must be ${lo} to ${hi}`;
-  if (p.scenes[0].say.split(/\s+/).length > 12) return 'The first spoken line must be 12 words or fewer';
   if (p.scenes[0].title.length > HOOK_TITLE) return `The first scene's title is too long for large type: at most 3 short words, ${HOOK_TITLE} characters`;
   if (p.scenes.some((x) => ['flow', 'list', 'browser', 'alert'].includes(x.shot) && !x.items?.length)) return 'Every flow, list, browser and alert scene needs items, or its card is empty';
   if (String(p.caption).length < (ar ? 90 : 120)) return 'The caption is too thin: write 2 to 4 sentences before the comment request';
@@ -50,7 +49,7 @@ export function judge(p, used, lang = langOf(p)) {
 const MSA = /(?<![\p{L}])(سوف|لماذا|ماذا|الذي|التي|الذين|ليس|ليست|أريد|تريد|يمكنك|يمكنكم|الآن|هكذا|لذلك|حيث|إنّ|لقد|قمنا|يقوم|تقوم)(?![\p{L}])/u;
 const LEB = /(?<![\p{L}])(و?(شو|رح|هيدا|هيدي|هول|فيك|بدك|بدّك|عم|هلق|هلأ|هلّق|منشان|ليش|كتير|مش|إنت|إنتَ|كيف|لهيك|يلي|اللي|بيّ?ك|ما في))(?![\p{L}])/gu;
 // Latin words the voice knows how to say (tools/marketing-render/voice_ar.py SAY): change both together.
-const SAID_LATIN = new Set('ai agent agents online google email website app dashboard link order instagram vagent message system'.split(' '));
+const SAID_LATIN = new Set('ai agent agents online google email website app dashboard link order instagram vagent message system claude'.split(' '));
 const bare = (s) => s.replace(/[\u064B-\u0652\u0670]/g, '');
 function notLebanese(p) {
   const lines = p.scenes.map((s) => s.say).join(' ');
@@ -101,10 +100,10 @@ export async function sameTopic(env, p, used) {
 const SYSTEM = `You write one 9:16 Instagram Reel for VAgent (vagent.online, @v_agent961), which builds AI agents for owners of shops, cafes and small businesses in Lebanon. The presenter is a terracotta pixel-art pet. Reply with JSON only, minified on one line (a long reply gets cut off). Keep items to 2 or 3 short ones.
 Rules: plain calm English. Never mention WhatsApp, free, cost, price, discounts, subscriptions or money signs. No client names, no invented numbers or results. Invent a fresh everyday problem that none of the already used videos covers, and show it as "an agent we can build". Describe only what such an agent could really do; never promise more sales or results. Nothing goes out until a person approves.
 JSON shape:
-{"keyword":"1 or 2 words in CAPITALS","info":{"title":"max 80 chars","summary":"1-2 sentences"},"concept":"the visual world of this video, one sentence","scenes":[{"say":"spoken line","title":"on-screen headline, max 40 chars","shot":"hook|flow|browser|list|approve|alert|cta","mood":"talk|think","items":["up to 4 short on-screen lines"],"chat":["you|agent","scenes 2, 3, 6 only"]}],"caption":"...","hashtags":["#VAgent"]}
+{"keyword":"1 or 2 words in CAPITALS","info":{"title":"max 80 chars","summary":"1-2 sentences"},"concept":"the visual world of this video, one sentence","scenes":[{"say":"spoken line","title":"on-screen headline, max 40 chars","shot":"hook|flow|browser|list|approve|alert|cta","mood":"talk|think","items":["up to 4 short on-screen lines"],"chat":["you|agent","scenes 2 and 3 only"]}],"caption":"...","hashtags":["#VAgent"]}
 ${STORY}
-Short spoken sentences with everyday words, one or two per scene. The line is read aloud by a voice engine: no symbols, emoji, web addresses or unexplained abbreviations. A title is 2 to 5 words and adds to the spoken line instead of repeating it. Items are 1 to 4 words each (hook: exactly 2); an approve scene's first item is the drafted message, under 80 characters.
-The "say" lines total 70 to 85 words. Scene 1: a title of at most 3 short words (18 characters), a say of at most 10 words. Scene 7: title "Comment <KEYWORD>". The caption is 2 to 4 sentences, starts with the first line and says "Comment <KEYWORD>".`;
+Short spoken sentences with everyday words, one or two per scene. The line is read aloud by a voice engine: no symbols, emoji, web addresses or unexplained abbreviations. A title is 2 to 5 words and adds to the spoken line instead of repeating it. Items are 1 to 4 words each (Claude may be named; never claim it acts without approval) (hook: exactly 2); an approve scene's first item is the drafted message, under 80 characters.
+The "say" lines total 70 to 85 words. Scene 1: a title of at most 3 short words (18 characters), a say of at most 9 words. Scene 7: title "Comment <KEYWORD>". The caption is 2 to 4 sentences, starts with the first line and says "Comment <KEYWORD>".`;
 
 const slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 // Added to the English rules above on Lebanese Arabic days.
@@ -113,7 +112,7 @@ THIS VIDEO IS IN LEBANESE ARABIC (Beirut spoken dialect, Arabic script). These o
 - "say", "title", "items", "chat", "caption", "keyword" and "info" are Lebanese Arabic. Talk like a friendly shop-tech person in Beirut: شو, ليش, هلق, رح, عم, فيك, بدك, هيدا, هيدي, مش, ما في, كتير, منشان, يلي. Never textbook Arabic (no سوف, لماذا, الذي, التي, ليس, يمكنك, الآن, أريد).
 - "say" is heard, not read: write it exactly as a lively young person from Beirut would say it out loud to a friend, e.g. "كيف فينا...", "خلّيني فرجيك...", "هيدا الشي بيوفّر عليك...", "شو رأيك؟". Use spoken verb forms (بيقرا، منحضّر، رح تشوف، ما بقى), never case endings or MSA sentence structure.
 - In "say" only, add a few harakat (shadda, kasra, fatha, damma) ONLY on words a voice could misread (e.g. خلّيني، هَلّق، بيحضّر، مِش). Never put harakat on "اكتب" or on the keyword, and none in titles, items or the caption.
-- Short spoken sentences with ، . ؟ ! punctuation. No symbols, emoji, web addresses or abbreviations in "say". In "say" write tech words in Arabic letters as pronounced; the only Latin words allowed there are AI, agent, online, Google, email, website, app, dashboard, link, order, Instagram, message, system, and only a few. Use Western digits.
+- Short spoken sentences with ، . ؟ ! punctuation. No symbols, emoji, web addresses or abbreviations in "say". In "say" write tech words in Arabic letters as pronounced; the only Latin words allowed there are AI, agent, online, Google, email, website, app, dashboard, link, order, Instagram, message, system, Claude, and only a few. Scene 1 "say" is at most 9 words and opens on the loss itself (never تخيّل or مرحبا). Steps open with أول شي، تاني شي، تالت شي. Use Western digits.
 - Never mention واتساب, مجاني, ببلاش, سعر, كلفة, خصم, اشتراك or money.
 - The customer is a Lebanese owner; the helper talks to them as إنت / إنتي, and every chat bubble is Lebanese too.
 The 7 "say" lines total 50 to 62 words (this replaces the 70 to 85 above). Scene 1 title: at most 3 short words, 18 characters.
@@ -129,7 +128,7 @@ export async function write(env, used, id, lang = 'en') {
   const list = used.slice(-60).map(brief).join('\n').slice(-9000), until = Date.now() + 18e4, rejected = [];
   let why = '';
   for (let i = 0; i < 5 && Date.now() < until; i++) {
-    const ask = `Topics already taken, in English or Arabic: ${keys}\n\nAlready used (choose a clearly different problem, keyword and opening line):\n${list}${why ? `\n\nRejected just now:\n${rejected.join('\n')}\nYour last answer was rejected: ${why}. Write a corrected or entirely different one.` : ''}`;
+    const ask = `Start from this situation unless it is already used: ${SEEDS[(used.length + i) % SEEDS.length]}.\n\nTopics already taken, in English or Arabic: ${keys}\n\nAlready used (choose a clearly different problem, keyword and opening line):\n${list}${why ? `\n\nRejected just now:\n${rejected.join('\n')}\nYour last answer was rejected: ${why}. Write a corrected or entirely different one.` : ''}`;
     let j;
     try { j = parseJSON(await think(env, SYSTEM + TOPIC + (lang === AR ? LEBANESE : ''), ask)); } catch (e) { why = e.message; continue; } // a slow or busy answer costs one try
     if (!j || !Array.isArray(j.scenes)) { why = 'the reply was not complete JSON: answer minified and shorter'; continue; }

@@ -95,6 +95,21 @@ function runs(box, words, make) {
   });
 }
 const LABEL = { hook: 'Listen up', phone: 'The moment', flow: 'Step by step', browser: 'On screen', list: 'At a glance', approve: 'Your call', alert: 'The problem', cta: 'Next step' };
+// Claude-and-lost-customer reels (functions/_scenario.js BEATS): each scene is labelled by its beat, cuts mark the turns
+const STORY = 'hook,phone,phone,list,flow,approve,cta';
+const isStory = () => D.scenes.map((s) => s.shot).join() === STORY;
+const BEAT = { ar: ['الوجعة', 'علقت؟', 'دخل Claude', 'خطوة 1 من 3', 'خطوة 2 من 3', 'خطوة 3 من 3', 'دورك'], en: ['The problem', 'Stuck?', 'Claude steps in', 'Step 1 of 3', 'Step 2 of 3', 'Step 3 of 3', 'Your turn'] };
+// Seconds into the scene when each item lands: as its first word is spoken, else spread over the spoken line
+function landings(s, items) {
+  const key = (x) => String(x).toLowerCase().replace(/[\u064B-\u0652\u0670]/g, '').replace(/[^\p{L}\p{N}]/gu, '').replace(/^(و?ال|و)(?=..)/, '');
+  const step = Math.max(.35, ((s.voice || s.dur) - .6) / Math.max(1, items.length));
+  let from = 0, last = 0;
+  return items.map((x, i) => {
+    const first = key(String(x).split(' ')[0]), j = (s.words || []).findIndex((w, n) => n >= from && key(w.w) === first);
+    if (j >= 0) from = j + 1;
+    return (last = Math.min(s.dur - .35, Math.max(i ? last + .35 : .45, j >= 0 ? s.words[j].t - s.start : .45 + i * step)));
+  });
+}
 let dock = null, V;
 async function setup(d) {
   D = d; AR = d.lang === 'ar-LB'; await window.loadWorld(d.world); V = window.WORLD;
@@ -120,7 +135,7 @@ function cues() {
     if (n) add('cut', 0); if (n) add('title', .14);
     if (shot === 'hook') items.forEach((_, i) => add('item', .32 + i * .42, i));
     if (shot === 'phone' && s.chat) add('msg', .45);
-    if (shot === 'flow' || shot === 'list') { const step = Math.max(.35, (s.dur - 1) / Math.max(1, items.length)); items.forEach((_, i) => add('item', .7 + i * step, i)); if (shot === 'flow') add('done', .7 + (items.length - 1) * step + .3); }
+    if (shot === 'flow' || shot === 'list') { const at = landings(s, items); at.forEach((k, i) => add('item', k, i)); if (shot === 'flow' && at.length) add('done', at.at(-1) + .3); }
     if (shot === 'browser') [0, 1, 2, 3].slice(0, items.length || 1).forEach((i) => add('item', .42 + i * .4, i));
     if (shot === 'approve') { for (let i = 0; i < 10; i++) add('type', .35 + i * s.dur * .038, i); add('press', s.dur * .68); }
     if (shot === 'alert') { add('tap', 1.1); add('tap', 1.5, 1); add('alert', 1.75); }
@@ -165,10 +180,10 @@ function build(n) {
     if (shot === 'flow') el(card, 'a', (AR ? 'right' : 'left') + ':93px;top:180px;width:6px;height:' + (items.length - 1) * 116 + 'px;background:#E4E0D5');
     const fill = shot === 'flow' ? el(card, 'a', (AR ? 'right' : 'left') + ':93px;top:180px;width:6px;background:#B5532F;height:0') : null;
     const rows = items.map((x, i) => { const r = el(card, 'row', `top:${126 + i * 116}px`); const dot = el(r, 'dot', '', String(i + 1)); fit(el(r, '', 'flex:1;min-width:0;white-space:nowrap;overflow:hidden', x)); return { r, dot }; });
+    const at = landings(s, items);
     anim = (k, dur) => {
-      const step = Math.max(.35, (dur - 1) / Math.max(1, items.length));
-      rows.forEach(({ r, dot }, i) => { const a = out((k - .25 - i * .14) / .35), done = k > .7 + i * step, current = !done && (i === 0 || k > .7 + (i - 1) * step); r.style.opacity = a * (done || current ? 1 : .55); r.style.boxShadow = current && k > .5 ? 'inset 0 0 0 5px #B5532F' : 'none'; dot.style.background = current && k > .5 ? '#141413' : ''; r.style.transform = `translateX(${(1 - a) * 120}px) scale(${done ? 1 + .04 * Math.sin(clamp((k - .7 - i * step) / .3) * Math.PI) : 1})`; r.classList.toggle('on', done); dot.textContent = done ? '✓' : i + 1; });
-      if (fill) fill.style.height = clamp((k - .7) / (step * Math.max(1, items.length - 1))) * (items.length - 1) * 116 + 'px';
+      rows.forEach(({ r, dot }, i) => { const a = out((k - .25 - i * .14) / .35), done = k > at[i] + .45, current = !done && k >= at[i]; r.style.opacity = a * (done || current ? 1 : .55); r.style.boxShadow = current && k > .5 ? 'inset 0 0 0 5px #B5532F' : 'none'; dot.style.background = current && k > .5 ? '#141413' : ''; r.style.transform = `translateX(${(1 - a) * 120}px) scale(${done ? 1 + .04 * Math.sin(clamp((k - at[i] - .45) / .3) * Math.PI) : 1})`; r.classList.toggle('on', done); dot.textContent = done ? '✓' : i + 1; });
+      if (fill) fill.style.height = clamp((k - at[0]) / Math.max(.35, at.at(-1) - at[0])) * (items.length - 1) * 116 + 'px';
     };
   } else if (shot === 'browser') {
     el(card, 'a', 'left:40px;right:40px;top:100px;height:3px;background:#E4E0D5');
@@ -235,7 +250,7 @@ function seek(i) {
   const s = D.scenes[n], k = t - s.start, shot = s.shot || 'phone', level = D.level[i] || 0, lastScene = n === D.scenes.length - 1;
   if (n !== built) {
     built = n; animate = build(n); buildDock(n, shot);
-    $('eyebrow').firstChild.textContent = stepOf(n) + (AR ? LABEL_AR[shot] : V.labels[shot] || LABEL[shot]);
+    $('eyebrow').firstChild.textContent = isStory() ? BEAT[AR ? 'ar' : 'en'][n] : stepOf(n) + (AR ? LABEL_AR[shot] : V.labels[shot] || LABEL[shot]);
     if (shot !== 'cta') $('kw').style.display = 'none';
     const title = $('title'); title.replaceChildren(); runs(title, s.title.split(' '), (x) => { const b = document.createElement('b'), c = document.createElement('i'); c.textContent = x; b.append(c); return b; });
     let size = shot === 'hook' ? 108 : 90; title.style.fontSize = size + 'px'; while (size > (shot === 'hook' ? 84 : 56) && (title.scrollHeight > 186 || title.scrollWidth > 940)) title.style.fontSize = (size -= 4) + 'px';
@@ -244,7 +259,7 @@ function seek(i) {
   const first = n === 0, leave = lastScene ? 0 : Math.pow(clamp((k - s.dur + .2) / .2), 2);
   // camera, card and headline motion all come from the video's own world
   const p = clamp(k / s.dur), punch = first ? 0 : 1 - out(k / .5);
-  $('cam').style.transform = V.camera({ p, k, n, t, shot, punch, leave });
+  $('cam').style.transform = V.camera({ p, k, n, t, shot, punch, leave }) + (isStory() && n === 2 ? ` scale(${1 + .07 * (1 - out(k / .6))})` : ''); // the turning point punches in
   $('ui').style.opacity = 1 - leave;
   const spot = (x) => V.pet[x === 'hook' ? 'hook' : x === 'cta' ? 'cta' : 'mid'], mood = { hook: ['explain', 'wow'], phone: ['point', 'happy'], flow: ['point', 'happy'], browser: ['explain', 'happy'], list: ['think', 'think'], approve: ['point', 'happy'], alert: ['think', 'worried'], cta: ['wave', 'joy'] };
   const before = (D.scenes[n - 1] || s).shot || 'phone', g = spot(shot), prev = spot(before), m = out(k / .5), arc = Math.hypot(g[0] - prev[0], g[1] - prev[1]) > 40 ? Math.sin(clamp(k / .5) * Math.PI) * -60 : 0;
@@ -268,7 +283,7 @@ function seek(i) {
   cap.style.transform = `translateY(${(1 - pop) * 18}px) scale(${.94 + .06 * pop})`; cap.style.opacity = 1 - leave;
   [...cap.querySelectorAll('span')].forEach((e, j) => { const idx = group[0] + j, since = t - w[idx].t, cur = idx === now && since >= 0; e.style.opacity = since >= 0 ? 1 : .55; e.classList.toggle('cur', cur); e.style.transform = `scale(${cur ? 1 + .05 * Math.sin(clamp(since / .22) * Math.PI) : 1})`; });
   // the world's own transition, at its own rhythm
-  let cut = null; D.scenes.forEach((c, j) => { const half = V.cut.dur / 2; if (j && j % V.cut.every === 0 && Math.abs(t - c.start) < half) cut = { p: (t - c.start + half) / V.cut.dur, side: j % 4 < 2 ? 1 : -1 }; });
+  let cut = null; D.scenes.forEach((c, j) => { const half = V.cut.dur / 2; if (j && (isStory() ? [1, 2, 3, 6].includes(j) : j % V.cut.every === 0) && Math.abs(t - c.start) < half) cut = { p: (t - c.start + half) / V.cut.dur, side: j % 4 < 2 ? 1 : -1 }; });
   const size = prev[2] + (g[2] - prev[2]) * m;
   window.FX({ t, k, n, shot, dur: s.dur, cut, level: talking ? level : 0, pet: [prev[0] + (g[0] - prev[0]) * m + 200 * size, prev[1] + (g[1] - prev[1]) * m + 312 * size, 192 * size] });
   [...$('bar').children].forEach((seg, j) => seg.firstChild.style.transform = `scaleX(${clamp((t - D.scenes[j].start) / D.scenes[j].dur)})`);

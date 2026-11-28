@@ -1,20 +1,26 @@
-// The reel scenario: a mini-scene where the VAgent pet (the narrator) helps one lost customer, a business owner.
-// The pet speaks; the owner answers in on-screen chat bubbles (phone shot, chat ["you", ...]), so one voice is enough.
-export const BEATS = ['hook', 'phone', 'phone', 'flow', 'approve', 'phone', 'cta'];
-export const CHAT_BY = { 1: 'you', 2: 'agent', 5: 'you' }; // scene index -> who is writing
+// The reel scenario: Claude helps one lost customer (a business owner). Beats: hook (pain), the lost moment, Claude steps in,
+// three fix steps, comment keyword. The narrator talks to the owner; chat bubbles show the owner (2) and Claude (3).
+export const BEATS = ['hook', 'phone', 'phone', 'list', 'flow', 'approve', 'cta']; // scene.html recognises this order: change both together
+export const CHAT_BY = { 1: 'you', 2: 'agent' }; // scene index -> who is writing
 export const BUBBLE = 60; // characters allowed; the prompt asks for 40, about two lines in the chat card
+export const HOOK_WORDS = 9; // about 3 seconds
+export const NAMED = /claude|كلود/i; // the turning point says who steps in
+
+// One starting situation per draft, rotated, so the writer does not fall back on the same story.
+export const SEEDS = ['a bakery losing a birthday cake order while the owner is at the oven', 'a barber double-booking the same chair', 'a mechanic who cannot remember which car was promised for today', 'a florist forgetting a yearly anniversary customer', 'a private tutor chasing parents to confirm tomorrow lessons', 'a dental front desk with empty slots after no-shows', 'a clothing shop asked "do you have my size" under old posts', 'a furniture workshop losing measurements across voice notes', 'a pharmacy with a customer asking when an item is back', 'a gym that never follows up with trial visitors', 'a photographer who sends quotes and never chases them', 'a restaurant taking a large table booking on a scrap of paper', 'a phone repair shop answering "is it ready" all day', 'a real estate agent mixing up who asked about which flat'];
 
 export const STORY = `Reasoning: low. Draft once, do not recount or polish in your head; reply at once.
-THE SCENE. Every video is one short scene between two characters. YOU are the narrator: a small, warm, sharp pixel-art helper. The other is THE LOST CUSTOMER: one specific owner (pick a trade: baker, barber, florist, mechanic, tutor, dentist's front desk...) stuck in one concrete mess (unanswered messages, forgotten follow-ups, a messy spreadsheet, a slow daily task). Every "say" is the helper talking straight to that owner as "you", never about "businesses" or "owners" in general. The owner's words appear only on screen as chat bubbles; the helper's next line reacts to them.
+THE SCENE. One realistic mini-scene: a narrator talks straight to ONE owner (a specific trade) at the exact moment they are about to lose something, and Claude, an AI helper (shown as the pixel-art pet), steps in. Say "you", never "businesses" or "owners". The owner's words appear only on screen as chat bubbles.
 The 7 scenes, in exactly this order:
-1 shot hook: catch them in the act, with one concrete detail ("Forty unread messages, and you're icing a cake?"). items: 2 tiny things piling up.
-2 shot phone, chat ["you", the owner admitting they are lost, in their own words]. The helper answers with empathy and names what it costs them today. No solution yet.
-3 shot phone, chat ["agent", the helper's turning point]. One surprising, simple insight about where it really breaks.
-4 shot flow, 3 or 4 items: "Watch." The first steps, tied to this owner's detail from scene 1, joined with words like first, then. The line names the items in order.
-5 shot approve: the helper hands over the draft; the owner stays in charge. items[0] is the drafted message to this owner's customer, under 80 characters.
-6 shot phone, chat ["you", the owner's relieved or surprised reaction]. The helper closes the loop on the scene 1 detail. Show the calmer moment, promise nothing.
-7 shot cta: "Same mess? Comment <KEYWORD>", in the helper's voice.
-Each "chat" is ["you"|"agent", a short message under 40 characters], only on scenes 2, 3 and 6. Each line follows from the one before, like talk: questions, reactions, "okay, here's the thing". No lists read aloud, no slogans.
+1 shot hook: the pain or loss, immediately, with a concrete detail (a number, a time, an object). At most ${HOOK_WORDS} words. No greeting, no "imagine". items: 2 tiny things piling up.
+2 shot phone, chat ["you", the owner, lost, in their own words]. The narrator names what they are about to lose today.
+3 shot phone, chat ["agent", Claude's first reply]. The turning point: the line names Claude, who catches the one thing that was about to slip.
+4 shot list: step 1 of the fix. One concrete action; 2 or 3 items.
+5 shot flow: step 2. The next concrete action; 2 or 3 items.
+6 shot approve: step 3. items[0] is the drafted message to the owner's customer, under 80 characters; the owner approves it.
+7 shot cta: "Comment <KEYWORD>" plus what they get, in a few words. The keyword is one short word tied to this story.
+Steps start with "first", "second", "third" in plain speech and name a real action with this owner's detail; no filler such as "organise everything". Items repeat words of the line, in the order they are said.
+Each "chat" is ["you"|"agent", under 40 characters], only on scenes 2 and 3. Each line follows from the one before. No slogans.
 "topic.summary" starts with the customer ("A florist ... ; an agent ..."). Use a different trade, mess and opening line than every used video.`;
 
 // Error text, or '' when the scenes make the scene above.
@@ -23,9 +29,12 @@ export function sceneError(p) {
   if (s.length !== BEATS.length || s.some((x, i) => x.shot !== BEATS[i])) return `Use exactly ${BEATS.length} scenes with these shots in order: ${BEATS.join(', ')}`;
   for (const [i, x] of s.entries()) {
     const who = CHAT_BY[i];
-    if (!who) { if (x.chat) return 'Only scenes 2, 3 and 6 have "chat"'; continue; }
+    if (!who) { if (x.chat) return 'Only scenes 2 and 3 have "chat"'; continue; }
     if (x.chat?.[0] !== who || !String(x.chat[1] || '').trim() || x.chat[1].length > BUBBLE) return `Scene ${i + 1} needs "chat": ["${who}", a message of at most ${BUBBLE} characters]`;
   }
+  if (!NAMED.test(s[2].say)) return 'Scene 3 is the turning point: its line must name Claude';
+  if (String(s[0].say).trim().split(/\s+/).length > HOOK_WORDS) return `The first spoken line must be ${HOOK_WORDS} words or fewer`;
+  if ([3, 4, 5].some((i) => !s[i].items?.length)) return 'Each of the three steps needs items';
   return '';
 }
 

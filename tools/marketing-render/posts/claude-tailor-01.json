@@ -1,0 +1,94 @@
+{
+ "id": "claude-tailor-01",
+ "lang": "ar-LB",
+ "topic": {
+  "key": "tailor-fitting-date-lost-in-chats",
+  "summary": "A tailor nearly misses a dress delivery date buried in messages; Claude catches it, lists the work and drafts the fitting message for approval."
+ },
+ "keyword": "فستان",
+ "info": {
+  "title": "موعد الفستان الضايع",
+  "summary": "مساعد بيلقط موعد التسليم من بين المسجات، بيرتّب شغل اليوم، وبيحضّر مسج للزبونة لتوافق عليه."
+ },
+ "direction": {
+  "world": "tailor-room-17",
+  "concept": "A tailor's workroom the night before a delivery; Claude pulls the lost date out of a pile of messages"
+ },
+ "scenes": [
+  {
+   "say": "الفستان لبكرا، وإنت بعدك ما قصّيتو!",
+   "title": "التسليم بكرا!",
+   "shot": "hook",
+   "mood": "think",
+   "items": [
+    "مسج ضايع",
+    "قياسات ناقصة"
+   ]
+  },
+  {
+   "say": "الموعد غرقان بين المسجات، وإذا فات، بتخسر الزبونة وسمعتك معها.",
+   "title": "وين الموعد؟",
+   "shot": "phone",
+   "mood": "think",
+   "chat": [
+    "you",
+    "فكّرتو الجمعة الجايي!"
+   ]
+  },
+  {
+   "say": "وقّف! هون بيدخل Claude، وبيلقط إنو التسليم بكرا، مِش الجمعة الجايي.",
+   "title": "لقطها بوقتها",
+   "shot": "phone",
+   "mood": "talk",
+   "chat": [
+    "agent",
+    "انتبه: فستان ريم تسليمو بكرا"
+   ]
+  },
+  {
+   "say": "أول شي، بيجمع القياسات والموعد بلايحة وحدة.",
+   "title": "كلّو بمطرح",
+   "shot": "list",
+   "mood": "talk",
+   "items": [
+    "القياسات",
+    "الموعد"
+   ]
+  },
+  {
+   "say": "تاني شي، بيرتّب يومك: قصّ، خياطة، وبروفا المسا.",
+   "title": "خطّة اليوم",
+   "shot": "flow",
+   "mood": "talk",
+   "items": [
+    "قصّ",
+    "خياطة",
+    "بروفا المسا"
+   ]
+  },
+  {
+   "say": "تالت شي، بيكتب مَسِج لريم، وإنت بس بتوافق.",
+   "title": "القرار إلك",
+   "shot": "approve",
+   "mood": "talk",
+   "items": [
+    "مرحبا ريم، البروفا اليوم المسا. بيناسبك؟"
+   ]
+  },
+  {
+   "say": "اكتب فستان بالتعليقات، وبفرجيك كيف بيظبط لشغلك.",
+   "title": "اكتب فستان",
+   "shot": "cta",
+   "mood": "talk",
+   "end": true
+  }
+ ],
+ "caption": "الفستان لبكرا وإنت مفكّرو الجمعة الجايي؟ هيك Claude بيلقط الموعد من بين المسجات، بيرتّب شغل اليوم بتلات خطوات، وبيحضّر المسج للزبونة، وما بينبعت شي قبل ما توافق.\n\nاكتب فستان بالتعليقات",
+ "hashtags": [
+  "#VAgent",
+  "#Claude",
+  "#لبنان",
+  "#خياطة",
+  "#Lebanon"
+ ]
+}

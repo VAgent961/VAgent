@@ -18,7 +18,9 @@ for (const p of posts) {
   const { sound } = JSON.parse(readFileSync(at(`./worlds/${w}.json`)));
   const look = (await import(at(`./worlds/${w}.mjs`))).default;
   unique('world', w, p.id); unique('keyword', p.keyword, p.id);
-  unique('transition sound', sound.cut, p.id); unique('instrument', sound.wave, p.id); unique('tempo', sound.bpm, p.id);
+  // six instruments and transition sounds exist: only hand-made worlds must differ in them
+  if (!readFileSync(at(`./worlds/${w}.mjs`), 'utf8').includes('./auto.mjs')) { unique('transition sound', sound.cut, p.id); unique('instrument', sound.wave, p.id); }
+  unique('tempo', sound.bpm, p.id);
   for (const part of ['camera', 'enter', 'back', 'front', 'css']) unique(part, String(look[part]), p.id);
   unique('transition', String(look.cut.draw), p.id); unique('layout', JSON.stringify([look.card, look.pet]), p.id);
 }
