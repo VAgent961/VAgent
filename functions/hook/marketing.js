@@ -22,7 +22,7 @@ export async function onRequestPost({ request, env }) {
     if (b.action === 'tick') return json(await tick(env));
     try {
       // manual: one new idea in today's language into the render queue (never approves or publishes)
-      if (b.action === 'generate') { const r = await generate(env); return r.post ? json({ id: r.post.id, title: r.post.info.title, first: r.post.scenes[0].say, keyword: r.post.keyword }) : bad(r.skipped, 409); }
+      if (b.action === 'generate') { const r = await generate(env, new Date(), null, undefined, b.pageOptional === true); return r.post ? json({ id: r.post.id, title: r.post.info.title, first: r.post.scenes[0].say, keyword: r.post.keyword }) : bad(r.skipped, 409); }
       // is this draft new? checked against the whole queue and the Instagram page
       const err = mk.lint(b.post); if (err) return bad(err);
       const used = await history(env);
