@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>VAgent · Web products, AI agents and the systems that run them</title>
+  <meta name="description" content="VAgent is a small team in Lebanon that designs, builds and runs web applications, design systems, AI agents and automation.">
+  <link rel="canonical" href="https://vagent.online/">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://vagent.online/">
+  <meta property="og:title" content="VAgent · Web products, AI agents and the systems that run them">
+  <meta property="og:description" content="Web applications, UI/UX design, AI automation and infrastructure from a small team in Lebanon.">
+  <meta property="og:image" content="https://vagent.online/www/img/share.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#FAF9F5">
+  <link rel="icon" type="image/svg+xml" href="/assets/brand/favicon.svg">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/www/vendor/lenis.css">
+  <link rel="stylesheet" href="/www/site.css">
+  <script src="/www/vendor/gsap.min.js" defer></script>
+  <script src="/www/vendor/ScrollTrigger.min.js" defer></script>
+  <script src="/www/vendor/lenis.min.js" defer></script>
+  <script src="/www/site.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="top">
+    <a class="logo" href="#hero" aria-label="VAgent, back to top"><img src="/assets/brand/lockup.svg" alt="VAgent" width="110" height="36"></a>
+    <nav aria-label="Sections">
+      <a href="#web">Services</a>
+      <a href="#work">Work</a>
+      <a href="#process">Process</a>
+      <a class="btn small" href="#contact">Contact</a>
+    </nav>
+    <div class="progress" aria-hidden="true"><i></i></div>
+  </header>
+
+  <div class="stage" aria-hidden="true">
+    <img class="poster" src="/www/img/f0.webp" alt="" decoding="async">
+    <canvas></canvas>
+  </div>
+
+  <ol class="rail" aria-label="Services">
+    <li><a href="#web">Web apps</a></li>
+    <li><a href="#design">Design</a></li>
+    <li><a href="#agents">AI agents</a></li>
+    <li><a href="#infra">Infrastructure</a></li>
+  </ol>
+
+  <main id="main">
+    <section class="chapter hero" id="hero" data-formation="0">
+      <div class="copy">
+        <h1><span class="line"><span>Web products,</span></span> <span class="line"><span>AI agents and the</span></span> <span class="line"><span>systems behind them.</span></span></h1>
+        <p class="lead">VAgent is a small team in Lebanon. We design, build and run software for shops, cafes and growing businesses.</p>
+        <p class="actions"><a class="btn" href="https://www.instagram.com/v_agent961/" rel="noopener">Message us on Instagram</a><a class="btn ghost" href="#web">See what we build</a></p>
+      </div>
+      <p class="hint" aria-hidden="true">Scroll</p>
+    </section>
+
+    <section class="chapter" id="web" data-formation="1">
+      <div class="copy">
+        <p class="num">Service 1 of 4</p>
+        <h2>Web applications and product engineering</h2>
+        <p class="lead">From the first screen to the database, built as one product by the same people.</p>
+        <ul>
+          <li><b>Business sites and landing pages</b> that load quickly and work well on phones.</li>
+          <li><b>Web applications</b> with sign-in, roles, dashboards and live data.</li>
+          <li><b>Interactive interfaces</b>: live maps, voice calls, order flows and 3D scenes like this one.</li>
+          <li><b>APIs and databases</b> that keep each customer's data separate.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="chapter" id="design" data-formation="2">
+      <div class="copy">
+        <p class="num">Service 2 of 4</p>
+        <h2>UI/UX design and design systems</h2>
+        <p class="lead">Clearer booking, ordering and contact flows, with a system that keeps every screen consistent.</p>
+        <ul>
+          <li><b>Flows first</b>: what a visitor needs to do, in as few steps as it takes.</li>
+          <li><b>Design systems</b>: colour, type, spacing and components defined once and reused.</li>
+          <li><b>Responsive layouts</b> designed for phones as carefully as for desktops.</li>
+          <li><b>Accessible by default</b>: contrast, keyboard use and reduced motion.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="chapter" id="agents" data-formation="3">
+      <div class="copy">
+        <p class="num">Service 3 of 4</p>
+        <h2>AI agents and workflow automation</h2>
+        <p class="lead">Agents prepare the work. A person approves anything that goes out in your name.</p>
+        <ul>
+          <li><b>Customer agents</b> that answer from your own catalog and take bookings or orders.</li>
+          <li><b>n8n pipelines</b> that connect your tools and report what they did.</li>
+          <li><b>Publishing automation</b>: drafts, rendering, review queue and scheduled posting.</li>
+          <li><b>Lead research</b> by district and business type, with outreach left as a draft.</li>
+        </ul>
+        <ol class="flow" aria-label="How an automated job moves">
+          <li>Trigger</li><li>Agent drafts</li><li>Rules check</li><li class="you">You approve</li><li>Publish</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="chapter" id="infra" data-formation="4">
+      <div class="copy">
+        <p class="num">Service 4 of 4</p>
+        <h2>Infrastructure, reliability and deployment</h2>
+        <p class="lead">We stay with what we ship, so it keeps working after launch day.</p>
+        <ul>
+          <li><b>Edge hosting</b> and serverless functions, with managed Postgres.</li>
+          <li><b>Self-hosted automation</b> servers reached through secure tunnels.</li>
+          <li><b>Security basics done properly</b>: secrets kept on the server, keys encrypted, requests rate limited.</li>
+          <li><b>Safe releases</b>: tests before deploy, live checks after it, and a way back.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="solid work" id="work">
+      <div class="wrap">
+        <h2>Work we run ourselves</h2>
+        <p class="lead">These are VAgent's own tools. We use them to run the company.</p>
+        <article class="feature">
+          <figure><img src="/www/img/city.webp" width="1280" height="800" loading="lazy" decoding="async" alt="VAgent City: an isometric city where each building is a department and each floor holds automation agents"></figure>
+          <div>
+            <h3>VAgent City</h3>
+            <p>Our operations view. Every automation is an agent in a building, so we can see what is working, resting or asking for help.</p>
+            <p><a class="link" href="https://city.vagent.online/" rel="nofollow">Team entrance to VAgent City</a><br><small>Private tool. Sign-in required.</small></p>
+          </div>
+        </article>
+        <div class="cards">
+          <article class="card">
+            <h3>Approval-first publishing</h3>
+            <p>Our Instagram videos are drafted and rendered automatically, then wait for an owner.</p>
+            <ol class="times"><li><time>06:00</time> Draft</li><li><time>08:00</time> Ready to review</li><li class="you"><time>Owner</time> Approves or declines</li><li><time>19:00</time> Publishes</li></ol>
+            <p><small>Tuesday, Thursday and Saturday, Beirut time.</small></p>
+            <p><a class="link" href="https://www.instagram.com/v_agent961/" rel="noopener">See @v_agent961</a></p>
+          </article>
+          <article class="card">
+            <h3>Voice receptionist</h3>
+            <p>Answers in English or Arabic from a business catalog, shows the product and takes the order.</p>
+            <div class="talk" aria-label="Example conversation"><p>Do you have this in stock?</p><p class="reply">Yes. Here it is. How many would you like?</p></div>
+            <p><small>Example conversation.</small></p>
+          </article>
+          <article class="card">
+            <h3>Lead research</h3>
+            <p>Searches a district for a type of business, checks each website and drafts a first message based on what it found.</p>
+            <ol class="steps"><li>Find businesses</li><li>Score the gaps</li><li>Audit one site</li><li>Draft outreach</li></ol>
+            <p><small>Drafts only. Nothing is sent on its own.</small></p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="solid process" id="process">
+      <div class="wrap">
+        <h2>How a project runs</h2>
+        <ol class="phases">
+          <li><h3>Understand</h3><p>We look at how customers reach you today and agree on one problem to solve first.</p></li>
+          <li><h3>Design</h3><p>You see the flow and the screens before we build them.</p></li>
+          <li><h3>Build</h3><p>Working versions early, so you can try it on your own phone.</p></li>
+          <li><h3>Run</h3><p>We deploy, watch it and fix what real use turns up.</p></li>
+        </ol>
+        <p class="promise">A small business should see it working before deciding.</p>
+      </div>
+    </section>
+
+    <section class="chapter contact" id="contact" data-formation="5">
+      <div class="copy">
+        <h2>Tell us what takes too much of your day</h2>
+        <p class="lead">Send us a message. We will reply with what we would build first and what it needs.</p>
+        <p class="actions"><a class="btn" href="https://www.instagram.com/v_agent961/" rel="noopener">Message @v_agent961</a></p>
+      </div>
+      <footer>
+        <img src="/assets/brand/lockup.svg" alt="VAgent" width="98" height="32" loading="lazy">
+        <span>Lebanon · © 2026 VAgent</span>
+        <a href="https://www.instagram.com/v_agent961/" rel="noopener">Instagram</a>
+        <a href="https://city.vagent.online/" rel="nofollow">Team sign-in</a>
+      </footer>
+    </section>
+  </main>
+
+  <button class="motion" type="button" aria-pressed="false" hidden>Pause motion</button>
+</body>
+</html>

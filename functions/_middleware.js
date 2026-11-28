@@ -2,7 +2,7 @@ import { readSession, json, sql } from './_lib.js';
 
 // ONE Pages project serves every experience; the Host header decides which one (Cloudflare custom domains all point at this project):
 //   city.vagent.online / *.pages.dev     -> the company HQ (sign-in page, /office, /marketing, /api/* with the owner session)
-//   vagent.online / www                   -> a blank white page (the new company site comes later) + the few addresses that must keep working
+//   vagent.online / www                   -> the public company site (www/) + the few app addresses that must keep working
 //   adminvoice.vagent.online              -> the Client Admin Portal (admin-voice.html at /, /api/client/* with the client session)
 //   voice.vagent.online/<slug>            -> the public Voice AI call page of business <slug> (no DNS change needed per client)
 //   <sub>.vagent.online (e.g. voice1.)    -> the public call page of the client whose client_accounts.custom_subdomain = that host, served at /
@@ -31,13 +31,18 @@ export async function onRequest(context) {
   return mainSite(context, host, path);
 }
 
-// The main domain: blank until the new company site is built. Kept: n8n/render hooks and public call-page embeds (they cannot
-// rely on a redirect: POSTs, and the iframe microphone permission), plus a redirect for old /office and /marketing bookmarks.
-const BLANK = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>VAgent</title><link rel="icon" type="image/svg+xml" href="/assets/brand/favicon.svg"><style>html,body{margin:0;background:#fff}</style></head><body></body></html>';
-function landingHost({ next }, url, path) {
-  if (path === '/' || path === '/index.html') return new Response(BLANK, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+// The main domain: the company site in www/ (static, public, no session). Also kept: n8n/render hooks and public call-page
+// embeds (they cannot rely on a redirect: POSTs, and the iframe microphone permission), and old /office + /marketing bookmarks.
+const SITE_HEADERS = { 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'strict-origin-when-cross-origin' };
+async function landingHost({ env, request, next }, url, path) {
+  if (path === '/' || path === '/index.html') {
+    const r = await env.ASSETS.fetch(new Request(new URL('/www/', url).toString(), { headers: request.headers }));
+    const h = new Headers(r.headers); for (const [k, v] of Object.entries(SITE_HEADERS)) h.set(k, v);
+    return new Response(r.body, { status: r.status, headers: h });
+  }
+  if (path === '/robots.txt') return new Response('User-agent: *\nAllow: /\nDisallow: /office\nDisallow: /marketing\nDisallow: /call\n', { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
   if (/^\/(office|marketing)(\.html|\/.*)?$/.test(path)) return Response.redirect('https://' + APP_HOST + path + url.search, 302);
-  if (path.startsWith('/hook/') || path.startsWith('/api/public-') || path === '/call' || path === '/call.html' || isStatic(path)) return next();
+  if (path.startsWith('/www/') || path.startsWith('/hook/') || path.startsWith('/api/public-') || path === '/call' || path === '/call.html' || isStatic(path)) return next();
   return notFound();
 }
 function adminHost({ env, request, next }, path) {

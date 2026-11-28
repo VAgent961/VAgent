@@ -35,3 +35,15 @@ assert.match(repeats({ ...fresh, caption: posts[0].caption }, posts), /caption r
 assert.match(repeats(fresh, [{ page: true, caption: fresh.caption.replace('ZEBRA', 'OTHER') }]), /page post/);
 assert.match(repeats(fresh, [{ page: true, caption: 'Hello\n\nComment ZEBRA' }]), /Instagram page/);
 console.log('duplicates ok');
+// Meta blocking API access: only the scheduled draft goes on with the queue history; other errors and manual runs still stop
+const { history } = await import('../functions/_autopilot.js'), { encrypt } = await import('../functions/_lib.js');
+const igEnv = { ...env, ENC_KEY: Buffer.alloc(32).toString('base64') }, sealed = await encrypt(igEnv, 'EAAtest'); let meta = 'API access blocked.';
+globalThis.fetch = async (url, o) => {
+  if (String(url).includes('facebook.com')) return Response.json({ error: { code: 200, message: meta } }, { status: 400 });
+  const { query, params } = JSON.parse(o.body), v = { ig_token: sealed, ig_user: '{"id":"1"}' }[params?.[0]];
+  return Response.json({ rows: /marketing_settings/.test(query) && v ? [{ v }] : [] });
+};
+assert.deepEqual(await history(igEnv, true), []);
+await assert.rejects(history(igEnv), /API access blocked/);
+meta = 'Other refusal'; await assert.rejects(history(igEnv, true), /Other refusal/);
+console.log('blocked page ok');

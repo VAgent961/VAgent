@@ -44,16 +44,22 @@ export function judge(p, used) {
 }
 
 // Everything that already exists: the whole queue (published and declined too) and every post on the Instagram page.
-// With Instagram connected, a page that cannot be read stops the run: nothing is accepted unchecked.
-export async function history(env) {
+// With Instagram connected, a page that cannot be read stops the run: nothing is accepted unchecked. One exception, for the
+// scheduled draft only (`scheduled`): while Meta blocks API access it is checked against the queue alone, logged, and still reviewed by the owner.
+export async function history(env, scheduled = false) {
   const used = (await sql(env, 'SELECT post FROM marketing_posts ORDER BY created_at')).map((r) => r.post).filter(Boolean);
   if (!(await setting(env, 'ig_token'))) return used;
   const access = await ig.token(env), me = await ig.user(env);
-  for (let after = '', i = 0; i < 20; i++) {
-    const r = await ig.graph(access, `${me.id}/media`, { fields: 'caption', limit: '50', ...(after ? { after } : {}) });
-    for (const m of r.data || []) if (m.caption) used.push({ page: true, caption: m.caption });
-    after = r.paging?.next && r.paging.cursors?.after;
-    if (!after) break;
+  try {
+    for (let after = '', i = 0; i < 20; i++) {
+      const r = await ig.graph(access, `${me.id}/media`, { fields: 'caption', limit: '50', ...(after ? { after } : {}) });
+      for (const m of r.data || []) if (m.caption) used.push({ page: true, caption: m.caption });
+      after = r.paging?.next && r.paging.cursors?.after;
+      if (!after) break;
+    }
+  } catch (e) {
+    if (!scheduled || !/API access blocked/i.test(e.message)) throw e;
+    await log(env, '-', 'autopilot_page_unchecked', e.message);
   }
   return used;
 }
@@ -102,7 +108,7 @@ export async function generate(env, now = new Date(), day = null, still = async 
   const free = () => sql(env, "DELETE FROM marketing_settings WHERE k = 'autopilot_lock'");
   try {
     const c = clock(now), id = `reel-${c.date.replaceAll('-', '')}-${c.time.replace(':', '')}${String(now.getUTCSeconds()).padStart(2, '0')}`;
-    const post = await write(env, await history(env), id);
+    const post = await write(env, await history(env, !!day), id);
     const skipped = await still();
     if (!skipped) {
       await sql(env, 'INSERT INTO marketing_posts (id, post, auto_day) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING', [post.id, JSON.stringify(post), day]);

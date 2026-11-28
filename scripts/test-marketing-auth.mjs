@@ -38,12 +38,13 @@ const same = { ...env, MARKETING_PASS_HASH: ownerHash };
 assert.equal((await sign('Owner!9', 'owner', same)).next, '/office'); assert.equal((await sign('Owner!9', undefined, same)).next, '/marketing');
 // (c) logout expires the only session cookie, and the next request is signed out
 assert.deepEqual(await view('/office', out.headers.get('Set-Cookie').split(';')[0]), [200, null, '<body>sign-in']);
-// main domain: blank page, old app links redirect, machine/public addresses pass through
+env.ASSETS = { fetch: async (q) => new Response('site ' + new URL(q.url).pathname) };
+// main domain: company site, old app links redirect, machine/public addresses pass through
 const hit = async (u) => { const r = await onRequest({ env, data: {}, next: async () => new Response('page'), request: new Request(u) }); return [r.status, r.headers.get('Location'), await r.text()]; };
 for (const h of ['https://vagent.online', 'https://www.vagent.online']) {
-  const home = await hit(h + '/'); assert.equal(home[0], 200); assert.match(home[2], /<body><\/body>/);
+  const home = await hit(h + '/'); assert.deepEqual([home[0], home[2]], [200, 'site /www/']);
   for (const p of ['/office', '/marketing', '/marketing?x=1', '/office.html']) assert.deepEqual((await hit(h + p)).slice(0, 2), [302, 'https://city.vagent.online' + p], p);
-  for (const p of ['/hook/marketing', '/hook/progress', '/api/public-voice', '/call?id=a', '/assets/call.css']) assert.equal((await hit(h + p))[2], 'page', p);
+  for (const p of ['/hook/marketing', '/hook/progress', '/api/public-voice', '/call?id=a', '/assets/call.css', '/www/site.js']) assert.equal((await hit(h + p))[2], 'page', p);
   for (const p of ['/api/login', '/api/office', '/api/client/me', '/admin-voice', '/office-x']) assert.equal((await hit(h + p))[0], 404, p);
 }
 console.log('auth ok');
