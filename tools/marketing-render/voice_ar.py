@@ -1,11 +1,12 @@
-"""Lebanese Arabic voice: Microsoft's neural voices through edge-tts (no key, no charge), with real word timings.
+"""Levantine Arabic voice (Syrian first, Lebanese only as a last resort): Microsoft's neural voices through edge-tts (no key, no charge), with real word timings.
 Arabic is only ever read by an Arabic neural voice: if none answers, the render fails (Kokoro does not speak Arabic)."""
 import asyncio, re, subprocess, time
 import numpy as np
 
 RATE = 24000  # what the voices are made at; the master resamples once, to 48 kHz
-VOICES = ("ar-LB-RamiNeural", "ar-LB-LaylaNeural", "ar-SY-LaithNeural")  # Lebanese first, Levantine backup
+VOICES = ("ar-SY-AmanyNeural", "ar-SY-LaithNeural", "ar-LB-LaylaNeural", "ar-LB-RamiNeural")  # primary, backup, last resorts
 TRIES = 4
+GOOD, FLOOR = 0.85, 0.70  # transcribed share of a line: accept at once / the least that may be used
 # Tech words kept in Latin letters on screen, spelled the way Beirut says them for the voice.
 # functions/_autopilot.js allows exactly these in an Arabic spoken line (SAID_LATIN): change both together.
 SAY = {"ai": "إِي آي", "agent": "إيجِنت", "agents": "إيجِنتس", "online": "أونلاين", "google": "غوغِل", "email": "إيميل",
@@ -24,20 +25,20 @@ def spoken(text):
     text = re.sub(r"[^\w\sً-ْٰ.,!?:;،؛؟%']|_|ـ", " ", text)
     return " ".join(text.split())
 
-async def stream(text, voice):
+async def stream(text, voice, speed):
     import edge_tts
     mp3, words = bytearray(), []
-    async for c in edge_tts.Communicate(text, voice, rate="+5%", pitch="+2Hz", boundary="WordBoundary").stream():
+    async for c in edge_tts.Communicate(text, voice, rate=speed, pitch="+2Hz", boundary="WordBoundary").stream():
         if c["type"] == "audio":
             mp3 += c["data"]
         elif c["type"] == "WordBoundary":  # times are in 100 ns units
             words.append({"word": c["text"], "start": c["offset"] / 1e7, "end": (c["offset"] + c["duration"]) / 1e7})
     return bytes(mp3), words
 
-def edge(text, voice):
+def edge(text, voice, speed="+5%"):
     for attempt in range(TRIES):
         try:
-            mp3, words = asyncio.run(asyncio.wait_for(stream(text, voice), 40))
+            mp3, words = asyncio.run(asyncio.wait_for(stream(text, voice, speed), 40))
             pcm = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", "-", "-f", "f32le", "-ac", "1", "-ar", str(RATE), "-"],
                                  input=mp3, capture_output=True, check=True).stdout
             audio = np.frombuffer(pcm, dtype=np.float32)
@@ -50,13 +51,42 @@ def edge(text, voice):
             print("edge-tts retry:", voice, type(e).__name__, e, flush=True)
             time.sleep(2 ** (attempt + 1))
 
-def speak(lines):
-    """One voice for the whole video: every line is made by the same speaker, or the next one is tried."""
+# ways to read one line, tried in order until the transcriber hears it well: (keep harakat, speed)
+TAKES = ((True, "+5%"), (False, "+5%"), (True, "-4%"), (False, "-4%"))
+
+def line(text, voice, judge):
+    """The first take that sounds right, else the best one: (score, (audio, words))."""
+    best, tried = None, set()
+    for marks, speed in TAKES:
+        said = spoken(text if marks else shown(text))
+        if (said, speed) in tried:
+            continue
+        tried.add((said, speed))
+        take = edge(said, voice, speed)
+        score = judge(text, take[0]) if judge else 1.0
+        if not best or score > best[0]:
+            best = (score, take)
+        if score >= GOOD:
+            break
+        print(f"retake: {voice} heard {score:.0%} of: {text}", flush=True)
+    return best
+
+def speak(lines, judge=None, skip=()):
+    """One voice for the whole video: every line is made by the same speaker, or the next one is tried.
+    `judge(text, audio)` returns the share of the line a transcriber hears; a line under FLOOR rejects the voice."""
     why = []
     for voice in VOICES:
+        if voice in skip:
+            continue
         try:
-            return voice, [edge(spoken(text), voice) for text in lines]
+            takes = []
+            for text in lines:
+                score, take = line(text, voice, judge)
+                if score < FLOOR:
+                    raise RuntimeError(f"garbled ({score:.0%}): {text}")
+                takes.append(take)
+            return voice, takes
         except Exception as e:
             why.append(f"{voice}: {type(e).__name__}: {e}"[:150])
-            print(f"::warning title=edge-tts::{why[-1]}", flush=True)
+            print(f"::warning title=Arabic voice::{why[-1]}", flush=True)
     raise RuntimeError("No Arabic neural voice succeeded, nothing was rendered. " + " | ".join(why))

@@ -5,6 +5,7 @@ import numpy as np
 from music import mix
 import newworld
 import voice_ar
+import audio_qa
 
 FPS = 30
 ROOT = Path(__file__).resolve().parent
@@ -167,7 +168,7 @@ def render_video(post, out, tmp):
             loaded.append(Kokoro(str(MODELS / "kokoro-v1.0.onnx"), str(MODELS / "voices-v1.0.bin")))
         return loaded[0]
     parts, scenes, t, rate, heard = [], [], 0.0, 24000, []
-    voice_name, spoken = voice_ar.speak([s["say"] for s in post["scenes"]]) if lang == "ar-LB" else ("af_heart", [])
+    voice_name, spoken = voice_ar.speak([s["say"] for s in post["scenes"]], lambda text, a: audio_qa.compare(text, audio_qa.hear(a, voice_ar.RATE))[0]) if lang == "ar-LB" else ("af_heart", [])
     for n, sc in enumerate(post["scenes"]):
         if spoken:
             audio, marks = spoken[n]
@@ -242,6 +243,11 @@ def render_video(post, out, tmp):
                                              *[x.strip() for x in pre.stdout.splitlines() if "WARN" in x][:5]]))
         if qa.returncode:  # a failed check never reaches review
             raise RuntimeError("QA: " + " | ".join(x for x in bad if x.startswith("FAIL"))[:280])
+        if lang != "en":  # the finished soundtrack is listened to before an Arabic reel may reach review
+            defects, facts = audio_qa.check(out, voice, rate, [(s["start"], s["start"] + s["voice"]) for s in scenes], [s["say"] for s in post["scenes"]])
+            note(f"Audio QA {post['id']}", "\n".join([f"voice {voice_name}; {'FAIL' if defects else 'PASS'}", json.dumps(facts, ensure_ascii=False), *defects]))
+            if defects:
+                raise RuntimeError("Audio QA: " + " | ".join(defects)[:280])
     finally:
         if enc and enc.poll() is None:
             enc.kill()
