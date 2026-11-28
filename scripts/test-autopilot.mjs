@@ -18,7 +18,7 @@ assert.equal(run('2026-12-01T11:00', { pending: true }), 'pending');
 assert.equal(run('2026-12-01T11:00', { approved: true, closed }), 'approved');
 assert.equal(run('2026-12-01T19:00', { closed }), 'cutoff');
 const dir = new URL('../tools/marketing-render/posts/', import.meta.url);
-const posts = readdirSync(dir).map((f) => JSON.parse(readFileSync(new URL(f, dir))));
+const posts = readdirSync(dir).map((f) => JSON.parse(readFileSync(new URL(f, dir)))).filter((p) => p.lang !== 'ar-LB'); // English drafts: the base of the fixtures
 const { BEATS, CHAT_BY } = await import('../functions/_scenario.js'), base = posts[0];
 const staged = { ...base, topic: { key: 'an-idea', summary: 'An idea.' }, scenes: BEATS.map((shot, i) => ({ ...base.scenes[i === 6 ? base.scenes.length - 1 : i % (base.scenes.length - 1)], shot, say: i === 6 ? base.scenes.at(-1).say : i === 0 ? 'Buried in notes again?' : i === 2 ? 'Claude catches the note before it slips.' : 'You are buried in notes again, here is one calm step.', title: i === 6 ? base.scenes.at(-1).title : 'Lost again?', items: ['One note', 'Two notes'], chat: CHAT_BY[i] ? [CHAT_BY[i], 'I lose track'] : undefined })) };
 assert.match(judge(staged, [{ ...base, id: 'earlier' }]), /already used/);
